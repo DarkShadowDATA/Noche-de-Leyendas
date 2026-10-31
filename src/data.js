@@ -68,3 +68,41 @@ export const ENEMIES = {
   charro: { tex: ['charro_camina', 'charro_ataque'], hp: 2300, spd: 86, dmg: 20, size: 176, r: 58, xp: 0, boss: 'El Charro Negro', flap: 3 },
   llorona: { tex: ['llorona_camina', 'llorona_ataque'], hp: 4400, spd: 56, dmg: 22, size: 200, r: 60, xp: 0, boss: 'La Llorona', flap: 1.2 },
 };
+
+// ---------- Árbol de talentos (se compra con flores de cempasúchil) ----------
+// Cada rama: 5 talentos con niveles + 1 talento final. Costo del nivel n = base × 1.7^(n−1), redondeado a 5.
+// El final de cada rama pide haber gastado 12 niveles en esa rama.
+export const BRANCHES = {
+  ataque: { name: 'Ataque', icon: '🗡️', color: '#ff9d1f' },
+  supervivencia: { name: 'Supervivencia', icon: '🛡️', color: '#3fe0d0' },
+  fortuna: { name: 'Fortuna', icon: '💰', color: '#ffcf5a' },
+};
+const pct = (n) => `${Math.round(n)}%`;
+export const TALENTS = [
+  { id: 'atk_filo', b: 'ataque', icon: '🔪', name: 'Filo', max: 5, base: 40, txt: (l) => `+${pct(6 * l)} de daño` },
+  { id: 'atk_area', b: 'ataque', icon: '🌀', name: 'Alcance', max: 5, base: 60, txt: (l) => `+${pct(6 * l)} de área` },
+  { id: 'atk_crit', b: 'ataque', icon: '💥', name: 'Golpe certero', max: 5, base: 90, txt: (l) => `${pct(4 * l)} de golpes críticos (doble daño)` },
+  { id: 'atk_ritmo', b: 'ataque', icon: '⏱️', name: 'Ritmo', max: 5, base: 130, txt: (l) => `−${pct(4 * l)} de espera de las armas` },
+  { id: 'atk_jefes', b: 'ataque', icon: '👹', name: 'Cazajefes', max: 3, base: 180, txt: (l) => `+${pct(10 * l)} de daño a jefes` },
+  { id: 'atk_arsenal', b: 'ataque', icon: '🎆', name: 'Arsenal', max: 1, base: 2000, final: true, txt: () => '+1 cohete, piedra, frasco o carta en todas las armas' },
+  { id: 'sup_vida', b: 'supervivencia', icon: '❤️', name: 'Aguante', max: 5, base: 40, txt: (l) => `+${12 * l} de vida máxima` },
+  { id: 'sup_sanar', b: 'supervivencia', icon: '🌿', name: 'Remedio', max: 5, base: 60, txt: (l) => `Te curas ${(0.25 * l).toFixed(2).replace(/0$/, '')} de vida por segundo` },
+  { id: 'sup_coraza', b: 'supervivencia', icon: '🦺', name: 'Coraza', max: 5, base: 90, txt: (l) => `−${pct(4 * l)} de daño recibido` },
+  { id: 'sup_agil', b: 'supervivencia', icon: '💨', name: 'Agilidad', max: 4, base: 130, txt: (l) => `Esquivas cada ${(2.2 - 0.25 * l).toFixed(2).replace(/0$/, '')} s` },
+  { id: 'sup_paso', b: 'supervivencia', icon: '👣', name: 'Paso firme', max: 3, base: 180, txt: (l) => `+${pct(5 * l)} de velocidad` },
+  { id: 'sup_revivir', b: 'supervivencia', icon: '🕯️', name: 'Segunda vela', max: 1, base: 2000, final: true, txt: () => 'Revives una vez por partida con la mitad de la vida' },
+  { id: 'for_iman', b: 'fortuna', icon: '🧲', name: 'Imán de almas', max: 5, base: 40, txt: (l) => `+${pct(15 * l)} de distancia para juntar almas` },
+  { id: 'for_saber', b: 'fortuna', icon: '📜', name: 'Sabiduría', max: 5, base: 60, txt: (l) => `+${pct(6 * l)} de experiencia` },
+  { id: 'for_cosecha', b: 'fortuna', icon: '🌼', name: 'Cosecha', max: 5, base: 90, txt: (l) => `+${pct(8 * l)} de flores al terminar` },
+  { id: 'for_cambio', b: 'fortuna', icon: '🔄', name: 'Barajear', max: 3, base: 130, txt: (l) => `Cambia las cartas ${l} ${l === 1 ? 'vez' : 'veces'} por partida` },
+  { id: 'for_arranque', b: 'fortuna', icon: '⚡', name: 'Buen arranque', max: 2, base: 180, txt: (l) => `Tu arma inicial empieza en nivel ${1 + l}` },
+  { id: 'for_cuatro', b: 'fortuna', icon: '🃏', name: 'Cuarta carta', max: 1, base: 2000, final: true, txt: () => 'Eliges entre 4 cartas al subir de nivel' },
+];
+export const FINAL_NEEDS = 12;
+export function talentCost(t, lv) { return Math.round(t.base * Math.pow(1.7, lv - 1) / 5) * 5; } // lv = nivel que compras (1..max)
+
+// Cazadores que se abren con flores
+export const HUNTER_COST = { luchadora: 400, cohetero: 900 };
+
+// Flores al terminar una partida
+export const FLOWERS = { perSeconds: 10, perKills: 20, boss: { cadejo: 15, charro: 25, llorona: 60 }, firstOfDay: 2 };

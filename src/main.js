@@ -1,7 +1,8 @@
 // Noche de Leyendas — prototipo jugable (Phaser 3)
 import Phaser from 'phaser';
 import '@fontsource/lilita-one/400.css';
-import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, RUN_SECONDS, BOSS_TIMES } from './data.js';
+import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, RUN_SECONDS, BOSS_TIMES, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS } from './data.js';
+import { save, persist, tl, today } from './save.js';
 
 const IMGS = import.meta.glob('./img/*.webp', { eager: true, query: '?url', import: 'default' });
 const IMG = {};
@@ -13,6 +14,8 @@ const SPEED = clampSpeed(+Q.get('speed') || 1);
 function clampSpeed(v) { return Math.max(1, Math.min(8, v)); }
 const GOD = Q.has('god');
 const AUTO = Q.has('auto'); // para pruebas: se mueve solo y elige la primera carta
+const DEV = Q.has('dev');
+if (DEV && Q.has('flores')) { save.flores = +Q.get('flores') || 0; persist(); }
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -213,6 +216,8 @@ class Play extends Phaser.Scene {
     this.hpBar = this.add.graphics().setDepth(1e6);
     this.aura = this.add.image(0, 0, 'aura').setBlendMode(Phaser.BlendModes.ADD).setVisible(false).setDepth(-70000);
     this.addWeapon(H.weapon);
+    this.W[0].lv += tl('for_arranque');
+    this.P.hp = this.maxHp; this.rerolls = tl('for_cambio'); this.revived = false; this.bossKills = {};
 
     this.cameras.main.startFollow(this.pSpr, true, 0.18, 0.18);
     this.onResize(); this.scale.on('resize', this.onResize, this);
@@ -275,12 +280,12 @@ class Play extends Phaser.Scene {
 
   // ---------- Estadísticas ----------
   pl(id) { return this.Pass[id] || 0; }
-  get dmgMul() { return 1 + 0.1 * this.pl('piedra'); }
-  get areaMul() { return 1 + 0.1 * this.pl('ojo'); }
-  get amount() { return Math.ceil(this.pl('morral') / 2); }
-  get cdMul() { return 1 - 0.07 * this.pl('veladora'); }
-  get maxHp() { return this.P.baseHp + 20 * this.pl('maguey'); }
-  get magnet() { return 85 * (1 + 0.35 * this.pl('ofrenda')); }
+  get dmgMul() { return 1 + 0.1 * this.pl('piedra') + 0.06 * tl('atk_filo'); }
+  get areaMul() { return 1 + 0.1 * this.pl('ojo') + 0.06 * tl('atk_area'); }
+  get amount() { return Math.ceil(this.pl('morral') / 2) + tl('atk_arsenal'); }
+  get cdMul() { return Math.max(0.35, 1 - 0.07 * this.pl('veladora') - 0.04 * tl('atk_ritmo')); }
+  get maxHp() { return this.P.baseHp + 20 * this.pl('maguey') + 12 * tl('sup_vida'); }
+  get magnet() { return 85 * (1 + 0.35 * this.pl('ofrenda')) * (1 + 0.15 * tl('for_iman')); }
   needFor(l) { return Math.floor(5 + l * 3.2 + Math.pow(l, 1.65)); }
 
   // ---------- Bucle ----------
@@ -320,13 +325,14 @@ class Play extends Phaser.Scene {
     if (ml > 1) { mx /= ml; my /= ml; }
     P.moving = ml > 0.05;
     if (P.moving) { P.dx = mx / Math.max(ml, 1e-6); P.dy = my / Math.max(ml, 1e-6); P.face = Math.atan2(P.dy, P.dx); }
-    let spd = P.speed * (1 + 0.08 * this.pl('huaraches')) * (P.slowT > 0 ? 0.55 : 1);
+    let spd = P.speed * (1 + 0.08 * this.pl('huaraches') + 0.05 * tl('sup_paso')) * (P.slowT > 0 ? 0.55 : 1);
     let vx = mx * spd, vy = my * spd;
     if (P.dashT > 0) { P.dashT -= dt; vx = P.dx * 560; vy = P.dy * 560; if (Math.random() < 0.6) this.afterimage(); }
     if (P.pushT > 0) { P.pushT -= dt; vx += P.pushVx; vy += P.pushVy; }
     P.x += vx * dt; P.y += vy * dt;
     P.hurtCd -= dt; P.inv -= dt; P.dashCd -= dt; P.atkT -= dt; P.slowT -= dt;
-    if (this.pl('maguey')) P.hp = Math.min(this.maxHp, P.hp + 0.3 * this.pl('maguey') * dt);
+    const regen = 0.3 * this.pl('maguey') + 0.25 * tl('sup_sanar');
+    if (regen > 0) P.hp = Math.min(this.maxHp, P.hp + regen * dt);
 
     // Pose y animación por código
     const s = this.pSpr;
@@ -362,7 +368,7 @@ class Play extends Phaser.Scene {
 
   dash() {
     const P = this.P; if (this.over || P.dashCd > 0 || this.scene.isPaused()) return;
-    P.dashT = 0.17; P.inv = 0.38; P.dashCd = 2.2; Sfx.play('dash');
+    P.dashT = 0.17; P.inv = 0.38; P.dashCd = 2.2 - 0.25 * tl('sup_agil'); Sfx.play('dash');
   }
 
   // ---------- Director: qué sale y cuándo ----------
@@ -627,15 +633,26 @@ class Play extends Phaser.Scene {
     if (!ignoreCd && P.hurtCd > 0) return;
     this.dmgTaken = (this.dmgTaken || 0) + dmg;
     if (GOD) { P.hurtCd = 0.5; return; }
-    P.hp -= dmg; P.hurtCd = 0.5; P.hurtFlash = 0.15;
+    P.hp -= dmg * (1 - 0.04 * tl('sup_coraza')); P.hurtCd = 0.5; P.hurtFlash = 0.15;
     Sfx.play('hurt');
     this.cameras.main.shake(90, 0.003);
+    if (P.hp <= 0 && tl('sup_revivir') && !this.revived) { this.revive(); return; }
     if (P.hp <= 0) this.endRun(false);
+  }
+
+  revive() {
+    const P = this.P; this.revived = true;
+    P.hp = this.maxHp * 0.5; P.inv = 2.5;
+    this.near(P.x, P.y, 260, (e) => { const a = Math.atan2(e.y - P.y, e.x - P.x); this.hurt(e, 40, Math.cos(a) * 600, Math.sin(a) * 600, { quiet: true }); });
+    this.ring(P.x, P.y - 20, 260, 0xffcf5a, 600, true); this.fxSpark.explode(50, P.x, P.y - 40);
+    Sfx.play('ability'); this.banner('¡Segunda vela!', 'Reviviste con la mitad de la vida', 1800);
   }
 
   hurt(e, dmg, kx = 0, ky = 0, opt = {}) {
     if (!e.alive || e.ghost) return;
     dmg *= this.dmgMul;
+    if (e.boss) dmg *= 1 + 0.1 * tl('atk_jefes');
+    if (tl('atk_crit') && Math.random() < 0.04 * tl('atk_crit')) { dmg *= 2; opt = Object.assign({}, opt, { big: true, quiet: false }); }
     e.hp -= dmg; e.flash = 0.07;
     const kb = e.boss ? 0.08 : (e.k === 'chupacabras' && e.state === 'leap') ? 0.2 : 1;
     e.kx += kx * kb; e.ky += ky * kb;
@@ -659,6 +676,7 @@ class Play extends Phaser.Scene {
     const s = e.s;
     this.tweens.add({ targets: s, scaleX: s.scaleX * 1.25, scaleY: 0, alpha: 0, duration: 160, onComplete: () => { s.setVisible(false); this.pool.push(s); } });
     if (e.boss) {
+      this.bossKills[e.k] = true;
       Sfx.play('boom'); this.cameras.main.shake(500, 0.01);
       for (let i = 0; i < 40; i++) this.dropSoul(e.x + rnd(-90, 90), e.y + rnd(-70, 70), 5);
       if (this.bossAlive === e) this.bossAlive = this.E.find(o => o.alive && o.boss) || null;
@@ -700,7 +718,7 @@ class Play extends Phaser.Scene {
     }
   }
   gainXp(v) {
-    this.xp += v;
+    this.xp += v * (1 + 0.06 * tl('for_saber'));
     while (this.xp >= this.xpNeed) { this.xp -= this.xpNeed; this.level++; this.xpNeed = this.needFor(this.level); this.pendingLv++; }
     if (this.pendingLv > 0 && !this.hud.cardsOpen) this.time.delayedCall(10, () => this.hud.openCards());
   }
@@ -1045,12 +1063,13 @@ class Play extends Phaser.Scene {
     const pc = Object.keys(this.Pass).length;
     for (const id in PASSIVES) { const l = this.pl(id); if (l > 0 && l < 5) opts.push({ type: 'p', id, lv: l + 1, weight: 1.6 }); else if (l === 0 && pc < 6) opts.push({ type: 'p', id, lv: 1, weight: 1 }); }
     const out = [];
-    while (out.length < 3 && opts.length) {
+    const n = 3 + tl('for_cuatro');
+    while (out.length < n && opts.length) {
       let tot = opts.reduce((s, o) => s + o.weight, 0), r = Math.random() * tot, i = 0;
       for (; i < opts.length; i++) { r -= opts[i].weight; if (r <= 0) break; }
       out.push(opts.splice(Math.min(i, opts.length - 1), 1)[0]);
     }
-    if (out.length < 3) out.push({ type: 'pan', id: 'pan', lv: 0 });
+    if (out.length < n) out.push({ type: 'pan', id: 'pan', lv: 0 });
     return out;
   }
   applyCard(o) {
@@ -1063,10 +1082,32 @@ class Play extends Phaser.Scene {
   endRun(win) {
     if (this.over) return;
     this.over = true;
+    this.reward = this.flowerReward(win);
     Sfx.play(win ? 'win' : 'lose');
     this.time.delayedCall(win ? 200 : 700, () => this.hud.end(win));
   }
 }
+
+function flowerLines(sc, win) {
+  const r = { tiempo: Math.floor(sc.t / FLOWERS.perSeconds), enemigos: Math.floor(sc.kills / FLOWERS.perKills), jefes: 0 };
+  for (const k in sc.bossKills) r.jefes += FLOWERS.boss[k] || 0;
+  return r;
+}
+Play.prototype.flowerReward = function (win) {
+  const r = flowerLines(this, win);
+  let base = r.tiempo + r.enemigos + r.jefes;
+  const cosecha = 1 + 0.08 * tl('for_cosecha');
+  const first = save.dia !== today();
+  const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1));
+  const counts = (!GOD && START_T === 0 && !AUTO) || DEV;
+  if (counts) {
+    save.flores += total; save.ganadas += total; save.partidas++; save.mejor = Math.max(save.mejor, Math.floor(this.t));
+    if (win) save.victorias++;
+    if (first) save.dia = today();
+    persist();
+  }
+  return { ...r, cosecha, first, total, counts };
+};
 
 // ---------- Interfaz (HTML encima del juego) ----------
 class Hud {
@@ -1103,13 +1144,17 @@ class Hud {
     const el = $('banner'); el.innerHTML = title + (sub ? `<small>${sub}</small>` : ''); el.classList.add('on');
     clearTimeout(this.bannerT); this.bannerT = setTimeout(() => el.classList.remove('on'), ms);
   }
-  openCards() {
+  openCards(again) {
     const sc = this.sc;
     if (sc.over || sc.pendingLv <= 0) return;
-    this.cardsOpen = true; sc.scene.pause(); Sfx.play(sc.chestPick ? 'chest' : 'lvl');
+    this.cardsOpen = true; sc.scene.pause(); if (!again) Sfx.play(sc.chestPick ? 'chest' : 'lvl');
     $('luTitle').textContent = sc.chestPick ? '¡Abriste un cofre!' : '¡Subiste de nivel!';
     $('luSub').textContent = sc.chestPick ? 'Te curaste un 25% · elige una carta' : `Nivel ${sc.level} · elige una carta`;
     const opts = sc.cardOptions(), box = $('cards'); box.innerHTML = '';
+    const rr = $('rerollBtn');
+    rr.classList.toggle('hidden', !(sc.rerolls > 0));
+    rr.textContent = `🔄 Cambiar cartas (${sc.rerolls})`;
+    rr.onclick = () => { if (sc.rerolls <= 0) return; sc.rerolls--; this.openCards(true); };
     opts.forEach((o) => {
       const div = document.createElement('div'); div.className = 'card' + (o.lv === 1 ? ' new' : '');
       if (o.type === 'pan') div.innerHTML = `<div class="ic">${icon('pan', '🍞')}</div><div class="n">Pan de muerto</div><div class="d">Te cura un 30% de vida.</div>`;
@@ -1146,6 +1191,11 @@ class Hud {
     $('endTitle').textContent = win ? '¡Venciste a La Llorona!' : 'La noche te alcanzó';
     $('endStats').innerHTML = `${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b> · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b><br>` +
       sc.W.map(w => `<span class="endw">${icon(w.id, WEAPONS[w.id].icon)} ${WEAPONS[w.id].name} ${w.lv}</span>`).join(' ');
+    const r = sc.reward;
+    if (r) {
+      const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : ''].filter(Boolean).join(' · ');
+      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
+    }
     $('end').classList.remove('hidden');
   }
 }
@@ -1154,20 +1204,71 @@ class Hud {
 let selected = 'machetero';
 let game = null;
 
+const owned = (id) => save.cazadores.includes(id);
 function buildMenu() {
   $('logo').src = IMG.logo;
+  $('menuFlores').textContent = `🌼 ${save.flores}`;
+  if (!owned(selected)) selected = 'machetero';
   const box = $('hunters'); box.innerHTML = '';
   for (const [id, h] of Object.entries(HUNTERS)) {
-    const div = document.createElement('div'); div.className = 'hcard' + (id === selected ? ' sel' : '');
-    div.innerHTML = `<img src="${IMG[id + '_ataque']}" alt=""><div class="n txt">${h.name}</div><div class="d">${h.blurb}</div><div class="a">Habilidad: ${h.ability}</div>`;
-    div.onclick = () => { selected = id; buildMenu(); };
+    const lock = !owned(id), cost = HUNTER_COST[id] || 0;
+    const div = document.createElement('div'); div.className = 'hcard' + (id === selected ? ' sel' : '') + (lock ? ' locked' : '');
+    div.innerHTML = `<img src="${IMG[id + '_quieto'] || IMG[id + '_ataque']}" alt=""><div class="n txt">${h.name}</div><div class="d">${h.blurb}</div><div class="a">Habilidad: ${h.ability}</div>` +
+      (lock ? `<div class="lockt txt">🔒 ${cost} 🌼<br><small>${save.flores >= cost ? 'Toca para abrir' : 'Junta flores jugando'}</small></div>` : '');
+    div.onclick = () => {
+      if (lock) {
+        if (save.flores < cost) { div.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], 250); return; }
+        save.flores -= cost; save.cazadores.push(id); persist(); Sfx.init(); Sfx.play('chest');
+      }
+      selected = id; buildMenu();
+    };
     box.appendChild(div);
   }
 }
 
+// ---------- Árbol de talentos ----------
+let treeTab = 'ataque';
+function branchSpent(b) { return TALENTS.filter(t => t.b === b && !t.final).reduce((n, t) => n + tl(t.id), 0); }
+function talentState(t) {
+  const lv = tl(t.id), list = TALENTS.filter(x => x.b === t.b), i = list.indexOf(t);
+  if (lv >= t.max) return { st: 'max', lv };
+  if (t.final && branchSpent(t.b) < FINAL_NEEDS) return { st: 'lock', lv, why: `Gasta ${FINAL_NEEDS} niveles en esta rama (${branchSpent(t.b)}/${FINAL_NEEDS})` };
+  if (i > 0 && !t.final && tl(list[i - 1].id) < 1) return { st: 'lock', lv, why: `Primero: ${list[i - 1].name}` };
+  return { st: 'can', lv, cost: talentCost(t, lv + 1) };
+}
+function buildTree() {
+  $('treeFlores').textContent = `🌼 ${save.flores}`;
+  $('treeTabs').innerHTML = Object.entries(BRANCHES).map(([k, b]) => `<button data-b="${k}" class="${k === treeTab ? 'on' : ''}">${b.icon} ${b.name}</button>`).join('');
+  $('treeTabs').querySelectorAll('button').forEach(bt => { bt.onclick = () => { treeTab = bt.dataset.b; buildTree(); }; });
+  const box = $('branches'); box.innerHTML = '';
+  for (const [k, b] of Object.entries(BRANCHES)) {
+    const col = document.createElement('div'); col.className = 'branch' + (k === treeTab ? ' on' : '');
+    col.innerHTML = `<h3 class="txt" style="color:${b.color}">${b.icon} ${b.name}</h3><div class="spent">${branchSpent(k)} niveles</div>`;
+    for (const t of TALENTS.filter(x => x.b === k)) {
+      const s = talentState(t);
+      const now = s.lv > 0 ? t.txt(s.lv) : 'Sin aprender';
+      const next = s.lv < t.max ? `<br>Siguiente: <i>${t.txt(s.lv + 1)}</i>` : '';
+      const pips = t.max > 1 ? `<div class="pips">${[...Array(t.max)].map((_, i) => `<span class="${i < s.lv ? 'on' : ''}"></span>`).join('')}</div>` : '';
+      const node = document.createElement('div'); node.className = `tnode ${s.st}${t.final ? ' final' : ''}`;
+      const btn = s.st === 'max' ? '<button class="buy" disabled>MÁX</button>' : s.st === 'lock' ? '<button class="buy" disabled>🔒</button>' : `<button class="buy"${save.flores < s.cost ? ' disabled' : ''}>${s.cost} 🌼</button>`;
+      node.innerHTML = `<div class="ti">${t.icon}</div><div class="tb"><div class="tn txt">${t.name}${t.final ? ' ★' : ''}</div><div class="td">${s.st === 'lock' ? s.why : now + next}</div>${pips}</div>${btn}`;
+      const bb = node.querySelector('.buy');
+      if (s.st === 'can') bb.onclick = () => {
+        if (save.flores < s.cost) return;
+        save.flores -= s.cost; save.tal[t.id] = s.lv + 1; persist(); Sfx.init(); Sfx.play('lvl'); buildTree();
+      };
+      col.appendChild(node);
+    }
+    box.appendChild(col);
+  }
+}
+function openTree(from) { treeFrom = from; ['menu', 'end'].forEach(id => $(id).classList.add('hidden')); buildTree(); $('tree').classList.remove('hidden'); }
+let treeFrom = 'menu';
+
 function startRun() {
   Sfx.init();
-  ['menu', 'end', 'pause', 'levelup'].forEach(id => $(id).classList.add('hidden'));
+  if (!owned(selected)) selected = 'machetero';
+  ['menu', 'end', 'pause', 'levelup', 'tree'].forEach(id => $(id).classList.add('hidden'));
   const sm = game.scene;
   if (sm.getScene('play')) sm.stop('play');
   sm.start('play', { hunter: selected });
@@ -1194,13 +1295,16 @@ async function boot() {
   $('startBtn').onclick = startRun;
   $('againBtn').onclick = startRun;
   $('menuBtn').onclick = toMenu;
+  $('treeBtn').onclick = () => openTree('menu');
+  $('endTreeBtn').onclick = () => openTree('end');
+  $('treeBack').onclick = () => { $('tree').classList.add('hidden'); if (treeFrom === 'end') toMenu(); else { buildMenu(); $('menu').classList.remove('hidden'); } };
   $('quitBtn').onclick = toMenu;
   $('resumeBtn').onclick = () => game.scene.getScene('play').hud.resume();
   $('pauseBtn').onclick = () => game.scene.getScene('play').hud.pause();
   $('dashBtn').onclick = (ev) => { ev.stopPropagation(); game.scene.getScene('play').dash(); };
   $('abilityBtn').onclick = (ev) => { ev.stopPropagation(); game.scene.getScene('play').ability(); };
   document.addEventListener('visibilitychange', () => { const s = game.scene.getScene('play'); if (document.hidden && s && s.sys.isActive() && !s.over) s.hud.pause(); });
-  if (Q.has('go')) { if (HUNTERS[Q.get('go')]) selected = Q.get('go'); startRun(); }
+  if (Q.has('go')) { if (HUNTERS[Q.get('go')]) { selected = Q.get('go'); if (!owned(selected) && (DEV || AUTO)) save.cazadores.push(selected); } startRun(); }
 }
 boot();
 
