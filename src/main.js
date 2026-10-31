@@ -1203,3 +1203,18 @@ async function boot() {
   if (Q.has('go')) { if (HUNTERS[Q.get('go')]) selected = Q.get('go'); startRun(); }
 }
 boot();
+
+// ---------- Jugar sin internet (app instalable) ----------
+(function offline() {
+  const web = location.protocol === 'https:' || location.hostname === 'localhost';
+  const inFrame = window.top !== window.self;
+  if (!web || inFrame || !('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  const standalone = window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
+  if (standalone) return;
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; $('installBtn').classList.remove('hidden'); });
+  $('installBtn').onclick = async () => { if (!deferred) return; deferred.prompt(); try { await deferred.userChoice; } catch (e) { /* nada */ } deferred = null; $('installBtn').classList.add('hidden'); };
+  window.addEventListener('appinstalled', () => $('installBtn').classList.add('hidden'));
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) $('iosHint').classList.remove('hidden');
+})();

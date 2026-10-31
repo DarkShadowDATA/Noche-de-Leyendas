@@ -3,7 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Noche de Leyendas — prototipo</title>
+<title>Noche de Leyendas</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#140c20">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Leyendas">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" href="/icon-192.png">
 <style>
   :root { --naranja:#ff9d1f; --turquesa:#3fe0d0; --morado:#2a1840; --tinta:#fff4e0; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -104,6 +112,8 @@
   <h2 class="txt">Elige a tu cazador</h2>
   <div id="hunters"></div>
   <button class="btn" id="startBtn">¡A cazar!</button>
+  <button class="btn alt hidden" id="installBtn">📲 Instalar · jugar sin internet</button>
+  <div class="controls hidden" id="iosHint">📲 Para jugar sin internet: toca Compartir y luego «Agregar a inicio».</div>
   <div class="controls">Celular: arrastra el dedo para moverte · doble toque o botón para esquivar · botón grande para la habilidad.<br>Computadora: WASD o flechas · Espacio para esquivar · E para la habilidad · Esc para pausa.<br>Prototipo: partida de 10 min — El Cadejo 3:00 · El Charro Negro 6:00 · La Llorona 9:00.</div>
 </div>
 
