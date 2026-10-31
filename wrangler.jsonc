@@ -1,0 +1,6 @@
+{
+  "name": "noche-de-leyendas",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./dist" },
+  "routes": [{ "pattern": "leyendas.darkshadow-studios.com", "custom_domain": true }]
+}

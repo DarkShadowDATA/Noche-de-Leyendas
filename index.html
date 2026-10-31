@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Noche de Leyendas — prototipo</title>
+<style>
+  :root { --naranja:#ff9d1f; --turquesa:#3fe0d0; --morado:#2a1840; --tinta:#fff4e0; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; height:100%; background:#140c20; overflow:hidden; font-family:'Lilita One', system-ui, sans-serif; color:var(--tinta); user-select:none; -webkit-user-select:none; touch-action:none; }
+  #game { position:fixed; inset:0; }
+  #vignette { position:fixed; inset:0; pointer-events:none; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(20,6,40,.55) 80%, rgba(10,2,24,.85) 100%); }
+  .hidden { display:none !important; }
+  .txt { text-shadow: 0 2px 0 #1a0b2b, 0 0 6px #1a0b2b; letter-spacing:.5px; }
+
+  /* HUD */
+  #hud { position:fixed; inset:0; pointer-events:none; }
+  #xpbar { position:absolute; top:max(8px, env(safe-area-inset-top)); left:10px; right:10px; height:16px; background:#1b0f2a; border:2px solid #0c0614; border-radius:10px; overflow:hidden; }
+  #xpfill { height:100%; width:0; background:linear-gradient(90deg,#2fc7b8,#7ff7ea); transition:width .12s; }
+  #lvl { position:absolute; top:calc(max(8px, env(safe-area-inset-top)) + 20px); left:12px; font-size:18px; }
+  #timer { position:absolute; top:calc(max(8px, env(safe-area-inset-top)) + 18px); left:0; right:0; text-align:center; font-size:26px; }
+  #kills { position:absolute; top:calc(max(8px, env(safe-area-inset-top)) + 20px); right:56px; font-size:18px; }
+  #pauseBtn { position:absolute; top:calc(max(8px, env(safe-area-inset-top)) + 18px); right:10px; width:38px; height:34px; pointer-events:auto; border-radius:10px; border:2px solid #0c0614; background:#3a2358; color:var(--tinta); font:inherit; font-size:18px; }
+  #slots { position:absolute; top:calc(max(8px, env(safe-area-inset-top)) + 48px); left:10px; display:flex; flex-wrap:wrap; gap:3px; max-width:200px; }
+  .slot { width:28px; height:28px; border-radius:7px; background:rgba(30,15,50,.75); border:1px solid #6a4a8a; display:flex; align-items:center; justify-content:center; font-size:15px; position:relative; }
+  .slot b { position:absolute; right:1px; bottom:-2px; font-size:10px; font-weight:normal; color:#ffd36b; text-shadow:0 1px 0 #000; }
+  .slot.p { border-color:#a07a3a; }
+  .slot .icimg { width:24px; height:24px; object-fit:contain; }
+  .card .ic .icimg { width:76px; height:76px; object-fit:contain; filter:drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
+  .card .ic { height:80px; display:flex; align-items:center; justify-content:center; }
+  .endw { display:inline-flex; align-items:center; gap:3px; margin:0 4px; }
+  .endw .icimg { width:26px; height:26px; object-fit:contain; }
+  #boss { position:absolute; top:calc(max(8px, env(safe-area-inset-top)) + 84px); left:50%; transform:translateX(-50%); width:min(420px, 80vw); text-align:center; }
+  #bossName { font-size:18px; margin-bottom:3px; color:#ffb3d0; }
+  #bossBar { height:14px; background:#1b0f2a; border:2px solid #0c0614; border-radius:8px; overflow:hidden; }
+  #bossFill { height:100%; width:100%; background:linear-gradient(90deg,#c0185a,#ff5a8a); }
+  #banner { position:absolute; top:34%; left:0; right:0; text-align:center; font-size:clamp(28px, 7vw, 54px); color:#ffcf5a; opacity:0; transition:opacity .25s, transform .25s; transform:scale(.9); }
+  #banner.on { opacity:1; transform:scale(1); }
+  #banner small { display:block; font-size:.42em; color:var(--tinta); margin-top:4px; }
+
+  #abilityBtn { position:absolute; right:calc(16px + env(safe-area-inset-right)); bottom:calc(22px + env(safe-area-inset-bottom)); width:96px; height:96px; border-radius:50%; pointer-events:auto; border:4px solid #0c0614; background:#2a1840; overflow:hidden; padding:0; }
+  #abilityBtn img { width:100%; height:100%; object-fit:cover; object-position:50% 20%; filter:grayscale(1) brightness(.55); }
+  #abilityBtn.ready img { filter:none; }
+  #abilityBtn.ready { box-shadow:0 0 0 3px #ffcf5a, 0 0 22px #ffb020; animation:pulse 1s infinite; }
+  @keyframes pulse { 50% { box-shadow:0 0 0 3px #ffcf5a, 0 0 34px #ffd060; } }
+  #abilityFill { position:absolute; left:0; right:0; bottom:0; background:rgba(255,190,60,.35); height:0; }
+  #abilityLbl { position:absolute; left:0; right:0; bottom:6px; font-size:14px; text-align:center; }
+  #dashBtn { position:absolute; right:calc(122px + env(safe-area-inset-right)); bottom:calc(30px + env(safe-area-inset-bottom)); width:62px; height:62px; border-radius:50%; pointer-events:auto; border:3px solid #0c0614; background:#3a2358; color:var(--tinta); font:inherit; font-size:13px; }
+  #dashBtn.cd { opacity:.45; }
+  #hint { position:absolute; left:0; right:0; bottom:calc(16px + env(safe-area-inset-bottom)); text-align:center; font-size:14px; opacity:.75; }
+
+  /* Pantallas */
+  .screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:16px; background:rgba(14,6,26,.82); backdrop-filter:blur(3px); overflow-y:auto; }
+  .screen > :first-child { margin-top:auto; } .screen > :last-child { margin-bottom:auto; }
+  .screen h1 { margin:6px 0 4px; font-size:clamp(26px, 6vw, 44px); color:#ffcf5a; text-align:center; font-weight:normal; }
+  .screen h2 { margin:4px 0 12px; font-size:18px; font-weight:normal; opacity:.85; text-align:center; }
+  #logo { width:min(520px, 88vw); filter:drop-shadow(0 6px 20px rgba(0,0,0,.6)); }
+  .btn { font:inherit; font-size:22px; color:#2a1200; background:linear-gradient(#ffd25a,#ff9d1f); border:3px solid #2a1200; border-radius:14px; padding:10px 26px; margin:8px; box-shadow:0 4px 0 #7a3a00; cursor:pointer; }
+  .btn.alt { background:linear-gradient(#6a4a9a,#3a2358); color:var(--tinta); box-shadow:0 4px 0 #1a0b2b; }
+  .btn:active { transform:translateY(3px); box-shadow:0 1px 0 #7a3a00; }
+  #hunters { display:grid; grid-template-columns:repeat(4, minmax(0, 170px)); gap:10px; margin:8px 0; }
+  @media (max-width:720px) { #hunters { grid-template-columns:repeat(2, minmax(0, 170px)); } }
+  .hcard { background:#2a1840; border:3px solid #4a2d6a; border-radius:14px; padding:8px; text-align:center; cursor:pointer; }
+  .hcard.sel { border-color:#ffcf5a; box-shadow:0 0 18px rgba(255,190,60,.5); background:#3a2050; }
+  .hcard img { width:100%; aspect-ratio:1; object-fit:contain; }
+  .hcard .n { font-size:18px; color:#ffcf5a; }
+  .hcard .d { font-family:system-ui, sans-serif; font-size:12px; opacity:.9; margin-top:3px; }
+  .hcard .a { font-family:system-ui, sans-serif; font-size:11px; color:#7ff7ea; margin-top:4px; }
+  .controls { font-family:system-ui, sans-serif; font-size:13px; opacity:.8; text-align:center; max-width:560px; margin-top:4px; line-height:1.4; }
+
+  #cards { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:760px; }
+  .card { width:220px; background:linear-gradient(#3a2358,#24143a); border:3px solid #6a4a9a; border-radius:16px; padding:14px 12px; text-align:center; cursor:pointer; transition:transform .1s; }
+  .card:hover, .card:active { transform:scale(1.04); border-color:#ffcf5a; }
+  .card .ic { font-size:40px; }
+  .card .n { font-size:21px; color:#ffcf5a; margin:4px 0 2px; }
+  .card .lv { font-size:14px; color:#7ff7ea; }
+  .card .d { font-family:system-ui, sans-serif; font-size:13px; margin-top:6px; opacity:.9; }
+  .card.new { border-color:#3fe0d0; }
+  .card .tag { display:inline-block; font-size:12px; background:#3fe0d0; color:#10221f; border-radius:6px; padding:1px 6px; margin-bottom:4px; }
+  .stats { font-family:system-ui, sans-serif; font-size:16px; line-height:1.7; text-align:center; margin:8px 0 6px; }
+  .stats b { font-family:'Lilita One', system-ui; font-weight:normal; color:#ffcf5a; font-size:20px; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="vignette"></div>
+
+<div id="hud" class="hidden">
+  <div id="xpbar"><div id="xpfill"></div></div>
+  <div id="lvl" class="txt">Nv 1</div>
+  <div id="timer" class="txt">0:00</div>
+  <div id="kills" class="txt">💀 0</div>
+  <button id="pauseBtn">II</button>
+  <div id="slots"></div>
+  <div id="boss" class="hidden"><div id="bossName" class="txt"></div><div id="bossBar"><div id="bossFill"></div></div></div>
+  <div id="banner" class="txt"></div>
+  <button id="dashBtn" class="txt">Esquivar</button>
+  <button id="abilityBtn"><img id="abilityImg" alt=""><div id="abilityFill"></div><div id="abilityLbl" class="txt"></div></button>
+  <div id="hint" class="txt"></div>
+</div>
+
+<div id="menu" class="screen">
+  <img id="logo" alt="Noche de Leyendas">
+  <h2 class="txt">Elige a tu cazador</h2>
+  <div id="hunters"></div>
+  <button class="btn" id="startBtn">¡A cazar!</button>
+  <div class="controls">Celular: arrastra el dedo para moverte · doble toque o botón para esquivar · botón grande para la habilidad.<br>Computadora: WASD o flechas · Espacio para esquivar · E para la habilidad · Esc para pausa.<br>Prototipo: partida de 10 min — El Cadejo 3:00 · El Charro Negro 6:00 · La Llorona 9:00.</div>
+</div>
+
+<div id="levelup" class="screen hidden">
+  <h1 class="txt" id="luTitle">¡Subiste de nivel!</h1>
+  <h2 class="txt" id="luSub">Elige una carta</h2>
+  <div id="cards"></div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <h1 class="txt">Pausa</h1>
+  <div class="stats" id="pauseStats"></div>
+  <button class="btn" id="resumeBtn">Seguir</button>
+  <button class="btn alt" id="quitBtn">Salir al menú</button>
+</div>
+
+<div id="end" class="screen hidden">
+  <h1 class="txt" id="endTitle"></h1>
+  <div class="stats" id="endStats"></div>
+  <button class="btn" id="againBtn">Otra vez</button>
+  <button class="btn alt" id="menuBtn">Cambiar cazador</button>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
