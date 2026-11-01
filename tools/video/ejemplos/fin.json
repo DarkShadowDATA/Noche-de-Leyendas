@@ -1,0 +1,5 @@
+{"out":"/tmp/vid/fin","secs":3,"warm":13,"css":true,"url":"http://localhost:4100/?dev&go=machetero&auto&god&t=528",
+ "init":{"ndl_save_v1":"{\"flores\":820,\"ganadas\":3100,\"tal\":{\"atk_filo\":3,\"atk_area\":2,\"atk_crit\":1,\"sup_vida\":2,\"sup_sanar\":1,\"for_iman\":2},\"cazadores\":[\"machetero\",\"curandera\",\"luchadora\"],\"dia\":\"2000-01-01\",\"partidas\":41,\"mejor\":540,\"victorias\":3}"},
+ "style":".screen,#hud,#banner,#hint{zoom:3} #boss{display:none!important}",
+ "pre":[{"wait":1500},{"eval":"window.__ndl.cameras.main.setZoom(1.7)"}],
+ "post":[{"eval":"(()=>{const s=window.__ndl;s.kills=982;s.bossKills={cadejo:1,charro:1,llorona:1};s.endRun(true);for(let i=0;i<15;i++)window.__step(1000/30);})()"}]}

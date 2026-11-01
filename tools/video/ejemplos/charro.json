@@ -1,0 +1,5 @@
+{"out":"/tmp/vid/charro","secs":8,"warm":13,"url":"http://localhost:4100/?go=luchadora&auto&god&t=348",
+ "style":"#hud,#banner,#levelup,#hint{zoom:3} #boss,#banner{display:none!important}",
+ "pre":[{"wait":1500},{"eval":"window.__ndl.cameras.main.setZoom(1.7)"}],
+ "post":[{"eval":"(()=>{const s=window.__ndl;if(!s.bossAlive){s.bossDone.charro=true;s.spawnBoss('charro');}const b=s.bossAlive;b.x=s.P.x-160;b.y=s.P.y-160;})()"},
+         {"eval":"(()=>{for(let i=0;i<12;i++)window.__step(1000/30)})()"}]}
