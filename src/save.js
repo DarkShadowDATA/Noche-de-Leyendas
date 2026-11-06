@@ -8,4 +8,9 @@ function read() {
 export const save = read();
 export function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* sin espacio o bloqueado */ } }
 export const tl = (id) => save.tal[id] || 0;
+
+// Partida a medias (se guarda cada 3 s y al salir de la app)
+export const RUN_KEY = 'ndl_run_v1';
+export function readRun() { try { const r = JSON.parse(localStorage.getItem(RUN_KEY) || 'null'); return r && r.v === 1 ? r : null; } catch (e) { return null; } }
+export function clearRun() { try { localStorage.removeItem(RUN_KEY); } catch (e) { /* nada */ } }
 export const today = () => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); } catch (e) { return new Date().toISOString().slice(0, 10); } };

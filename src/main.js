@@ -1,8 +1,8 @@
 // Noche de Leyendas — prototipo jugable (Phaser 3)
 import Phaser from 'phaser';
 import '@fontsource/lilita-one/400.css';
-import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, RUN_SECONDS, BOSS_TIMES, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS } from './data.js';
-import { save, persist, tl, today } from './save.js';
+import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS } from './data.js';
+import { save, persist, tl, today, RUN_KEY, readRun, clearRun } from './save.js';
 
 const IMGS = import.meta.glob('./img/*.webp', { eager: true, query: '?url', import: 'default' });
 const IMG = {};
@@ -105,6 +105,27 @@ function makeTextures(s) {
     g.addColorStop(0, 'rgba(120,255,240,.75)'); g.addColorStop(0.7, 'rgba(40,190,200,.55)'); g.addColorStop(1, 'rgba(40,190,200,0)');
     c.save(); c.scale(1, 36 / 62); c.fillStyle = g; c.beginPath(); c.arc(64, 62, 62, 0, 7); c.fill(); c.restore();
   });
+  // Ayudas del mapa dibujadas con código (las reemplazan obj_iman / obj_tamal / obj_campana cuando lleguen las imágenes)
+  canvasTex(s, 'help_iman', 64, 64, (c) => {
+    c.lineCap = 'butt'; c.lineWidth = 16; c.strokeStyle = '#2a1200'; c.beginPath(); c.arc(32, 28, 19, Math.PI, 0); c.lineTo(51, 52); c.moveTo(13, 28); c.lineTo(13, 52); c.stroke();
+    c.lineWidth = 11; c.strokeStyle = '#e8364a'; c.beginPath(); c.arc(32, 28, 19, Math.PI, 0); c.lineTo(51, 46); c.moveTo(13, 28); c.lineTo(13, 46); c.stroke();
+    c.fillStyle = '#e8e2d8'; c.fillRect(8, 45, 11, 10); c.fillRect(45, 45, 11, 10);
+    c.strokeStyle = '#2a1200'; c.lineWidth = 2.5; c.strokeRect(8, 45, 11, 10); c.strokeRect(45, 45, 11, 10);
+  });
+  canvasTex(s, 'help_tamal', 64, 64, (c) => {
+    c.fillStyle = '#2a1200'; c.beginPath(); c.ellipse(32, 36, 15, 26, 0.5, 0, 7); c.fill();
+    c.fillStyle = '#c9a25a'; c.beginPath(); c.ellipse(32, 36, 12, 23, 0.5, 0, 7); c.fill();
+    c.fillStyle = '#ffd86a'; c.beginPath(); c.ellipse(33, 33, 7, 15, 0.5, 0, 7); c.fill();
+    c.strokeStyle = '#8a6a2a'; c.lineWidth = 2; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(22 + i * 4, 52 - i * 2); c.lineTo(38 + i * 4, 14 - i * 2); c.stroke(); }
+    c.fillStyle = '#ffd86a'; c.beginPath(); c.ellipse(33, 33, 6, 13, 0.5, 0, 7); c.fill();
+  });
+  canvasTex(s, 'help_campana', 64, 64, (c) => {
+    c.fillStyle = '#2a1200'; c.beginPath(); c.moveTo(10, 50); c.quadraticCurveTo(14, 44, 16, 26); c.quadraticCurveTo(32, 2, 48, 26); c.quadraticCurveTo(50, 44, 54, 50); c.closePath(); c.fill();
+    const g = c.createLinearGradient(14, 0, 50, 0); g.addColorStop(0, '#b06a1e'); g.addColorStop(0.45, '#ffd25a'); g.addColorStop(1, '#a05a14');
+    c.fillStyle = g; c.beginPath(); c.moveTo(14, 47); c.quadraticCurveTo(18, 42, 19, 27); c.quadraticCurveTo(32, 8, 45, 27); c.quadraticCurveTo(46, 42, 50, 47); c.closePath(); c.fill();
+    c.fillStyle = '#2a1200'; c.beginPath(); c.arc(32, 53, 6, 0, 7); c.fill(); c.fillStyle = '#ffd25a'; c.beginPath(); c.arc(32, 53, 3.5, 0, 7); c.fill();
+    c.fillStyle = '#2a1200'; c.fillRect(29, 4, 6, 7);
+  });
   canvasTex(s, 'rocket', 34, 14, (c) => {
     c.fillStyle = '#2a1200'; c.fillRect(3, 2, 24, 10);
     c.fillStyle = '#e8364a'; c.fillRect(5, 4, 20, 6); c.fillStyle = '#ffd25a'; c.fillRect(11, 4, 4, 6);
@@ -179,7 +200,7 @@ function makeTextures(s) {
 // ---------- Escena de juego ----------
 class Play extends Phaser.Scene {
   constructor() { super('play'); }
-  init(data) { this.hunterId = data.hunter || 'machetero'; }
+  init(data) { this.hunterId = data.hunter || 'machetero'; this.resume = data.resume || null; }
 
   preload() {
     for (const k in IMG) if (!this.textures.exists(k)) this.load.image(k, IMG[k]);
@@ -198,6 +219,7 @@ class Play extends Phaser.Scene {
     this.spawnAcc = 0; this.flockT = 95; this.bossDone = {};
     for (const [k, bt] of Object.entries(BOSS_TIMES)) if (bt < START_T - 5) this.bossDone[k] = true;
     this.bossAlive = null; this.shakeT = 0;
+    this.won = false; this.loop = 1; this.bossN = Object.keys(this.bossDone).length; this.nextBossT = 0; this.helpers = []; this.helpT = rnd(HELPER_EVERY[0], HELPER_EVERY[1]) + 10; this.freezeT = 0;
 
     // Suelo, sombras, adornos
     this.groundTS = this.add.tileSprite(0, 0, 10, 10, this.tex('suelo_pueblo', 'ground')).setOrigin(0).setDepth(-100000);
@@ -215,9 +237,16 @@ class Play extends Phaser.Scene {
     this.pBase = 92 / 205; this.pSpr.setScale(this.pBase);
     this.hpBar = this.add.graphics().setDepth(1e6);
     this.aura = this.add.image(0, 0, 'aura').setBlendMode(Phaser.BlendModes.ADD).setVisible(false).setDepth(-70000);
+    // Arma de la piñata equipada: empieza con ella (o sube la inicial si es la misma) y tiene su bono toda la partida
+    this.gear = {};
+    const eq = save.equipo && save.armas[save.equipo] ? save.equipo : null;
     this.addWeapon(H.weapon);
     this.W[0].lv += tl('for_arranque');
-    this.P.hp = this.maxHp; this.rerolls = tl('for_cambio'); this.revived = false; this.bossKills = {};
+    if (eq) {
+      const gb = gearBonus(save.armas[eq]); this.gear[eq] = gb;
+      if (eq === H.weapon) this.W[0].lv = Math.max(this.W[0].lv, gb.lv); else { this.addWeapon(eq); this.W[1].lv = gb.lv; }
+    }
+    this.P.hp = this.maxHp; this.rerolls = tl('for_cambio'); this.revived = false; this.bossKills = [];
 
     this.cameras.main.startFollow(this.pSpr, true, 0.18, 0.18);
     this.onResize(); this.scale.on('resize', this.onResize, this);
@@ -232,7 +261,8 @@ class Play extends Phaser.Scene {
     this.hud = new Hud(this);
     this.hud.show();
     if (START_T > 0) { for (let i = 0; i < Math.min(14, Math.floor(START_T / 40)); i++) this.levelUpAuto(); }
-    this.banner('¡Que empiece la noche!', 'Sobrevive y caza a La Llorona', 2200);
+    if (this.resume) this.restore(this.resume);
+    else this.banner('¡Que empiece la noche!', 'Sobrevive y caza a La Llorona', 2200);
     window.__ndl = this;
   }
 
@@ -297,6 +327,8 @@ class Play extends Phaser.Scene {
 
   step(dt) {
     this.t += dt;
+    this.saveAcc = (this.saveAcc || 0) + dt;
+    if (this.saveAcc >= 3) { this.saveAcc = 0; this.saveRun(); }
     this.updatePlayer(dt);
     this.updateDirector(dt);
     this.buildGrid();
@@ -374,7 +406,9 @@ class Play extends Phaser.Scene {
   // ---------- Director: qué sale y cuándo ----------
   updateDirector(dt) {
     const t = this.t;
-    for (const [k, bt] of Object.entries(BOSS_TIMES)) if (t >= bt && !this.bossDone[k]) { this.bossDone[k] = true; this.spawnBoss(k); }
+    if (!this.won) { for (const [k, bt] of Object.entries(BOSS_TIMES)) if (t >= bt && !this.bossDone[k]) { this.bossDone[k] = true; this.spawnBoss(k); } }
+    else if (!this.bossAlive && t >= this.nextBossT) { this.nextBossT = Infinity; this.spawnBoss(ENDLESS.order[this.bossN % 3]); }
+    this.updateHelpers(dt);
     if (t > 270 && Math.floor(t) % 120 === 30 && this.lastEvent !== Math.floor(t)) { this.lastEvent = Math.floor(t); this.moonT = 25; this.banner('¡Luna llena!', 'Los nahuales salen al doble', 1800); }
     this.moonT = (this.moonT || 0) - dt;
 
@@ -439,13 +473,19 @@ class Play extends Phaser.Scene {
   spawnBoss(k) {
     const [x, y] = this.edgePoint(40);
     const e = this.spawn(k, x, y);
-    e.boss = true; e.cd = 2.5; e.cd2 = 6; e.cd3 = 9;
+    e.boss = true; e.cd = 2.5; e.cd2 = 6; e.cd3 = 9; e.n = this.bossN++; e.loop = Math.floor(e.n / 3) + 1;
+    if (e.n >= 3) { // vuelve más fuerte que el jefe anterior
+      e.hp = e.max = ENEMIES.llorona.hp * Math.pow(ENDLESS.hpGrow, e.n - 2);
+      e.dmg = e.d.dmg * (1 + ENDLESS.dmgPerLoop * (e.loop - 1)); e.spd *= 1 + ENDLESS.spdPerLoop * (e.loop - 1);
+    }
     this.bossAlive = e;
     Sfx.play('boss');
     this.cameras.main.shake(400, 0.006);
     const sub = { cadejo: 'Embiste en línea recta: ¡esquiva!', charro: 'Su lazo te jala hacia él', llorona: 'Su grito empuja y deja charcos' }[k];
-    this.banner(`¡Llegó ${e.d.boss}!`, sub, 2600);
+    if (e.loop > 1) this.banner(`¡Volvió ${e.d.boss}!`, `Vuelta ${e.loop} · más fuerte que nunca`, 2600);
+    else this.banner(`¡Llegó ${e.d.boss}!`, sub, 2600);
   }
+  bossLabel(e) { return e.loop > 1 ? `${e.d.boss} · Vuelta ${e.loop}` : e.d.boss; }
 
   // ---------- Rejilla para buscar cercanos ----------
   buildGrid() {
@@ -488,9 +528,10 @@ class Play extends Phaser.Scene {
       if (!e.alive) continue;
       const dx = P.x - e.x, dy = P.y - e.y, dist = Math.hypot(dx, dy) || 1;
       let vx = 0, vy = 0;
-      const slow = e.slowT > 0 ? 0.55 : 1;
+      const slow = e.slowT > 0 ? (e.boss ? 0.8 : 0.55) : 1; // a los jefes el humo y el agua los frenan menos
       e.slowT -= dt; e.flash -= dt; e.cd -= dt; e.st -= dt;
-      if (e.stun > 0) { e.stun -= dt; }
+      if (this.freezeT > 0 && !e.boss) { /* congelados por la campana */ }
+      else if (e.stun > 0) { e.stun -= dt; }
       else if (e.k === 'lechuza') { vx = e.vx; vy = e.vy; if (dist > 1700) { this.remove(e); continue; } }
       else if (e.k === 'chupacabras') {
         if (e.state === 'walk') { vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow; if (dist < 250 && e.cd <= 0) { e.state = 'wind'; e.st = 0.6; e.tx = P.x; e.ty = P.y; } }
@@ -537,7 +578,7 @@ class Play extends Phaser.Scene {
       }
 
       // Daño al cazador
-      if (!e.ghost && dist < e.r + 18 && P.hurtCd <= 0 && P.inv <= 0 && P.jump <= 0) this.hurtPlayer(e.dmg);
+      if (!e.ghost && !(this.freezeT > 0 && !e.boss) && dist < e.r + 18 && P.hurtCd <= 0 && P.inv <= 0 && P.jump <= 0) this.hurtPlayer(e.dmg);
 
       // Dibujo
       const s = e.s;
@@ -563,7 +604,7 @@ class Play extends Phaser.Scene {
       s.setDepth(e.y);
       if (e.flash > 0) s.setTintFill(0xffffff);
       else if (e.state === 'wind' || e.state === 'aim') s.setTint(0xff7070);
-      else if (e.stun > 0) s.setTint(0xa0a0ff);
+      else if (e.stun > 0 || (this.freezeT > 0 && !e.boss)) s.setTint(0xa0d8ff);
       else if (e.wolf) s.setTint(0xffe2c0);
       else s.clearTint();
       s.setAlpha(e.ghost ? 0.28 : 1);
@@ -637,7 +678,7 @@ class Play extends Phaser.Scene {
     Sfx.play('hurt');
     this.cameras.main.shake(90, 0.003);
     if (P.hp <= 0 && tl('sup_revivir') && !this.revived) { this.revive(); return; }
-    if (P.hp <= 0) this.endRun(false);
+    if (P.hp <= 0) this.endRun(this.won);
   }
 
   revive() {
@@ -676,13 +717,19 @@ class Play extends Phaser.Scene {
     const s = e.s;
     this.tweens.add({ targets: s, scaleX: s.scaleX * 1.25, scaleY: 0, alpha: 0, duration: 160, onComplete: () => { s.setVisible(false); this.pool.push(s); } });
     if (e.boss) {
-      this.bossKills[e.k] = true;
+      this.bossKills.push({ k: e.k, loop: e.loop || 1 });
       Sfx.play('boom'); this.cameras.main.shake(500, 0.01);
       for (let i = 0; i < 40; i++) this.dropSoul(e.x + rnd(-90, 90), e.y + rnd(-70, 70), 5);
       if (this.bossAlive === e) this.bossAlive = this.E.find(o => o.alive && o.boss) || null;
-      if (e.k === 'llorona') { this.time.delayedCall(900, () => this.endRun(true)); return; }
       this.spawnChest(e.x, e.y);
-      this.banner(`¡Venciste a ${e.d.boss}!`, 'Soltó un cofre', 2000);
+      this.spawnHelper('iman', e.x + 70, e.y + 10);
+      if (e.k === 'llorona' && !this.won) {
+        this.won = true; this.nextBossT = this.t + ENDLESS.first;
+        Sfx.play('win'); this.banner('¡Venciste a La Llorona!', 'La noche sigue… los jefes volverán más fuertes', 3200);
+      } else {
+        if (this.won) this.nextBossT = this.t + ENDLESS.gap;
+        this.banner(`¡Venciste a ${this.bossLabel(e)}!`, 'Soltó un cofre y un imán', 2000);
+      }
       return;
     }
     const v = e.d.xp + (e.stolen || 0);
@@ -723,6 +770,70 @@ class Play extends Phaser.Scene {
     if (this.pendingLv > 0 && !this.hud.cardsOpen) this.time.delayedCall(10, () => this.hud.openCards());
   }
 
+  // ---------- Ayudas en el mapa (imán, tamal, campana) ----------
+  updateHelpers(dt) {
+    this.freezeT -= dt;
+    this.helpT -= dt;
+    if (this.helpT <= 0) {
+      this.helpT = rnd(HELPER_EVERY[0], HELPER_EVERY[1]);
+      const P = this.P, miss = 1 - P.hp / this.maxHp, souls = this.S.length;
+      const w = [['tamal', 0.6 + 3 * miss], ['iman', 0.3 + Math.min(2.5, souls / 50)]];
+      if (this.t > 120) w.push(['campana', 0.7]);
+      let tot = 0; for (const [, v] of w) tot += v;
+      let r = Math.random() * tot, k = 'tamal'; for (const [kk, v] of w) { r -= v; if (r <= 0) { k = kk; break; } }
+      const a = rnd(0, 6.28), d = rnd(240, 380);
+      this.spawnHelper(k, P.x + Math.cos(a) * d, P.y + Math.sin(a) * d * 0.8);
+    }
+    const P = this.P;
+    for (const h of this.helpers) {
+      if (Math.hypot(P.x - h.x, P.y - h.y) < 46) { h.dead = true; this.useHelper(h.k, h.x, h.y); }
+    }
+    if (this.helpers.some(h => h.dead)) { for (const h of this.helpers) if (h.dead) { h.s.destroy(); h.gl.destroy(); } this.helpers = this.helpers.filter(h => !h.dead); }
+    this.drawHelperArrows();
+  }
+  spawnHelper(k, x, y) {
+    if (this.helpers.length >= 4) { const o = this.helpers.shift(); o.s.destroy(); o.gl.destroy(); }
+    const key = this.tex('obj_' + k, 'help_' + k);
+    const s = this.add.image(x, y, key).setOrigin(0.5, 0.9).setDepth(y); s.setScale(52 / s.height);
+    const col = { iman: 0xff5a5a, tamal: 0x7dff8a, campana: 0x7fd8ff }[k];
+    const gl = this.add.image(x, y - 22, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(col).setScale(1.3).setAlpha(0.55).setDepth(y - 1);
+    this.tweens.add({ targets: s, y: y - 7, yoyo: true, repeat: -1, duration: 520, ease: 'Sine.InOut' });
+    this.tweens.add({ targets: gl, alpha: 0.25, yoyo: true, repeat: -1, duration: 700 });
+    this.helpers.push({ k, x, y, s, gl, col });
+  }
+  useHelper(k, x, y) {
+    const P = this.P;
+    this.fxSpark.explode(30, x, y - 20);
+    if (k === 'iman') {
+      for (const o of this.S) o.pull = true;
+      this.ring(P.x, P.y - 20, 420, 0xff5a5a, 600, false);
+      Sfx.play('chest'); this.dmgText(P.x, P.y - 110, '¡Imán!', '#ff8a8a', 26);
+    } else if (k === 'tamal') {
+      P.hp = Math.min(this.maxHp, P.hp + this.maxHp * 0.3);
+      this.ring(P.x, P.y - 20, 90, 0x7dff8a, 400, true);
+      Sfx.play('lvl'); this.dmgText(P.x, P.y - 110, '+30% vida', '#7dff8a', 24);
+    } else if (k === 'campana') {
+      this.freezeT = 4;
+      for (const e of this.E) if (e.alive && e.boss) e.stun = Math.max(e.stun, 1.2);
+      this.ring(P.x, P.y - 20, 600, 0x7fd8ff, 700, true);
+      this.cameras.main.flash(180, 160, 220, 255);
+      Sfx.play('ability'); this.banner('¡Campanada!', 'Los enemigos quedaron congelados', 1400);
+    }
+  }
+  drawHelperArrows() {
+    const g = this.helpArrows || (this.helpArrows = this.add.graphics().setDepth(1e6 + 1));
+    g.clear();
+    const v = this.cameras.main.worldView, m = 26 / this.cameras.main.zoom;
+    for (const h of this.helpers) {
+      if (h.x > v.x && h.x < v.right && h.y - 30 > v.y && h.y < v.bottom) continue;
+      const cx = v.centerX, cy = v.centerY, a = Math.atan2(h.y - cy, h.x - cx);
+      const hw = v.width / 2 - m, hh = v.height / 2 - m, k = Math.min(Math.abs(hw / Math.cos(a)), Math.abs(hh / Math.sin(a)));
+      const x = cx + Math.cos(a) * k, y = cy + Math.sin(a) * k, sz = 14 / this.cameras.main.zoom;
+      g.fillStyle(0x140c20, 0.75).fillCircle(x, y, sz * 1.25);
+      g.fillStyle(h.col, 1).fillTriangle(x + Math.cos(a) * sz, y + Math.sin(a) * sz, x + Math.cos(a + 2.4) * sz * 0.8, y + Math.sin(a + 2.4) * sz * 0.8, x + Math.cos(a - 2.4) * sz * 0.8, y + Math.sin(a - 2.4) * sz * 0.8);
+    }
+  }
+
   // ---------- Cofres ----------
   spawnChest(x, y) {
     const ck = this.tex('obj_cofre', 'chest'); const s = this.add.image(x, y, ck).setOrigin(0.5, 0.9).setDepth(y); s.setScale((ck === 'obj_cofre' ? 74 : 64) / s.height);
@@ -750,25 +861,25 @@ class Play extends Phaser.Scene {
     for (const w of this.W) {
       if (w.id === 'copal') { this.copal(w, dt); continue; }
       w.t -= dt;
-      if (w.t <= 0) { w.t = this.fire(w) * this.cdMul; }
+      if (w.t <= 0) { w.t = this.fire(w) * this.cdMul * (this.gear[w.id] ? this.gear[w.id].cd : 1); }
     }
   }
 
   attackPose() { this.P.atkT = 0.2; }
 
   fire(w) {
-    const P = this.P, L = w.lv, A = this.areaMul, n = this.amount;
+    const P = this.P, L = w.lv, A = this.areaMul, n = this.amount, gm = this.gear[w.id] ? this.gear[w.id].dmg : 1;
     switch (w.id) {
       case 'machete': {
-        const dmg = 17 * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.3 * (L >= 8));
+        const dmg = 20 * gm * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.3 * (L >= 8));
         const R = 118 * (1 + 0.15 * (L >= 4) + 0.15 * (L >= 7)) * A;
         this.slash(P.face, R, dmg);
         if (L >= 3) this.time.delayedCall(130, () => this.slash(P.face + Math.PI, R, dmg));
         this.attackPose(); Sfx.play('swing');
-        return 1.15 * (L >= 6 ? 0.85 : 1);
+        return 1.0 * (L >= 6 ? 0.85 : 1);
       }
       case 'punos': {
-        const dmg = 9 * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8));
+        const dmg = 9 * gm * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8));
         const tg = this.nearestN(P.x, P.y, 140 * A, 1 + (L >= 4) + (L >= 7));
         if (!tg.length) return 0.15;
         for (const e of tg) {
@@ -782,7 +893,7 @@ class Play extends Phaser.Scene {
         return 0.5 * (L >= 3 ? 0.85 : 1) * (L >= 6 ? 0.85 : 1);
       }
       case 'cohetes': {
-        const dmg = 19 * (1 + 0.2 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8));
+        const dmg = 19 * gm * (1 + 0.2 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8));
         const blast = 60 * (1 + 0.2 * (L >= 4) + 0.2 * (L >= 7)) * A;
         const cnt = 1 + (L >= 3) + (L >= 6) + n;
         const tg = this.nearestN(P.x, P.y, 520, 8);
@@ -797,7 +908,7 @@ class Play extends Phaser.Scene {
         return 1.7;
       }
       case 'resortera': {
-        const dmg = 11 * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 6) + 0.35 * (L >= 8));
+        const dmg = 11 * gm * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 6) + 0.35 * (L >= 8));
         const cnt = 1 + (L >= 5) + n;
         const tg = this.nearestN(P.x, P.y, 480, cnt);
         if (!tg.length) return 0.3;
@@ -809,7 +920,7 @@ class Play extends Phaser.Scene {
         return 1.05 * (L >= 4 ? 0.8 : 1);
       }
       case 'agua': {
-        const dmg = 6 * (1 + 0.2 * (L >= 2) + 0.25 * (L >= 6) + 0.35 * (L >= 8));
+        const dmg = 6 * gm * (1 + 0.2 * (L >= 2) + 0.25 * (L >= 6) + 0.35 * (L >= 8));
         const R = 54 * (L >= 3 ? 1.3 : 1) * A, dur = L >= 5 ? 3.6 : 2.6;
         const cnt = 1 + (L >= 4) + (L >= 7) + n;
         const tg = this.nearestN(P.x, P.y, 340, 10);
@@ -824,7 +935,7 @@ class Play extends Phaser.Scene {
         return 3.2;
       }
       case 'loteria': {
-        const dmg = 10 * (1 + 0.2 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8));
+        const dmg = 10 * gm * (1 + 0.2 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8));
         const cnt = 3 + (L >= 3) + (L >= 6) + n, sp = L >= 7 ? 540 : 430;
         for (let i = 0; i < cnt; i++) {
           const a = P.face + (i - (cnt - 1) / 2) * 0.24;
@@ -861,13 +972,13 @@ class Play extends Phaser.Scene {
   copal(w, dt) {
     const L = w.lv, P = this.P;
     const R = 80 * (1 + 0.15 * (L >= 2) + 0.15 * (L >= 4) + 0.15 * (L >= 7)) * this.areaMul;
-    const dmg = 5 * (1 + 0.3 * (L >= 3) + 0.3 * (L >= 6) + 0.4 * (L >= 8));
+    const dmg = 5 * (this.gear.copal ? this.gear.copal.dmg : 1) * (1 + 0.3 * (L >= 3) + 0.3 * (L >= 6) + 0.4 * (L >= 8));
     this.aura.setDisplaySize(R * 2.3, R * 2.3 * 0.75).setAlpha(0.75 + 0.2 * Math.sin(this.t * 4));
     this.aura.rotation += dt * 0.6;
     if (Math.random() < dt * 14) this.fxSmoke.emitParticleAt(P.x + rnd(-R, R) * 0.8, P.y - 10 + rnd(-R, R) * 0.5, 1);
     w.t -= dt;
     if (w.t <= 0) {
-      w.t = 0.5 * this.cdMul;
+      w.t = 0.5 * this.cdMul * (this.gear.copal ? this.gear.copal.cd : 1);
       this.near(P.x, P.y - 10, R, (e) => this.hurt(e, dmg, 0, 0, { slow: 0.6, quiet: true }));
       if (L >= 5) this.near(P.x, P.y - 10, R, (e) => { e.slowT = Math.max(e.slowT, 0.9); });
     }
@@ -953,17 +1064,18 @@ class Play extends Phaser.Scene {
         const R = 180 * A;
         this.tweens.add({ targets: this.pSpr, angle: 360, duration: 380, onComplete: () => this.pSpr.setAngle(0) });
         for (let i = 0; i < 4; i++) this.time.delayedCall(i * 80, () => this.slash(P.face + i * Math.PI / 2, R, 0));
-        this.near(P.x, P.y - 20, R, (e) => { const a = Math.atan2(e.y - P.y, e.x - P.x); this.hurt(e, 70, Math.cos(a) * 420, Math.sin(a) * 420, { big: true }); });
+        P.inv = Math.max(P.inv, 0.6);
+        this.near(P.x, P.y - 20, R, (e) => { const a = Math.atan2(e.y - P.y, e.x - P.x); this.hurt(e, 95, Math.cos(a) * 420, Math.sin(a) * 420, { big: true, stun: 0.5 }); });
         this.ring(P.x, P.y - 20, R, 0xff9d1f, 380, true);
         this.banner('¡Remolino!', '', 700);
         break;
       }
       case 'curandera': {
-        P.hp = Math.min(this.maxHp, P.hp + this.maxHp * 0.35);
+        P.hp = Math.min(this.maxHp, P.hp + this.maxHp * 0.25);
         this.near(P.x, P.y, 250 * A, (e) => { const a = Math.atan2(e.y - P.y, e.x - P.x); this.hurt(e, 20, Math.cos(a) * 520, Math.sin(a) * 520, { slow: 2 }); });
         this.ring(P.x, P.y - 20, 250 * A, 0x3fe0d0, 500, true);
         this.fxSmoke.explode(40, P.x, P.y - 20);
-        this.dmgText(P.x, P.y - 110, '+35% vida', '#7dff8a');
+        this.dmgText(P.x, P.y - 110, '+25% vida', '#7dff8a');
         this.banner('¡Limpia!', '', 700);
         break;
       }
@@ -1079,9 +1191,51 @@ class Play extends Phaser.Scene {
     this.hud.slots();
   }
 
+  // ---------- Partida a medias: se guarda sola y se recupera al volver ----------
+  get counts() { return (!GOD && START_T === 0 && !AUTO) || DEV; }
+  saveRun() {
+    if (this.over || !this.counts) return;
+    const P = this.P, r1 = (v) => Math.round(v * 10) / 10;
+    const run = {
+      v: 1, at: Date.now(), hunter: this.hunterId, t: r1(this.t), kills: this.kills, level: this.level, xp: r1(this.xp), xpNeed: this.xpNeed, pendingLv: this.pendingLv,
+      energy: this.energy, W: this.W.map(w => [w.id, w.lv]), Pass: this.Pass, hp: r1(P.hp), rerolls: this.rerolls, revived: this.revived, gear: this.gear,
+      bossDone: this.bossDone, bossKills: this.bossKills, won: this.won, bossN: this.bossN, nextBossT: this.nextBossT === Infinity ? -1 : r1(this.nextBossT),
+      helpT: r1(this.helpT), flockT: r1(this.flockT), dmgTaken: Math.round(this.dmgTaken || 0),
+      E: this.E.filter(e => e.alive).slice(0, 260).map(e => [e.k, Math.round(e.x - P.x), Math.round(e.y - P.y), Math.round(e.hp), Math.round(e.max), e.boss ? 1 : 0, e.n || 0, e.loop || 0, e.wolf ? 1 : 0, e.stolen || 0, r1(e.dmg), r1(e.spd)]),
+      S: this.S.slice(0, 300).map(o => [Math.round(o.x - P.x), Math.round(o.y - P.y), o.v]),
+      C: this.chests.map(c => [Math.round(c.x - P.x), Math.round(c.y - P.y)]),
+      H: this.helpers.map(h => [h.k, Math.round(h.x - P.x), Math.round(h.y - P.y)]),
+    };
+    try { localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch (e) { /* sin espacio */ }
+  }
+  restore(r) {
+    const P = this.P;
+    Object.assign(this, { t: r.t, kills: r.kills, level: r.level, xp: r.xp, xpNeed: r.xpNeed, pendingLv: r.pendingLv, energy: r.energy, rerolls: r.rerolls, revived: r.revived,
+      bossDone: r.bossDone || {}, bossKills: r.bossKills || [], won: !!r.won, bossN: r.bossN || 0, nextBossT: r.nextBossT < 0 ? Infinity : r.nextBossT, helpT: r.helpT, flockT: r.flockT, dmgTaken: r.dmgTaken || 0 });
+    this.gear = r.gear || {};
+    this.W = []; this.aura.setVisible(false);
+    for (const [id, lv] of r.W) { this.addWeapon(id); this.W[this.W.length - 1].lv = lv; }
+    this.Pass = r.Pass || {};
+    P.hp = Math.min(this.maxHp, r.hp);
+    for (const a of r.E) {
+      const [k, dx, dy, hp, max, boss, n, loop, wolf, stolen, dmg, spd] = a; if (!ENEMIES[k]) continue;
+      const e = this.spawn(k, dx, dy);
+      Object.assign(e, { hp, max, dmg, spd, stolen });
+      if (wolf && k === 'nahual') { e.wolf = true; e.d = ENEMIES.lobo; e.bs = ENEMIES.lobo.size / 205; e.r = ENEMIES.lobo.r; }
+      if (boss) { e.boss = true; e.cd = 2.5; e.cd2 = 6; e.cd3 = 9; e.n = n; e.loop = loop; e.bs = e.d.size / 336; e.s.setScale(e.bs); this.bossAlive = e; }
+    }
+    for (const [dx, dy, v] of r.S) this.dropSoul(dx, dy, v);
+    for (const [dx, dy] of r.C || []) this.spawnChest(dx, dy);
+    for (const [k, dx, dy] of r.H || []) this.spawnHelper(k, dx, dy);
+    this.hud.slots();
+    // después de dibujar dos cuadros (la cámara ya sabe qué se ve y el suelo queda completo)
+    this.events.once('postupdate', () => this.events.once('postupdate', () => { this.updateWorld(); this.hud.countdown('¡Recuperaste tu partida!'); }));
+  }
+
   endRun(win) {
     if (this.over) return;
     this.over = true;
+    clearRun();
     this.reward = this.flowerReward(win);
     Sfx.play(win ? 'win' : 'lose');
     this.time.delayedCall(win ? 200 : 700, () => this.hud.end(win));
@@ -1090,7 +1244,7 @@ class Play extends Phaser.Scene {
 
 function flowerLines(sc, win) {
   const r = { tiempo: Math.floor(sc.t / FLOWERS.perSeconds), enemigos: Math.floor(sc.kills / FLOWERS.perKills), jefes: 0 };
-  for (const k in sc.bossKills) r.jefes += FLOWERS.boss[k] || 0;
+  for (const b of sc.bossKills) r.jefes += (FLOWERS.boss[b.k] || 0) * b.loop;
   return r;
 }
 Play.prototype.flowerReward = function (win) {
@@ -1138,7 +1292,7 @@ class Hud {
     $('dashBtn').classList.toggle('cd', sc.P.dashCd > 0);
     const b = sc.bossAlive;
     $('boss').classList.toggle('hidden', !b);
-    if (b) { $('bossName').textContent = b.d.boss; $('bossFill').style.width = Math.max(0, b.hp / b.max * 100) + '%'; }
+    if (b) { $('bossName').textContent = sc.bossLabel(b); $('bossFill').style.width = Math.max(0, b.hp / b.max * 100) + '%'; }
   }
   banner(title, sub, ms) {
     const el = $('banner'); el.innerHTML = title + (sub ? `<small>${sub}</small>` : ''); el.classList.add('on');
@@ -1179,17 +1333,36 @@ class Hud {
   }
   pause() {
     const sc = this.sc; if (sc.over || this.cardsOpen) return;
-    if (sc.scene.isPaused()) { this.resume(); return; }
+    if (this.counting) { this.stopCount(); }
+    else if (sc.scene.isPaused()) { this.resume(); return; }
     sc.scene.pause();
     $('pauseStats').innerHTML = `Tiempo <b>${fmt(sc.t)}</b> · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b>`;
     $('pause').classList.remove('hidden');
   }
-  resume() { $('pause').classList.add('hidden'); this.sc.scene.resume(); }
+  resume() { $('pause').classList.add('hidden'); this.countdown(); }
+  // 3 segundos para reaccionar antes de que el juego siga (al volver de la pausa o al recuperar la partida)
+  countdown(title) {
+    const sc = this.sc; if (sc.over) return;
+    this.stopCount(); this.counting = true; sc.scene.pause();
+    const el = $('count'); let n = 3;
+    const show = () => { el.innerHTML = (title ? `<small>${title}</small>` : '') + `<b>${n}</b>`; el.classList.remove('hidden'); el.firstElementChild && el.querySelector('b').animate([{ transform: 'scale(1.6)', opacity: 0.2 }, { transform: 'scale(1)', opacity: 1 }], 260); };
+    show(); Sfx.play('pick');
+    this.countT = setInterval(() => {
+      n--;
+      if (n > 0) { show(); Sfx.play('pick'); return; }
+      this.stopCount(); sc.scene.resume(); Sfx.play('dash');
+      if (sc.pendingLv > 0) this.openCards(true);
+    }, 1000);
+  }
+  stopCount() { clearInterval(this.countT); this.counting = false; $('count').classList.add('hidden'); }
   end(win) {
     const sc = this.sc;
     $('hud').classList.add('hidden');
-    $('endTitle').textContent = win ? '¡Venciste a La Llorona!' : 'La noche te alcanzó';
-    $('endStats').innerHTML = `${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b> · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b><br>` +
+    $('endTitle').textContent = 'La noche te alcanzó';
+    const jefes = sc.bossKills.length, loopMax = sc.bossKills.reduce((m, b) => Math.max(m, b.loop), 0);
+    const brag = win ? `<div class="won txt">🏆 Venciste a La Llorona${loopMax > 1 ? ` · llegaste a la vuelta ${loopMax}` : ''}</div>` : '';
+    const best = sc.reward && sc.reward.counts && Math.floor(sc.t) >= save.mejor ? ' · <b class="rec">¡Récord!</b>' : '';
+    $('endStats').innerHTML = `${brag}${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b>${best} · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b>${jefes ? ` · Jefes <b>${jefes}</b>` : ''}<br>` +
       sc.W.map(w => `<span class="endw">${icon(w.id, WEAPONS[w.id].icon)} ${WEAPONS[w.id].name} ${w.lv}</span>`).join(' ');
     const r = sc.reward;
     if (r) {
@@ -1265,19 +1438,37 @@ function buildTree() {
 function openTree(from) { treeFrom = from; ['menu', 'end'].forEach(id => $(id).classList.add('hidden')); buildTree(); $('tree').classList.remove('hidden'); }
 let treeFrom = 'menu';
 
-function startRun() {
+function startRun(resume) {
   Sfx.init();
+  if (!resume) clearRun();
   if (!owned(selected)) selected = 'machetero';
-  ['menu', 'end', 'pause', 'levelup', 'tree'].forEach(id => $(id).classList.add('hidden'));
+  ['menu', 'end', 'pause', 'levelup', 'tree', 'resumeBox'].forEach(id => $(id).classList.add('hidden'));
   const sm = game.scene;
   if (sm.getScene('play')) sm.stop('play');
-  sm.start('play', { hunter: selected });
+  sm.start('play', { hunter: resume ? resume.hunter : selected, resume: resume || null });
 }
 
 function toMenu() {
-  if (game.scene.getScene('play')) game.scene.stop('play');
-  ['end', 'pause', 'levelup', 'hud'].forEach(id => $(id).classList.add('hidden'));
+  const s = game.scene.getScene('play');
+  if (s && s.hud) s.hud.stopCount();
+  if (s && s.sys.isActive() && !s.over) clearRun(); // salir a la mitad = se abandona
+  if (s) game.scene.stop('play');
+  ['end', 'pause', 'levelup', 'hud', 'count'].forEach(id => $(id).classList.add('hidden'));
   buildMenu(); $('menu').classList.remove('hidden');
+  offerResume();
+}
+
+// ¿Quedó una partida a medias (se cerró la app, se apagó el celular…)?
+function offerResume() {
+  const r = readRun();
+  if (!r || !HUNTERS[r.hunter]) { $('resumeBox').classList.add('hidden'); return; }
+  $('resumeInfo').innerHTML = `${HUNTERS[r.hunter].name} · <b>${fmt(r.t)}</b> · Nivel ${r.level}${r.won ? ' · 🏆' : ''}`;
+  $('resumeBox').classList.remove('hidden');
+  $('resumeGo').onclick = () => startRun(readRun());
+  $('resumeDrop').onclick = () => {
+    if ($('resumeDrop').dataset.sure !== '1') { $('resumeDrop').dataset.sure = '1'; $('resumeDrop').textContent = '¿Seguro? Se pierde'; return; }
+    clearRun(); $('resumeDrop').dataset.sure = ''; $('resumeDrop').textContent = 'Abandonar'; $('resumeBox').classList.add('hidden');
+  };
 }
 
 async function boot() {
@@ -1292,8 +1483,8 @@ async function boot() {
   });
   game.scene.add('play', Play, false);
   buildMenu();
-  $('startBtn').onclick = startRun;
-  $('againBtn').onclick = startRun;
+  $('startBtn').onclick = () => startRun();
+  $('againBtn').onclick = () => startRun();
   $('menuBtn').onclick = toMenu;
   $('treeBtn').onclick = () => openTree('menu');
   $('endTreeBtn').onclick = () => openTree('end');
@@ -1303,8 +1494,13 @@ async function boot() {
   $('pauseBtn').onclick = () => game.scene.getScene('play').hud.pause();
   $('dashBtn').onclick = (ev) => { ev.stopPropagation(); game.scene.getScene('play').dash(); };
   $('abilityBtn').onclick = (ev) => { ev.stopPropagation(); game.scene.getScene('play').ability(); };
-  document.addEventListener('visibilitychange', () => { const s = game.scene.getScene('play'); if (document.hidden && s && s.sys.isActive() && !s.over) s.hud.pause(); });
+  // Al cerrar, suspender o cambiar de app: se guarda la partida y se pausa
+  const leave = () => { const s = game.scene.getScene('play'); if (s && s.sys.isActive() && !s.over) { s.saveRun(); s.hud.pause(); } };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) leave(); });
+  window.addEventListener('pagehide', leave);
+  window.addEventListener('blur', () => { const s = game.scene.getScene('play'); if (s && s.sys.isActive() && !s.over) s.saveRun(); });
   if (Q.has('go')) { if (HUNTERS[Q.get('go')]) { selected = Q.get('go'); if (!owned(selected) && (DEV || AUTO)) save.cazadores.push(selected); } startRun(); }
+  else offerResume();
 }
 boot();
 

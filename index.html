@@ -65,6 +65,18 @@
   #logo { width:min(520px, 88vw); filter:drop-shadow(0 6px 20px rgba(0,0,0,.6)); }
   .btn { font:inherit; font-size:22px; color:#2a1200; background:linear-gradient(#ffd25a,#ff9d1f); border:3px solid #2a1200; border-radius:14px; padding:10px 26px; margin:8px; box-shadow:0 4px 0 #7a3a00; cursor:pointer; }
   .btn.alt { background:linear-gradient(#6a4a9a,#3a2358); color:var(--tinta); box-shadow:0 4px 0 #1a0b2b; }
+  .btn.small { font-size:16px; padding:6px 16px; }
+  #count { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(14,6,26,.35); z-index:20; pointer-events:none; color:#ffcf5a; text-shadow:0 4px 0 #1a0b2b; }
+  #count.hidden { display:none; }
+  #count b { font-weight:normal; font-size:clamp(90px, 28vw, 170px); line-height:1; }
+  #count small { font-size:clamp(20px, 5.5vw, 30px); color:#fff4e0; margin-bottom:10px; }
+  #resumeBox { position:fixed; inset:0; background:rgba(8,3,16,.78); display:flex; align-items:center; justify-content:center; z-index:15; }
+  #resumeBox.hidden { display:none; }
+  #resumeBox .rb { background:linear-gradient(#3a2358,#24143a); border:3px solid #ffcf5a; border-radius:18px; padding:18px 16px 12px; text-align:center; max-width:330px; margin:16px; }
+  #resumeBox .rt { font-size:24px; color:#ffcf5a; }
+  #resumeBox .ri { font-family:system-ui,sans-serif; font-size:15px; margin:8px 0 6px; }
+  .won { color:#ffcf5a; font-size:20px; margin-bottom:4px; }
+  .rec { color:#7dff8a; }
   .btn:active { transform:translateY(3px); box-shadow:0 1px 0 #7a3a00; }
   #hunters { display:grid; grid-template-columns:repeat(4, minmax(0, 170px)); gap:10px; margin:8px 0; }
   @media (max-width:720px) { #hunters { grid-template-columns:repeat(2, minmax(0, 170px)); } }
@@ -137,16 +149,26 @@
   <button id="abilityBtn"><img id="abilityImg" alt=""><div id="abilityFill"></div><div id="abilityLbl" class="txt"></div></button>
   <div id="hint" class="txt"></div>
 </div>
+<div id="count" class="txt hidden"></div>
 
 <div id="menu" class="screen">
   <div class="flpill big txt" id="menuFlores">🌼 0</div>
   <img id="logo" alt="Noche de Leyendas">
   <h2 class="txt">Elige a tu cazador</h2>
   <div id="hunters"></div>
-  <div><button class="btn" id="startBtn">¡A cazar!</button><button class="btn alt" id="treeBtn">🌼 Talentos</button></div>
+  <div id="gearRow"></div>
+  <div><button class="btn" id="startBtn">¡A cazar!</button><button class="btn alt" id="treeBtn">🌼 Talentos</button><button class="btn alt" id="pinataBtn">🪅 Piñata</button></div>
   <button class="btn alt hidden" id="installBtn">📲 Instalar · jugar sin internet</button>
   <div class="controls hidden" id="iosHint">📲 Para jugar sin internet: toca Compartir y luego «Agregar a inicio».</div>
-  <div class="controls">Celular: arrastra el dedo para moverte · doble toque o botón para esquivar · botón grande para la habilidad.<br>Computadora: WASD o flechas · Espacio para esquivar · E para la habilidad · Esc para pausa.<br>Prototipo: partida de 10 min — El Cadejo 3:00 · El Charro Negro 6:00 · La Llorona 9:00.</div>
+  <div class="controls">Celular: arrastra el dedo para moverte · doble toque o botón para esquivar · botón grande para la habilidad.<br>Computadora: WASD o flechas · Espacio para esquivar · E para la habilidad · Esc para pausa.<br>Jefes: El Cadejo 3:00 · El Charro Negro 6:00 · La Llorona 9:00. Si la vences, la noche sigue y vuelven más fuertes: ¿cuánto aguantas?</div>
+  <div id="resumeBox" class="hidden">
+    <div class="rb txt">
+      <div class="rt">Tienes una partida a medias</div>
+      <div class="ri" id="resumeInfo"></div>
+      <button class="btn" id="resumeGo">▶ Continuar</button>
+      <button class="btn alt small" id="resumeDrop">Abandonar</button>
+    </div>
+  </div>
 </div>
 
 <div id="levelup" class="screen hidden">
@@ -169,7 +191,7 @@
   <h1 class="txt">Pausa</h1>
   <div class="stats" id="pauseStats"></div>
   <button class="btn" id="resumeBtn">Seguir</button>
-  <button class="btn alt" id="quitBtn">Salir al menú</button>
+  <button class="btn alt" id="quitBtn">Abandonar partida</button>
 </div>
 
 <div id="end" class="screen hidden">
