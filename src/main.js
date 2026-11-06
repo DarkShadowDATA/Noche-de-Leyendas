@@ -3,6 +3,8 @@ import Phaser from 'phaser';
 import '@fontsource/lilita-one/400.css';
 import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun } from './save.js';
+import { setupPinata, openPinata, closePinata, gearRow } from './pinata.js';
+import { nube, onNube, startNube, loginUrl } from './nube.js';
 
 const IMGS = import.meta.glob('./img/*.webp', { eager: true, query: '?url', import: 'default' });
 const IMG = {};
@@ -1381,6 +1383,11 @@ const owned = (id) => save.cazadores.includes(id);
 function buildMenu() {
   $('logo').src = IMG.logo;
   $('menuFlores').textContent = `🌼 ${save.flores}`;
+  gearRow();
+  const ac = $('acct');
+  if (nube.on) { ac.innerHTML = `☁️ ${nube.name}`; ac.title = 'Tu progreso se guarda en tu cuenta DarkShadow'; ac.removeAttribute('href'); ac.classList.remove('hidden'); }
+  else if (nube.can) { ac.innerHTML = '👤 Iniciar sesión'; ac.title = 'Guarda tu progreso en tu cuenta DarkShadow'; ac.href = loginUrl(); ac.classList.remove('hidden'); }
+  else ac.classList.add('hidden');
   if (!owned(selected)) selected = 'machetero';
   const box = $('hunters'); box.innerHTML = '';
   for (const [id, h] of Object.entries(HUNTERS)) {
@@ -1435,14 +1442,14 @@ function buildTree() {
     box.appendChild(col);
   }
 }
-function openTree(from) { treeFrom = from; ['menu', 'end'].forEach(id => $(id).classList.add('hidden')); buildTree(); $('tree').classList.remove('hidden'); }
+function openTree(from) { treeFrom = from; ['menu', 'end', 'pinata'].forEach(id => $(id).classList.add('hidden')); buildTree(); $('tree').classList.remove('hidden'); }
 let treeFrom = 'menu';
 
 function startRun(resume) {
   Sfx.init();
   if (!resume) clearRun();
   if (!owned(selected)) selected = 'machetero';
-  ['menu', 'end', 'pause', 'levelup', 'tree', 'resumeBox'].forEach(id => $(id).classList.add('hidden'));
+  ['menu', 'end', 'pause', 'levelup', 'tree', 'resumeBox', 'pinata'].forEach(id => $(id).classList.add('hidden'));
   const sm = game.scene;
   if (sm.getScene('play')) sm.stop('play');
   sm.start('play', { hunter: resume ? resume.hunter : selected, resume: resume || null });
@@ -1487,6 +1494,12 @@ async function boot() {
   $('againBtn').onclick = () => startRun();
   $('menuBtn').onclick = toMenu;
   $('treeBtn').onclick = () => openTree('menu');
+  setupPinata(IMG, (k) => { Sfx.init(); Sfx.play(k); });
+  $('pinataBtn').onclick = () => { Sfx.init(); openPinata('menu'); };
+  $('endPinataBtn').onclick = () => { Sfx.init(); openPinata('end'); };
+  $('pnBack').onclick = () => { if (closePinata() === 'end') toMenu(); else { buildMenu(); $('menu').classList.remove('hidden'); } };
+  onNube(() => { if (!$('menu').classList.contains('hidden')) buildMenu(); });
+  startNube();
   $('endTreeBtn').onclick = () => openTree('end');
   $('treeBack').onclick = () => { $('tree').classList.add('hidden'); if (treeFrom === 'end') toMenu(); else { buildMenu(); $('menu').classList.remove('hidden'); } };
   $('quitBtn').onclick = toMenu;

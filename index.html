@@ -76,6 +76,49 @@
   #resumeBox .rt { font-size:24px; color:#ffcf5a; }
   #resumeBox .ri { font-family:system-ui,sans-serif; font-size:15px; margin:8px 0 6px; }
   .won { color:#ffcf5a; font-size:20px; margin-bottom:4px; }
+  #acct { position:absolute; top:calc(12px + env(safe-area-inset-top)); left:12px; background:#2a1840; border:2px solid #6a4a9a; border-radius:20px; padding:5px 12px; font-size:15px; color:var(--tinta); text-decoration:none; }
+  #gearRow { font-family:system-ui,sans-serif; font-size:15px; margin:6px 0 2px; cursor:pointer; display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center; }
+  #gearRow .gr { display:inline-flex; width:34px; height:34px; border:2px solid var(--rc); border-radius:8px; background:#24143a; align-items:center; justify-content:center; }
+  #gearRow .gr .icimg { width:28px; height:28px; }
+  #gearRow small { color:#ffcf5a; }
+  .pn-pills { display:flex; gap:8px; }
+  .flpill.bl { color:#7ff7ea; border-color:#3fe0d0; }
+  #pnBig { font-size:96px; line-height:1; margin:4px 0; filter:drop-shadow(0 6px 0 #1a0b2b); transform-origin:50% 0; }
+  #pnBig img { width:150px; height:150px; object-fit:contain; }
+  #pnBig.shake { animation:pnShake .65s ease-in-out; }
+  #pnBig.boom { animation:pnBoom .35s ease-out; }
+  @keyframes pnShake { 0%,100% { transform:rotate(0) } 20% { transform:rotate(-14deg) } 40% { transform:rotate(12deg) } 60% { transform:rotate(-10deg) } 80% { transform:rotate(8deg) } }
+  @keyframes pnBoom { 0% { transform:scale(1.25); opacity:.4 } 100% { transform:scale(1); opacity:1 } }
+  #pnButtons { display:flex; flex-wrap:wrap; justify-content:center; max-width:560px; }
+  #pnButtons .btn { font-size:18px; padding:8px 16px; margin:5px; }
+  .btn.off { filter:grayscale(.8) brightness(.75); }
+  .pn-eq { font-family:system-ui,sans-serif; font-size:14px; text-align:center; margin:6px 10px; max-width:520px; }
+  #pnCol { display:grid; grid-template-columns:repeat(4, 78px); gap:8px; margin:6px 0; }
+  @media (min-width:700px) { #pnCol { grid-template-columns:repeat(7, 84px); } }
+  .pn-w { position:relative; background:#24143a; border:3px solid var(--rc, #3a2358); border-radius:12px; padding:6px 2px 5px; text-align:center; cursor:pointer; }
+  .pn-w.none { opacity:.4; cursor:default; filter:grayscale(1); }
+  .pn-w.eq { box-shadow:0 0 0 3px #ffcf5a, 0 0 16px #ffcf5a88; }
+  .pn-w .ic .icimg { width:44px; height:44px; }
+  .pn-w .n { font-size:12.5px; line-height:1.1; }
+  .pn-w .r { font-family:system-ui,sans-serif; font-size:11px; color:var(--rc, #aaa); }
+  .pn-w .st, #gearRow small { font-size:11px; color:#ffcf5a; letter-spacing:-1px; }
+  .pn-w .st i, #gearRow small i { font-style:normal; opacity:.25; }
+  .pn-w .eqt { position:absolute; top:-9px; left:50%; transform:translateX(-50%); font-size:10px; background:#ffcf5a; color:#2a1200; border-radius:6px; padding:0 4px; }
+  #pnShop { display:flex; flex-direction:column; align-items:center; margin:4px 0; }
+  #pnShop .btn { margin:4px; text-decoration:none; }
+  .pn-note { font-family:system-ui,sans-serif; font-size:14px; margin:6px 10px 2px; text-align:center; }
+  .pn-msg { font-family:system-ui,sans-serif; font-size:14px; color:#ffcf5a; margin:4px; }
+  #pnRes { position:fixed; inset:0; background:rgba(8,3,16,.86); display:flex; flex-wrap:wrap; align-content:center; justify-content:center; gap:10px; padding:16px; z-index:12; }
+  #pnRes.hidden { display:none; }
+  .pn-card { width:104px; background:linear-gradient(#3a2358,#24143a); border:3px solid var(--rc); border-radius:14px; padding:8px 4px; text-align:center; box-shadow:0 0 18px color-mix(in srgb, var(--rc) 55%, transparent); animation:pnIn .4s backwards cubic-bezier(.2,1.4,.5,1); }
+  .pn-card .ic .icimg { width:56px; height:56px; }
+  .pn-card .n { font-size:15px; }
+  .pn-card .r { font-family:system-ui,sans-serif; font-size:12px; color:var(--rc); }
+  .pn-card .tg { font-size:14px; color:#7dff8a; min-height:18px; }
+  .pn-card.r3 { animation:pnIn .4s backwards cubic-bezier(.2,1.4,.5,1), pnGlow 1.2s infinite alternate; }
+  @keyframes pnIn { from { transform:scale(.3) rotate(-12deg); opacity:0 } }
+  @keyframes pnGlow { to { box-shadow:0 0 34px var(--rc); } }
+  #pnRes { align-items:center; } .pn-br { flex-basis:100%; height:0; }
   .rec { color:#7dff8a; }
   .btn:active { transform:translateY(3px); box-shadow:0 1px 0 #7a3a00; }
   #hunters { display:grid; grid-template-columns:repeat(4, minmax(0, 170px)); gap:10px; margin:8px 0; }
@@ -152,6 +195,7 @@
 <div id="count" class="txt hidden"></div>
 
 <div id="menu" class="screen">
+  <a id="acct" class="txt hidden" target="_top"></a>
   <div class="flpill big txt" id="menuFlores">🌼 0</div>
   <img id="logo" alt="Noche de Leyendas">
   <h2 class="txt">Elige a tu cazador</h2>
@@ -187,6 +231,19 @@
   <button class="btn" id="treeBack">Listo</button>
 </div>
 
+<div id="pinata" class="screen hidden">
+  <h1 class="txt">Piñata de armas</h1>
+  <div class="pn-pills"><div class="flpill big txt" id="pnFlores">🌼 0</div><div class="flpill big txt bl" id="pnBoletos">🎟️ 0</div></div>
+  <div id="pnBig">🪅</div>
+  <div id="pnButtons"></div>
+  <div id="pnEq" class="pn-eq"></div>
+  <div id="pnCol"></div>
+  <div id="pnShop"></div>
+  <div id="pnOdds" class="controls"></div>
+  <button class="btn" id="pnBack">Listo</button>
+  <div id="pnRes" class="hidden"></div>
+</div>
+
 <div id="pause" class="screen hidden">
   <h1 class="txt">Pausa</h1>
   <div class="stats" id="pauseStats"></div>
@@ -198,7 +255,7 @@
   <h1 class="txt" id="endTitle"></h1>
   <div class="stats" id="endStats"></div>
   <div id="endFlowers"></div>
-  <div><button class="btn" id="againBtn">Otra vez</button><button class="btn alt" id="endTreeBtn">🌼 Talentos</button></div>
+  <div><button class="btn" id="againBtn">Otra vez</button><button class="btn alt" id="endTreeBtn">🌼 Talentos</button><button class="btn alt" id="endPinataBtn">🪅 Piñata</button></div>
   <button class="btn alt" id="menuBtn">Cambiar cazador</button>
 </div>
 
