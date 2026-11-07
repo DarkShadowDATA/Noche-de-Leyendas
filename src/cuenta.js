@@ -27,12 +27,15 @@ const cookies = {
 };
 
 let cfg = null, key = '', session = null;
+// Solo para probar en la compu (localhost): ?devapi=http://127.0.0.1:3077 usa el servidor local con DEV_AUTH
+const DEVAPI = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? new URLSearchParams(location.search).get('devapi') : null;
 export let user = null; // { name }
 
 const timeout = (ms) => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
 
 /** Lee la sesión del dominio. Devuelve el usuario o null (sin cuenta, sin internet o fuera del dominio del estudio). */
 export async function initCuenta() {
+  if (DEVAPI) { user = { name: 'Dev 4242' }; return user; }
   if (!onStudio()) return null;
   try {
     cfg = await fetch(`${API}/config`, { signal: timeout(6000) }).then(r => r.json());
@@ -63,8 +66,10 @@ async function fresh() {
 
 /** Llamada al servidor del estudio con la sesión. Lanza Error con el mensaje del servidor. */
 export async function api(path, init = {}) {
-  if (!session || !await fresh()) throw new Error('Inicia sesión con tu cuenta DarkShadow.');
-  const r = await fetch(`${API}${path}`, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, ...(init.headers || {}) }, signal: timeout(10000) });
+  let auth;
+  if (DEVAPI) auth = { 'x-dev-user': '4242' };
+  else { if (!session || !await fresh()) throw new Error('Inicia sesión con tu cuenta DarkShadow.'); auth = { Authorization: `Bearer ${session.access_token}` }; }
+  const r = await fetch(`${DEVAPI ? DEVAPI + '/api' : API}${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...auth, ...(init.headers || {}) }, signal: timeout(10000) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { const e = new Error(j.error || 'No se pudo conectar. Intenta otra vez.'); e.status = r.status; e.data = j; throw e; }
   return j;
