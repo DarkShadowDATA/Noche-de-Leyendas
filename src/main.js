@@ -796,7 +796,7 @@ class Play extends Phaser.Scene {
   spawnHelper(k, x, y) {
     if (this.helpers.length >= 4) { const o = this.helpers.shift(); o.s.destroy(); o.gl.destroy(); }
     const key = this.tex('obj_' + k, 'help_' + k);
-    const s = this.add.image(x, y, key).setOrigin(0.5, 0.9).setDepth(y); s.setScale(52 / s.height);
+    const s = this.add.image(x, y, key).setOrigin(0.5, 0.9).setDepth(y); s.setScale(66 / s.height);
     const col = { iman: 0xff5a5a, tamal: 0x7dff8a, campana: 0x7fd8ff }[k];
     const gl = this.add.image(x, y - 22, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(col).setScale(1.3).setAlpha(0.55).setDepth(y - 1);
     this.tweens.add({ targets: s, y: y - 7, yoyo: true, repeat: -1, duration: 520, ease: 'Sine.InOut' });
