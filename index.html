@@ -118,7 +118,13 @@
   .pn-card.r3 { animation:pnIn .4s backwards cubic-bezier(.2,1.4,.5,1), pnGlow 1.2s infinite alternate; }
   @keyframes pnIn { from { transform:scale(.3) rotate(-12deg); opacity:0 } }
   @keyframes pnGlow { to { box-shadow:0 0 34px var(--rc); } }
-  #pnRes { align-items:center; } .pn-br { flex-basis:100%; height:0; }
+  #pnRes { align-items:center; overflow-y:auto; } .pn-br { flex-basis:100%; height:0; }
+  @media (max-width:520px) {
+    #pnRes { gap:7px; padding:10px; }
+    .pn-card { width:calc((100vw - 40px) / 3); padding:5px 2px; border-width:2px; }
+    .pn-card .ic .icimg { width:42px; height:42px; }
+    .pn-card .n { font-size:13px; } .pn-card .tg { font-size:12.5px; min-height:15px; }
+  }
   .rec { color:#7dff8a; }
   .btn:active { transform:translateY(3px); box-shadow:0 1px 0 #7a3a00; }
   #hunters { display:grid; grid-template-columns:repeat(4, minmax(0, 170px)); gap:10px; margin:8px 0; }
