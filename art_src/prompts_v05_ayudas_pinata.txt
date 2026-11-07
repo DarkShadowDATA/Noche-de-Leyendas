@@ -1,0 +1,20 @@
+Noche de Leyendas v0.5 — 4 imágenes nuevas para ChatGPT (ayudas del mapa y la Piñata)
+
+Cómo: en ChatGPT adjunta obj_cofre.png (el cofre del juego) como referencia de estilo y pega UN prompt por imagen.
+Si sale con piso, sombra, texto o recortada, pide otra. Guarda cada una con el nombre indicado y mándamelas en el chat.
+Cuando lleguen, las pongo en el juego y grabo el video de esta actualización (antes no).
+
+Bloque de estilo (ya va incluido en cada prompt):
+Same exact art style, outline thickness, lighting and camera angle as the attached image. Hand-painted 2D mobile game asset, bold chunky shapes, thick dark-brown outline, rich painted shading, warm light from the top-left, 3/4 top-down view, Mexican Day of the Dead night atmosphere with soft magical glow. One single object, centered, filling about 80% of the image. Transparent background, no ground, no cast shadow, no text, no border, no other objects. Square 1:1, clean readable silhouette even when very small.
+
+1) obj_iman.png  (Imán: atrae todas las almas del mapa)
+Same exact art style, outline thickness, lighting and camera angle as the attached image. A big red horseshoe magnet with silver tips, decorated with small painted marigold (cempasúchil) flowers and a tiny sugar-skull sticker, glowing turquoise soul sparks being pulled toward its tips. Hand-painted 2D mobile game asset, bold chunky shapes, thick dark-brown outline, rich painted shading, warm light from the top-left, 3/4 top-down view, Mexican Day of the Dead night atmosphere with soft magical glow. One single object, centered, filling about 80% of the image. Transparent background, no ground, no cast shadow, no text, no border, no other objects. Square 1:1, clean readable silhouette even when very small.
+
+2) obj_tamal.png  (Tamal: cura 30% de vida)
+Same exact art style, outline thickness, lighting and camera angle as the attached image. A single steaming Mexican tamal wrapped in a corn husk, partly open showing yellow masa and red filling, tied with a thin husk ribbon, soft green healing glow and little rising steam swirls. Hand-painted 2D mobile game asset, bold chunky shapes, thick dark-brown outline, rich painted shading, warm light from the top-left, 3/4 top-down view, Mexican Day of the Dead night atmosphere with soft magical glow. One single object, centered, filling about 80% of the image. Transparent background, no ground, no cast shadow, no text, no border, no other objects. Square 1:1, clean readable silhouette even when very small.
+
+3) obj_campana.png  (Campana: congela a los enemigos 4 s)
+Same exact art style, outline thickness, lighting and camera angle as the attached image. An old bronze church bell with a wooden top beam, engraved with a small sun and marigold pattern, icy pale-blue sound rings and frost sparkles around it. Hand-painted 2D mobile game asset, bold chunky shapes, thick dark-brown outline, rich painted shading, warm light from the top-left, 3/4 top-down view, Mexican Day of the Dead night atmosphere with soft magical glow. One single object, centered, filling about 80% of the image. Transparent background, no ground, no cast shadow, no text, no border, no other objects. Square 1:1, clean readable silhouette even when very small.
+
+4) obj_pinata.png  (la Piñata de armas del menú)
+Same exact art style, outline thickness, lighting and camera angle as the attached image. A classic 7-point star Mexican piñata hanging from a rope, colorful tissue-paper fringes (magenta, orange, turquoise, purple), with a spooky Day of the Dead twist: a small sugar-skull face in the center and tiny golden weapon silhouettes (machete, slingshot, rocket) peeking through cracks, magical golden glow leaking out. Hand-painted 2D mobile game asset, bold chunky shapes, thick dark-brown outline, rich painted shading, warm light from the top-left, 3/4 top-down view, Mexican Day of the Dead night atmosphere with soft magical glow. One single object, centered, filling about 80% of the image. Transparent background, no ground, no cast shadow, no text, no border, no other objects. Square 1:1, clean readable silhouette even when very small.
