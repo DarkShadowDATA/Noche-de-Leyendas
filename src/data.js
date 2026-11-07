@@ -53,7 +53,26 @@ export const WEAPONS = {
     lv: ['1 frasco', '+20% de daño', 'Charco más grande', '+1 frasco', 'Dura más', '+25% de daño', '+1 frasco', '+35% de daño'] },
   loteria: { name: 'Lotería', icon: '🃏', desc: 'Cartas en abanico que atraviesan.',
     lv: ['3 cartas', '+20% de daño', '+1 carta', 'Atraviesan a 1 más', '+25% de daño', '+1 carta', 'Más rápidas', '+35% de daño'] },
+  lazo: { name: 'Lazo', icon: '🪢', desc: 'Lanza la reata en línea: jala y aturde a toda la fila.',
+    lv: ['Lazo al frente', '+25% de daño', '+20% de largo', 'Aturde más tiempo', '+25% de daño', '−15% de espera', 'También lazo hacia atrás', '+35% de daño'] },
 };
+
+// Evoluciones: arma en nivel 8 + su objeto pareja (cualquier nivel) → al abrir un cofre, el arma cambia.
+// La pareja no se dice en el juego: se descubre. Se guardan las descubiertas en save.evos.
+export const EVOS = {
+  machete: { pas: 'piedra', name: 'Machete de obsidiana', desc: 'Tajo doble más largo que hace sangrar.' },
+  copal: { pas: 'ojo', name: 'Gran limpia', desc: 'Aura enorme que frena mucho más.' },
+  punos: { pas: 'huaraches', name: 'Furia de la arena', desc: 'Cada 10 golpes suelta una onda de choque.' },
+  cohetes: { pas: 'veladora', name: 'Castillo de fuegos', desc: 'Cada explosión suelta más explosiones.' },
+  resortera: { pas: 'morral', name: 'Granizada', desc: 'Además cae una lluvia de piedras.' },
+  loteria: { pas: 'ofrenda', name: 'Gran Lotería', desc: 'Cada carta tiene su propio efecto.' },
+  lazo: { pas: 'espuelas', name: 'Lazo de fuego', desc: 'Quema a todo lo que atrapa.' },
+  agua: { pas: 'maguey', name: 'Diluvio', desc: 'Los charcos te siguen a donde vayas.' },
+};
+// Cofres que aparecen en el mapa (además de los que sueltan los jefes), en segundos de partida
+export const MAP_CHESTS = [90, 270, 450];
+// Premio del cofre cuando no hay evolución que dar: además de la carta, flores al final de la partida
+export const CHEST_FLORES = 15;
 
 // Objetos: nivel 1 a 5
 export const PASSIVES = {
@@ -64,6 +83,7 @@ export const PASSIVES = {
   maguey: { name: 'Corazón de maguey', icon: '🌵', desc: '+20 de vida máxima y se cura sola poco a poco.' },
   veladora: { name: 'Veladora', icon: '🕯️', desc: '−7% de espera de las armas por nivel.' },
   ofrenda: { name: 'Ofrenda', icon: '🌼', desc: '+35% de distancia para juntar almas por nivel.' },
+  espuelas: { name: 'Espuelas', icon: '✴️', desc: '+5% de velocidad y la esquiva recarga 10% más rápido por nivel.' },
 };
 
 // Enemigos: tex = [camina, ataque]; size = alto en pantalla (px de mundo)

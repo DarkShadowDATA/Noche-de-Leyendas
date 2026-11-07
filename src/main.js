@@ -1,7 +1,7 @@
 // Noche de Leyendas — prototipo jugable (Phaser 3)
 import Phaser from 'phaser';
 import '@fontsource/lilita-one/400.css';
-import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS } from './data.js';
+import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun } from './save.js';
 import { setupPinata, openPinata, closePinata, gearRow } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
@@ -24,6 +24,10 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 const icon = (id, emoji) => IMG['icono_' + id] ? `<img class="icimg" src="${IMG['icono_' + id]}" alt="">` : emoji;
+// Arma de la partida: si ya evolucionó, su nombre y su ícono (o el ícono normal con brillo dorado mientras llega el arte)
+const wName = (w) => w.evo ? EVOS[w.id].name : WEAPONS[w.id].name;
+const wIcon = (w) => !w.evo ? icon(w.id, WEAPONS[w.id].icon)
+  : IMG['icono_evo_' + w.id] ? `<img class="icimg" src="${IMG['icono_evo_' + w.id]}" alt="">` : `<span class="evoic">${icon(w.id, WEAPONS[w.id].icon)}</span>`;
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const angDiff = (a, b) => Math.abs(Phaser.Math.Angle.Wrap(a - b));
 
@@ -217,6 +221,7 @@ class Play extends Phaser.Scene {
     this.pendingLv = 0; this.energy = 0; this.energyNeed = 45; this.over = false; this.chestPick = false;
     this.W = []; this.Pass = {};
     this.E = []; this.S = []; this.B = []; this.puddles = []; this.hazards = []; this.chests = []; this.fx = [];
+    this.mapChests = {}; this.chestFlores = 0; this.punHits = 0;
     this.pool = []; this.soulPool = []; this.numPool = [];
     this.spawnAcc = 0; this.flockT = 95; this.bossDone = {};
     for (const [k, bt] of Object.entries(BOSS_TIMES)) if (bt < START_T - 5) this.bossDone[k] = true;
@@ -359,7 +364,7 @@ class Play extends Phaser.Scene {
     if (ml > 1) { mx /= ml; my /= ml; }
     P.moving = ml > 0.05;
     if (P.moving) { P.dx = mx / Math.max(ml, 1e-6); P.dy = my / Math.max(ml, 1e-6); P.face = Math.atan2(P.dy, P.dx); }
-    let spd = P.speed * (1 + 0.08 * this.pl('huaraches') + 0.05 * tl('sup_paso')) * (P.slowT > 0 ? 0.55 : 1);
+    let spd = P.speed * (1 + 0.08 * this.pl('huaraches') + 0.05 * this.pl('espuelas') + 0.05 * tl('sup_paso')) * (P.slowT > 0 ? 0.55 : 1);
     let vx = mx * spd, vy = my * spd;
     if (P.dashT > 0) { P.dashT -= dt; vx = P.dx * 560; vy = P.dy * 560; if (Math.random() < 0.6) this.afterimage(); }
     if (P.pushT > 0) { P.pushT -= dt; vx += P.pushVx; vy += P.pushVy; }
@@ -402,7 +407,7 @@ class Play extends Phaser.Scene {
 
   dash() {
     const P = this.P; if (this.over || P.dashCd > 0 || this.scene.isPaused()) return;
-    P.dashT = 0.17; P.inv = 0.38; P.dashCd = 2.2 - 0.25 * tl('sup_agil'); Sfx.play('dash');
+    P.dashT = 0.17; P.inv = 0.38; P.dashCd = (2.2 - 0.25 * tl('sup_agil')) * (1 - 0.1 * this.pl('espuelas')); Sfx.play('dash');
   }
 
   // ---------- Director: qué sale y cuándo ----------
@@ -411,6 +416,14 @@ class Play extends Phaser.Scene {
     if (!this.won) { for (const [k, bt] of Object.entries(BOSS_TIMES)) if (t >= bt && !this.bossDone[k]) { this.bossDone[k] = true; this.spawnBoss(k); } }
     else if (!this.bossAlive && t >= this.nextBossT) { this.nextBossT = Infinity; this.spawnBoss(ENDLESS.order[this.bossN % 3]); }
     this.updateHelpers(dt);
+    // Cofres del mapa (con flecha): otra oportunidad de evolucionar, además de los de jefe
+    MAP_CHESTS.forEach((ct, i) => {
+      if (t >= ct && !this.mapChests[i]) {
+        this.mapChests[i] = true; const a = rnd(0, 6.28), d = rnd(300, 420);
+        this.spawnChest(this.P.x + Math.cos(a) * d, this.P.y + Math.sin(a) * d * 0.8);
+        this.banner('¡Apareció un cofre!', 'Sigue la flecha dorada', 1600);
+      }
+    });
     if (t > 270 && Math.floor(t) % 120 === 30 && this.lastEvent !== Math.floor(t)) { this.lastEvent = Math.floor(t); this.moonT = 25; this.banner('¡Luna llena!', 'Los nahuales salen al doble', 1800); }
     this.moonT = (this.moonT || 0) - dt;
 
@@ -528,6 +541,10 @@ class Play extends Phaser.Scene {
     const P = this.P;
     for (const e of this.E) {
       if (!e.alive) continue;
+      if (e.dotT > 0) { // sangrado (Machete de obsidiana) o quemadura (Lazo de fuego)
+        e.dotT -= dt; e.dotTick -= dt;
+        if (e.dotTick <= 0) { e.dotTick = 0.5; this.hurt(e, e.dotD, 0, 0, { quiet: true, raw: true }); if (!e.alive) continue; }
+      }
       const dx = P.x - e.x, dy = P.y - e.y, dist = Math.hypot(dx, dy) || 1;
       let vx = 0, vy = 0;
       const slow = e.slowT > 0 ? (e.boss ? 0.8 : 0.55) : 1; // a los jefes el humo y el agua los frenan menos
@@ -693,7 +710,8 @@ class Play extends Phaser.Scene {
 
   hurt(e, dmg, kx = 0, ky = 0, opt = {}) {
     if (!e.alive || e.ghost) return;
-    dmg *= this.dmgMul;
+    if (!opt.raw) dmg *= this.dmgMul;
+    if (opt.dot) { e.dotD = Math.max(e.dotT > 0 ? e.dotD : 0, dmg * opt.dot); if (!(e.dotT > 0)) e.dotTick = 0.5; e.dotT = 3; }
     if (e.boss) dmg *= 1 + 0.1 * tl('atk_jefes');
     if (tl('atk_crit') && Math.random() < 0.04 * tl('atk_crit')) { dmg *= 2; opt = Object.assign({}, opt, { big: true, quiet: false }); }
     e.hp -= dmg; e.flash = 0.07;
@@ -826,7 +844,7 @@ class Play extends Phaser.Scene {
     const g = this.helpArrows || (this.helpArrows = this.add.graphics().setDepth(1e6 + 1));
     g.clear();
     const v = this.cameras.main.worldView, m = 26 / this.cameras.main.zoom;
-    for (const h of this.helpers) {
+    for (const h of [...this.helpers, ...this.chests.map(c => ({ x: c.x, y: c.y, col: 0xffcf5a }))]) {
       if (h.x > v.x && h.x < v.right && h.y - 30 > v.y && h.y < v.bottom) continue;
       const cx = v.centerX, cy = v.centerY, a = Math.atan2(h.y - cy, h.x - cx);
       const hw = v.width / 2 - m, hh = v.height / 2 - m, k = Math.min(Math.abs(hw / Math.cos(a)), Math.abs(hh / Math.sin(a)));
@@ -849,19 +867,40 @@ class Play extends Phaser.Scene {
         c.dead = true; c.s.destroy(); c.gl.destroy(); Sfx.play('chest');
         this.fxSpark.explode(40, c.x, c.y - 30);
         this.P.hp = Math.min(this.maxHp, this.P.hp + this.maxHp * 0.25);
+        const w = this.evoReady();
+        if (w) { this.evolve(w); continue; }
+        this.chestFlores += CHEST_FLORES;
         this.pendingLv++; this.chestPick = true; this.hud.openCards();
       }
     }
     if (this.chests.some(c => c.dead)) this.chests = this.chests.filter(c => !c.dead);
   }
 
+  // ---------- Evoluciones ----------
+  evoReady() { return this.W.find(w => !w.evo && w.lv >= 8 && EVOS[w.id] && this.pl(EVOS[w.id].pas) > 0); }
+  evolve(w) {
+    w.evo = true; const E = EVOS[w.id], P = this.P;
+    if (w.id === 'copal') this.aura.setTint(0x7dffb0);
+    P.inv = Math.max(P.inv, 1.2);
+    this.ring(P.x, P.y - 30, 320, 0xffcf5a, 700, true); this.ring(P.x, P.y - 30, 200, 0xffffff, 500, false);
+    this.cameras.main.flash(260, 255, 220, 140); this.cameras.main.shake(300, 0.006);
+    this.near(P.x, P.y - 30, 320, (e) => { const a = Math.atan2(e.y - P.y, e.x - P.x); this.hurt(e, 60, Math.cos(a) * 500, Math.sin(a) * 500, { quiet: true }); });
+    Sfx.play('win'); this.banner(`¡EVOLUCIÓN! ${E.name}`, E.desc, 2800);
+    this.hud.slots();
+    if (this.counts) { save.evos = save.evos || []; if (!save.evos.includes(w.id)) { save.evos.push(w.id); persist(); } }
+  }
+
   // ---------- Armas ----------
-  addWeapon(id) { this.W.push({ id, lv: 1, t: 0.3 }); if (id === 'copal') this.aura.setVisible(true); }
+  addWeapon(id) { this.W.push({ id, lv: 1, t: 0.3, evo: false }); if (id === 'copal') this.aura.setVisible(true); }
   wl(id) { const w = this.W.find(w => w.id === id); return w ? w.lv : 0; }
 
   updateWeapons(dt) {
     for (const w of this.W) {
       if (w.id === 'copal') { this.copal(w, dt); continue; }
+      if (w.evo && w.id === 'agua') { // Diluvio: charcos que te siguen
+        w.t2 = (w.t2 || 0) - dt;
+        if (w.t2 <= 0) { w.t2 = 0.7; this.makePuddle(this.P.x + rnd(-20, 20), this.P.y + rnd(-10, 10), 70 * this.areaMul, 2.2, 7 * (this.gear.agua ? this.gear.agua.dmg : 1)); }
+      }
       w.t -= dt;
       if (w.t <= 0) { w.t = this.fire(w) * this.cdMul * (this.gear[w.id] ? this.gear[w.id].cd : 1); }
     }
@@ -873,10 +912,11 @@ class Play extends Phaser.Scene {
     const P = this.P, L = w.lv, A = this.areaMul, n = this.amount, gm = this.gear[w.id] ? this.gear[w.id].dmg : 1;
     switch (w.id) {
       case 'machete': {
-        const dmg = 20 * gm * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.3 * (L >= 8));
-        const R = 118 * (1 + 0.15 * (L >= 4) + 0.15 * (L >= 7)) * A;
-        this.slash(P.face, R, dmg);
-        if (L >= 3) this.time.delayedCall(130, () => this.slash(P.face + Math.PI, R, dmg));
+        const ev = w.evo;
+        const dmg = 20 * gm * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.3 * (L >= 8)) * (ev ? 1.3 : 1);
+        const R = 118 * (1 + 0.15 * (L >= 4) + 0.15 * (L >= 7)) * A * (ev ? 1.2 : 1);
+        this.slash(P.face, R, dmg, ev);
+        if (L >= 3) this.time.delayedCall(130, () => this.slash(P.face + Math.PI, R, dmg, ev));
         this.attackPose(); Sfx.play('swing');
         return 1.0 * (L >= 6 ? 0.85 : 1);
       }
@@ -887,6 +927,11 @@ class Play extends Phaser.Scene {
         for (const e of tg) {
           const a = Math.atan2(e.y - P.y, e.x - P.x);
           this.hurt(e, dmg, Math.cos(a) * 140, Math.sin(a) * 140);
+          if (w.evo && ++this.punHits % 10 === 0) { // Furia de la arena: onda de choque
+            const R = 170 * A;
+            this.near(P.x, P.y - 20, R, (o) => { const b = Math.atan2(o.y - P.y, o.x - P.x); this.hurt(o, dmg * 4, Math.cos(b) * 380, Math.sin(b) * 380, { big: true, stun: 0.4 }); });
+            this.ring(P.x, P.y - 20, R, 0xffa030, 380, true); this.cameras.main.shake(120, 0.004); Sfx.play('boom');
+          }
           this.fxSpark.setParticleTint(0xffd25a); this.fxDeath.setParticleTint(0xffd25a); this.fxDeath.explode(5, e.x, e.y - e.d.size * 0.5);
           this.ring(e.x, e.y - e.d.size * 0.5, 34, 0xffd25a, 140);
         }
@@ -904,7 +949,7 @@ class Play extends Phaser.Scene {
           const a = e ? Math.atan2(e.y - P.y, e.x - P.x) + rnd(-0.15, 0.15) : rnd(0, 6.28);
           const dist = e ? Math.hypot(e.x - P.x, e.y - P.y) : 260;
           const rk = this.tex('obj_cohete', 'rocket'); const s = this.add.image(P.x, P.y - 40, rk).setDepth(900000).setRotation(a); if (rk === 'obj_cohete') s.setScale(48 / s.width);
-          this.B.push({ kind: 'rocket', x: P.x, y: P.y - 40, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, life: Math.min(1.4, dist / 360 + 0.1), dmg, blast, r: 12, s });
+          this.B.push({ kind: 'rocket', x: P.x, y: P.y - 40, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, life: Math.min(1.4, dist / 360 + 0.1), dmg, blast, r: 12, s, evo: w.evo });
         }
         this.attackPose(); Sfx.play('swing');
         return 1.7;
@@ -914,6 +959,7 @@ class Play extends Phaser.Scene {
         const cnt = 1 + (L >= 5) + n;
         const tg = this.nearestN(P.x, P.y, 480, cnt);
         if (!tg.length) return 0.3;
+        if (w.evo) this.hail(dmg * 0.9, 5 + n);
         tg.forEach((e, i) => this.time.delayedCall(i * 70, () => {
           const a = Math.atan2(e.y - e.d.size * 0.4 - (P.y - 40), e.x - P.x);
           const sk = this.tex('obj_piedra', 'stone'); const s = this.add.image(P.x, P.y - 40, sk).setDepth(900000).setRotation(a); if (sk === 'obj_piedra') s.setScale(30 / s.width);
@@ -942,39 +988,96 @@ class Play extends Phaser.Scene {
         for (let i = 0; i < cnt; i++) {
           const a = P.face + (i - (cnt - 1) / 2) * 0.24;
           const ckey = this.tex('obj_carta' + (i % 5 + 1), 'card' + (i % 5)); const s = this.add.image(P.x, P.y - 40, ckey).setDepth(900000); s.setScale(ckey.startsWith('obj_') ? 36 / s.height : 1.2);
-          this.B.push({ kind: 'card', x: P.x, y: P.y - 40, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.95, dmg, r: 14, pierce: 2 + (L >= 4), hit: new Set(), s });
+          const fx = w.evo ? i % 5 : -1; // Gran Lotería: 0 fuego, 1 hielo, 2 corazón, 3 estrella, 4 calavera
+          if (fx >= 0) s.setTint([0xff7a3a, 0x7fd8ff, 0xff6a8a, 0xffe060, 0xb07aff][fx]);
+          this.B.push({ kind: 'card', x: P.x, y: P.y - 40, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.95, dmg: dmg * (fx === 0 ? 1.6 : 1), r: 14, pierce: 2 + (L >= 4) + (fx === 3 ? 3 : 0), hit: new Set(), s, fx });
         }
         this.attackPose(); Sfx.play('swing');
         return 1.45;
+      }
+      case 'lazo': {
+        const ev = w.evo;
+        const dmg = 14 * gm * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8)) * (ev ? 1.25 : 1);
+        const len = 270 * (L >= 3 ? 1.2 : 1) * A * (ev ? 1.2 : 1), stun = L >= 4 ? 1.0 : 0.6;
+        const t0 = this.nearest(P.x, P.y, len);
+        const a = t0 ? Math.atan2(t0.y - t0.d.size * 0.3 - (P.y - 30), t0.x - P.x) : P.face;
+        this.lasso(a, len, dmg, stun, ev);
+        if (L >= 7) this.time.delayedCall(170, () => this.lasso(a + Math.PI, len, dmg, stun, ev));
+        this.attackPose(); Sfx.play('swing');
+        return 1.6 * (L >= 6 ? 0.85 : 1);
       }
     }
     return 1;
   }
 
-  slash(a, R, dmg) {
+  // Lazo: reata en línea recta; a la fila que toca la jala hacia ti y la aturde (el Lazo de fuego además quema)
+  lasso(a, len, dmg, stun, fire) {
+    const P = this.P, cx = P.x, cy = P.y - 30, ca = Math.cos(a), sa = Math.sin(a);
+    const g = this.add.graphics().setDepth(950000), o = { k: 0 };
+    let done = false;
+    const draw = () => {
+      const ext = o.k < 0.45 ? o.k / 0.45 : 1 - (o.k - 0.45) / 0.55, L = len * ext;
+      const tx = cx + ca * L, ty = cy + sa * L;
+      g.clear();
+      g.lineStyle(fire ? 12 : 10, fire ? 0xc83a0a : 0x3a1e08, 1).lineBetween(cx, cy, tx, ty);
+      g.lineStyle(fire ? 6 : 5, fire ? 0xffb030 : 0xd9a85a, 1).lineBetween(cx, cy, tx, ty);
+      g.lineStyle(9, fire ? 0xc83a0a : 0x3a1e08, 1).strokeEllipse(tx, ty, 50, 34);
+      g.lineStyle(4, fire ? 0xffe070 : 0xe8bc6a, 1).strokeEllipse(tx, ty, 50, 34);
+      if (fire && Math.random() < 0.8) this.fxSpark.emitParticleAt(cx + ca * L * Math.random(), cy + sa * L * Math.random(), 1);
+      if (!done && o.k >= 0.45) {
+        done = true;
+        this.near(cx + ca * len / 2, cy + sa * len / 2, len / 2 + 40, (e) => {
+          const ex = e.x - cx, ey = e.y - e.d.size * 0.3 - cy, along = ex * ca + ey * sa, across = Math.abs(-ex * sa + ey * ca);
+          if (along < -10 || along > len + 10 || across > 34 + e.r) return;
+          this.hurt(e, dmg, -ca * 260, -sa * 260, { stun, dot: fire ? 0.35 : 0 });
+        });
+      }
+    };
+    draw();
+    this.tweens.add({ targets: o, k: 1, duration: 300, onUpdate: draw, onComplete: () => g.destroy() });
+  }
+
+  // Granizada: lluvia de piedras sobre enemigos cercanos
+  hail(dmg, cnt) {
+    const tg = this.nearestN(this.P.x, this.P.y, 400, 14);
+    for (let i = 0; i < cnt; i++) {
+      const e = tg.length ? pick(tg) : null;
+      const x = e ? e.x + rnd(-25, 25) : this.P.x + rnd(-260, 260), y = e ? e.y + rnd(-20, 20) : this.P.y + rnd(-200, 200);
+      this.time.delayedCall(i * 90, () => {
+        const sk = this.tex('obj_piedra', 'stone'); const s = this.add.image(x, y - 320, sk).setDepth(900000).setTint(0xbfe8ff); if (sk === 'obj_piedra') s.setScale(26 / s.width);
+        this.tweens.add({ targets: s, y, duration: 260, ease: 'Quad.In', onComplete: () => {
+          s.destroy(); this.near(x, y, 52 * this.areaMul, (o) => this.hurt(o, dmg, 0, 0, { stun: 0.25 }));
+          this.ring(x, y, 52 * this.areaMul, 0xbfe8ff, 220, true);
+        } });
+      });
+    }
+  }
+
+  slash(a, R, dmg, obsidiana) {
     const P = this.P, cx = P.x, cy = P.y - 30;
     this.near(cx, cy, R, (e) => {
       const ea = Math.atan2(e.y - e.d.size * 0.3 - cy, e.x - cx);
-      if (angDiff(ea, a) < 1.15 || Math.hypot(e.x - cx, e.y - cy) < 40) this.hurt(e, dmg, Math.cos(ea) * 170, Math.sin(ea) * 170);
+      if (angDiff(ea, a) < 1.15 || Math.hypot(e.x - cx, e.y - cy) < 40) this.hurt(e, dmg, Math.cos(ea) * 170, Math.sin(ea) * 170, obsidiana ? { dot: 0.15 } : {});
     });
+    const c1 = obsidiana ? 0xff2a5a : 0xff9d1f, c2 = obsidiana ? 0xd0a0ff : 0xfff2a0;
     const g = this.add.graphics().setDepth(950000).setBlendMode(Phaser.BlendModes.ADD);
     const draw = (k) => {
       g.clear();
       const a0 = a - 1.15, a1 = a + 1.15, ri = R * 0.62, ro = R * (0.92 + 0.12 * k);
-      g.fillStyle(0xff9d1f, 0.55 * (1 - k)); g.beginPath();
+      g.fillStyle(c1, 0.55 * (1 - k)); g.beginPath();
       for (let i = 0; i <= 16; i++) { const t = a0 + (a1 - a0) * i / 16; g.lineTo(cx + Math.cos(t) * ro, cy + Math.sin(t) * ro); }
       for (let i = 16; i >= 0; i--) { const t = a0 + (a1 - a0) * i / 16; const rr = ro - (ro - ri) * Math.sin(i / 16 * Math.PI); g.lineTo(cx + Math.cos(t) * rr, cy + Math.sin(t) * rr); }
       g.closePath(); g.fillPath();
-      g.lineStyle(4, 0xfff2a0, 0.9 * (1 - k)); g.beginPath(); g.arc(cx, cy, ro, a0, a1); g.strokePath();
+      g.lineStyle(4, c2, 0.9 * (1 - k)); g.beginPath(); g.arc(cx, cy, ro, a0, a1); g.strokePath();
     };
     const o = { k: 0 }; draw(0);
     this.tweens.add({ targets: o, k: 1, duration: 190, onUpdate: () => draw(o.k), onComplete: () => g.destroy() });
   }
 
   copal(w, dt) {
-    const L = w.lv, P = this.P;
-    const R = 80 * (1 + 0.15 * (L >= 2) + 0.15 * (L >= 4) + 0.15 * (L >= 7)) * this.areaMul;
-    const dmg = 5 * (this.gear.copal ? this.gear.copal.dmg : 1) * (1 + 0.3 * (L >= 3) + 0.3 * (L >= 6) + 0.4 * (L >= 8));
+    const L = w.lv, P = this.P, ev = w.evo;
+    const R = 80 * (1 + 0.15 * (L >= 2) + 0.15 * (L >= 4) + 0.15 * (L >= 7)) * this.areaMul * (ev ? 1.6 : 1);
+    const dmg = 5 * (this.gear.copal ? this.gear.copal.dmg : 1) * (1 + 0.3 * (L >= 3) + 0.3 * (L >= 6) + 0.4 * (L >= 8)) * (ev ? 1.4 : 1);
     this.aura.setDisplaySize(R * 2.3, R * 2.3 * 0.75).setAlpha(0.75 + 0.2 * Math.sin(this.t * 4));
     this.aura.rotation += dt * 0.6;
     if (Math.random() < dt * 14) this.fxSmoke.emitParticleAt(P.x + rnd(-R, R) * 0.8, P.y - 10 + rnd(-R, R) * 0.5, 1);
@@ -982,7 +1085,7 @@ class Play extends Phaser.Scene {
     if (w.t <= 0) {
       w.t = 0.5 * this.cdMul * (this.gear.copal ? this.gear.copal.cd : 1);
       this.near(P.x, P.y - 10, R, (e) => this.hurt(e, dmg, 0, 0, { slow: 0.6, quiet: true }));
-      if (L >= 5) this.near(P.x, P.y - 10, R, (e) => { e.slowT = Math.max(e.slowT, 0.9); });
+      if (L >= 5) this.near(P.x, P.y - 10, R, (e) => { e.slowT = Math.max(e.slowT, ev ? 1.4 : 0.9); });
     }
   }
 
@@ -1006,6 +1109,14 @@ class Play extends Phaser.Scene {
     this.fxSpark.explode(18, x, y);
     this.ring(x, y, R, pick([0xff5a8a, 0xffd25a, 0x5ad0ff, 0x7dff8a]), 260, true);
     Sfx.play('boom');
+  }
+
+  // Castillo de fuegos: cada explosión suelta 3 más pequeñas alrededor
+  chain(x, y, R, dmg) {
+    for (let i = 0; i < 3; i++) {
+      const a = rnd(0, 6.28) , d = R * rnd(0.9, 1.4);
+      this.time.delayedCall(140 + i * 110, () => this.explode(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.8, R * 0.65, dmg * 0.5));
+    }
   }
 
   ring(x, y, R, col, ms, fill) {
@@ -1039,17 +1150,19 @@ class Play extends Phaser.Scene {
       this.near(b.x, b.y + 30, b.r, (e) => { if (!hitOne && !e.ghost && !(b.hit && b.hit.has(e))) hitOne = e; });
       if (hitOne) {
         const e = hitOne;
-        if (b.kind === 'rocket') { b.dead = true; this.explode(b.x, b.y + 30, b.blast, b.dmg); }
+        if (b.kind === 'rocket') { b.dead = true; this.explode(b.x, b.y + 30, b.blast, b.dmg); if (b.evo) this.chain(b.x, b.y + 30, b.blast, b.dmg); }
         else if (b.kind === 'stone') {
           this.hurt(e, b.dmg, b.vx * 0.25, b.vy * 0.25); b.hit.add(e);
           if (b.bounces-- > 0) { const n = this.nearest(e.x, e.y, 280, b.hit); if (n) { const a = Math.atan2(n.y - e.y, n.x - e.x); b.vx = Math.cos(a) * 560; b.vy = Math.sin(a) * 560; b.life = 0.8; } else b.dead = true; }
           else b.dead = true;
         } else if (b.kind === 'card') {
-          this.hurt(e, b.dmg, b.vx * 0.2, b.vy * 0.2); b.hit.add(e);
+          this.hurt(e, b.dmg, b.vx * 0.2, b.vy * 0.2, b.fx === 1 ? { stun: 0.8 } : {}); b.hit.add(e);
+          if (b.fx === 2) P.hp = Math.min(this.maxHp, P.hp + 1);
+          if (b.fx === 4) { this.near(e.x, e.y, 60 * this.areaMul, (o) => { if (o !== e) this.hurt(o, b.dmg * 0.6, 0, 0, { quiet: true }); }); this.ring(e.x, e.y - 20, 60 * this.areaMul, 0xb07aff, 220, true); }
           if (b.pierce-- <= 0) b.dead = true;
         }
       }
-      if (b.life <= 0 && !b.dead) { b.dead = true; if (b.kind === 'rocket') this.explode(b.x, b.y + 30, b.blast, b.dmg); }
+      if (b.life <= 0 && !b.dead) { b.dead = true; if (b.kind === 'rocket') { this.explode(b.x, b.y + 30, b.blast, b.dmg); if (b.evo) this.chain(b.x, b.y + 30, b.blast, b.dmg); } }
       if (b.dead) b.s.destroy();
     }
     if (this.B.some(b => b.dead)) this.B = this.B.filter(b => !b.dead);
@@ -1200,7 +1313,7 @@ class Play extends Phaser.Scene {
     const P = this.P, r1 = (v) => Math.round(v * 10) / 10;
     const run = {
       v: 1, at: Date.now(), hunter: this.hunterId, t: r1(this.t), kills: this.kills, level: this.level, xp: r1(this.xp), xpNeed: this.xpNeed, pendingLv: this.pendingLv,
-      energy: this.energy, W: this.W.map(w => [w.id, w.lv]), Pass: this.Pass, hp: r1(P.hp), rerolls: this.rerolls, revived: this.revived, gear: this.gear,
+      energy: this.energy, W: this.W.map(w => [w.id, w.lv, w.evo ? 1 : 0]), Pass: this.Pass, mapChests: this.mapChests, chestFlores: this.chestFlores, punHits: this.punHits, hp: r1(P.hp), rerolls: this.rerolls, revived: this.revived, gear: this.gear,
       bossDone: this.bossDone, bossKills: this.bossKills, won: this.won, bossN: this.bossN, nextBossT: this.nextBossT === Infinity ? -1 : r1(this.nextBossT),
       helpT: r1(this.helpT), flockT: r1(this.flockT), dmgTaken: Math.round(this.dmgTaken || 0),
       E: this.E.filter(e => e.alive).slice(0, 260).map(e => [e.k, Math.round(e.x - P.x), Math.round(e.y - P.y), Math.round(e.hp), Math.round(e.max), e.boss ? 1 : 0, e.n || 0, e.loop || 0, e.wolf ? 1 : 0, e.stolen || 0, r1(e.dmg), r1(e.spd)]),
@@ -1216,7 +1329,8 @@ class Play extends Phaser.Scene {
       bossDone: r.bossDone || {}, bossKills: r.bossKills || [], won: !!r.won, bossN: r.bossN || 0, nextBossT: r.nextBossT < 0 ? Infinity : r.nextBossT, helpT: r.helpT, flockT: r.flockT, dmgTaken: r.dmgTaken || 0 });
     this.gear = r.gear || {};
     this.W = []; this.aura.setVisible(false);
-    for (const [id, lv] of r.W) { this.addWeapon(id); this.W[this.W.length - 1].lv = lv; }
+    for (const [id, lv, evo] of r.W) { if (!WEAPONS[id]) continue; this.addWeapon(id); const w = this.W[this.W.length - 1]; w.lv = lv; w.evo = !!evo; if (w.evo && id === 'copal') this.aura.setTint(0x7dffb0); }
+    this.mapChests = r.mapChests || {}; this.chestFlores = r.chestFlores || 0; this.punHits = r.punHits || 0;
     this.Pass = r.Pass || {};
     P.hp = Math.min(this.maxHp, r.hp);
     for (const a of r.E) {
@@ -1245,13 +1359,13 @@ class Play extends Phaser.Scene {
 }
 
 function flowerLines(sc, win) {
-  const r = { tiempo: Math.floor(sc.t / FLOWERS.perSeconds), enemigos: Math.floor(sc.kills / FLOWERS.perKills), jefes: 0 };
+  const r = { tiempo: Math.floor(sc.t / FLOWERS.perSeconds), enemigos: Math.floor(sc.kills / FLOWERS.perKills), jefes: 0, cofres: sc.chestFlores || 0 };
   for (const b of sc.bossKills) r.jefes += (FLOWERS.boss[b.k] || 0) * b.loop;
   return r;
 }
 Play.prototype.flowerReward = function (win) {
   const r = flowerLines(this, win);
-  let base = r.tiempo + r.enemigos + r.jefes;
+  let base = r.tiempo + r.enemigos + r.jefes + r.cofres;
   const cosecha = 1 + 0.08 * tl('for_cosecha');
   const first = save.dia !== today();
   const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1));
@@ -1278,7 +1392,7 @@ class Hud {
   }
   slots() {
     const sc = this.sc, el = $('slots'); el.innerHTML = '';
-    for (const w of sc.W) el.insertAdjacentHTML('beforeend', `<div class="slot">${icon(w.id, WEAPONS[w.id].icon)}<b>${w.lv}</b></div>`);
+    for (const w of sc.W) el.insertAdjacentHTML('beforeend', `<div class="slot${w.evo ? ' evo' : ''}">${wIcon(w)}<b>${w.evo ? '★' : w.lv}</b></div>`);
     for (const id in sc.Pass) el.insertAdjacentHTML('beforeend', `<div class="slot p">${icon(id, PASSIVES[id].icon)}<b>${sc.Pass[id]}</b></div>`);
   }
   tick(dt) {
@@ -1305,7 +1419,7 @@ class Hud {
     if (sc.over || sc.pendingLv <= 0) return;
     this.cardsOpen = true; sc.scene.pause(); if (!again) Sfx.play(sc.chestPick ? 'chest' : 'lvl');
     $('luTitle').textContent = sc.chestPick ? '¡Abriste un cofre!' : '¡Subiste de nivel!';
-    $('luSub').textContent = sc.chestPick ? 'Te curaste un 25% · elige una carta' : `Nivel ${sc.level} · elige una carta`;
+    $('luSub').textContent = sc.chestPick ? `Te curaste un 25% · +${CHEST_FLORES} 🌼 · elige una carta` : `Nivel ${sc.level} · elige una carta`;
     const opts = sc.cardOptions(), box = $('cards'); box.innerHTML = '';
     const rr = $('rerollBtn');
     rr.classList.toggle('hidden', !(sc.rerolls > 0));
@@ -1317,7 +1431,8 @@ class Hud {
       else {
         const D = o.type === 'w' ? WEAPONS[o.id] : PASSIVES[o.id];
         const lvTxt = o.lv === 1 ? '<span class="tag">NUEVO</span>' : `<div class="lv">Nivel ${o.lv - 1} → ${o.lv}</div>`;
-        const d = o.type === 'w' && o.lv > 1 ? D.lv[o.lv - 1] : D.desc;
+        let d = o.type === 'w' && o.lv > 1 ? D.lv[o.lv - 1] : D.desc;
+        if (o.type === 'w' && o.lv === 8 && EVOS[o.id]) d += ' · <b class="evohint">¡Ya puede evolucionar!</b>';
         div.innerHTML = `<div class="ic">${icon(o.id, D.icon)}</div>${lvTxt}<div class="n">${D.name}</div><div class="d">${d}</div>`;
       }
       div.onclick = () => this.choose(o);
@@ -1365,11 +1480,11 @@ class Hud {
     const brag = win ? `<div class="won txt">🏆 Venciste a La Llorona${loopMax > 1 ? ` · llegaste a la vuelta ${loopMax}` : ''}</div>` : '';
     const best = sc.reward && sc.reward.counts && Math.floor(sc.t) >= save.mejor ? ' · <b class="rec">¡Récord!</b>' : '';
     $('endStats').innerHTML = `${brag}${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b>${best} · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b>${jefes ? ` · Jefes <b>${jefes}</b>` : ''}<br>` +
-      sc.W.map(w => `<span class="endw">${icon(w.id, WEAPONS[w.id].icon)} ${WEAPONS[w.id].name} ${w.lv}</span>`).join(' ');
+      sc.W.map(w => `<span class="endw${w.evo ? ' evo' : ''}">${wIcon(w)} ${wName(w)}${w.evo ? '' : ' ' + w.lv}</span>`).join(' ');
     const r = sc.reward;
     if (r) {
       const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : ''].filter(Boolean).join(' · ');
-      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
+      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
     }
     $('end').classList.remove('hidden');
   }
