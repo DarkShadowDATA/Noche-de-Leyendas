@@ -1,0 +1,21 @@
+NOCHE DE LEYENDAS — IMÁGENES PARA LOS MENÚS NUEVOS (prompts para ChatGPT)
+Usa el mismo chat de ChatGPT de las otras imágenes del juego para que salga el mismo estilo.
+Para los retratos, adjunta como referencia la imagen actual de ese cazador (la del menú).
+
+1) FONDO DEL MENÚ — VERTICAL (celular)
+Ilustración vertical 1080x1920 para la pantalla de inicio de un videojuego mexicano de terror ligero llamado "Noche de Leyendas", mismo estilo pintado y colorido del logo. De noche, plaza de un pueblo abandonado con una iglesia colonial en ruinas y su campanario a la derecha, arcos de piedra rotos a la izquierda, luna llena grande y morada arriba, cielo morado oscuro con estrellas, niebla turquesa fantasmal flotando a ras de suelo, pétalos de cempasúchil volando, flores de cempasúchil, velas encendidas y una calavera de piedra tallada en las esquinas de abajo. El centro de la imagen queda despejado y más oscuro (ahí va el logo y los botones). Sin personajes, sin texto, sin logos.
+
+2) FONDO DEL MENÚ — HORIZONTAL (computadora)
+La misma escena del fondo 1 en formato horizontal 1920x1080: iglesia en ruinas y campanario a la derecha, arcos rotos a la izquierda, luna morada arriba, niebla turquesa, cempasúchil y velas abajo en las esquinas. Centro despejado y oscuro. Sin personajes, sin texto, sin logos.
+
+3) RETRATO — EL MACHETERO (adjunta su imagen actual)
+Retrato grande de cuerpo completo del mismo personaje de la imagen adjunta (mismo diseño, ropa, sombrero y machete, mismo estilo de caricatura pintada), en pose heroica de tres cuartos, viendo un poco hacia arriba, con el machete brillando con un aura turquesa fantasmal y su sarape ondeando. Luz de luna morada desde atrás y brillo turquesa desde abajo. Fondo transparente, sin texto. 1024x1536.
+
+4) RETRATO — LA CURANDERA (adjunta su imagen actual)
+Retrato grande de cuerpo completo del mismo personaje de la imagen adjunta (mismo diseño, trenza, rebozo y sahumerio de copal, mismo estilo), en pose heroica de tres cuartos, levantando el sahumerio del que sale humo turquesa que la rodea. Luz de luna morada desde atrás y brillo turquesa desde abajo. Fondo transparente, sin texto. 1024x1536.
+
+5) RETRATO — LA LUCHADORA (adjunta su imagen actual)
+Retrato grande de cuerpo completo del mismo personaje de la imagen adjunta (misma máscara, capa y botas, mismo estilo), en pose heroica de luchadora con los puños listos, capa ondeando y un aura turquesa alrededor de los puños. Luz de luna morada desde atrás y brillo turquesa desde abajo. Fondo transparente, sin texto. 1024x1536.
+
+6) RETRATO — EL COHETERO (adjunta su imagen actual)
+Retrato grande de cuerpo completo del mismo personaje de la imagen adjunta (mismo diseño, goggles, mochila de cohetes, mismo estilo), en pose heroica de tres cuartos sosteniendo un cohete encendido con chispas doradas y humo turquesa. Luz de luna morada desde atrás y brillo turquesa desde abajo. Fondo transparente, sin texto. 1024x1536.
