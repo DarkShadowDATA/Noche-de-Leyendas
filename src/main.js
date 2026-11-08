@@ -1,12 +1,16 @@
 // Noche de Leyendas — prototipo jugable (Phaser 3)
 import Phaser from 'phaser';
 import '@fontsource/lilita-one/400.css';
+import '@fontsource/cinzel/700.css';
+import '@fontsource/cinzel/900.css';
 import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun } from './save.js';
-import { setupPinata, openPinata, closePinata, gearRow } from './pinata.js';
+import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
 
 const IMGS = import.meta.glob('./img/*.webp', { eager: true, query: '?url', import: 'default' });
+import PKG from '../package.json';
+const VERSION = PKG.version.replace(/\.0$/, '');
 const IMG = {};
 for (const [p, u] of Object.entries(IMGS)) IMG[p.split('/').pop().replace('.webp', '')] = u;
 
@@ -1668,30 +1672,166 @@ let selected = 'machetero';
 let game = null;
 
 const owned = (id) => save.cazadores.includes(id);
+const HUNTER_TAG = { machetero: 'Cazador de nahuales', curandera: 'Guardiana del copal', luchadora: 'Campeona de la arena', cohetero: 'Maestro de la pólvora' };
+const portrait = (id) => IMG['retrato_' + id] || IMG[id + '_quieto'] || IMG[id + '_ataque'];
+const wIco = (id) => IMG['icono_' + id] ? `<img src="${IMG['icono_' + id]}" alt="">` : (WEAPONS[id] ? WEAPONS[id].icon : '');
+const starsH = (e) => '★'.repeat(e || 0) + '<i>' + '★'.repeat(MAX_STARS - (e || 0)) + '</i>';
+const fmtT = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const shake = (el) => el && el.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], 250);
+function unlockHunter(id, el) {
+  const cost = HUNTER_COST[id] || 0;
+  if (save.flores < cost) { shake(el); return false; }
+  save.flores -= cost; save.cazadores.push(id); persist(); Sfx.init(); Sfx.play('chest'); return true;
+}
+let viewing = null; // cazador que se ve en la pestaña Cazadores
+let tab = 'jugar', arsSeg = 'armas';
+const TAB_SCREEN = { jugar: 'menu', cazadores: 'cazadores', arsenal: 'arsenal', talentos: 'tree', pinata: 'pinata' };
+
+function hubTop() {
+  $('curFl').textContent = `🌼 ${save.flores}`;
+  const b = pinBoletos(); $('curBo').textContent = `🎟️ ${b}`; $('curBo').classList.toggle('hidden', !b && !nube.on);
+  $('profImg').src = portrait(selected);
+  $('profName').textContent = nube.on ? nube.name : 'Invitado';
+  $('profRec').textContent = save.mejor ? `Mejor noche ${fmtT(save.mejor)}` : 'Aún sin récord';
+  $('dotPin').classList.toggle('hidden', save.pin.dia === today());
+  $('dotTal').classList.toggle('hidden', !TALENTS.some(t => { const st = talentState(t); return st.st === 'can' && st.cost <= save.flores; }));
+  $('dotArs').classList.toggle('hidden', !(Object.keys(save.armas || {}).length && !save.equipo));
+}
+function showTab(t) {
+  tab = t;
+  for (const id of Object.values(TAB_SCREEN)) $(id).classList.add('hidden');
+  $('hub').classList.remove('hidden'); showScene(true);
+  document.querySelectorAll('.hubnav button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  if (t === 'jugar') buildMenu();
+  else if (t === 'cazadores') buildCaz();
+  else if (t === 'arsenal') buildArs();
+  else if (t === 'talentos') buildTree();
+  else if (t === 'pinata') openPinata('menu');
+  $(TAB_SCREEN[t]).classList.add('tabp'); $(TAB_SCREEN[t]).classList.remove('hidden'); $(TAB_SCREEN[t]).scrollTop = 0;
+  hubTop();
+}
+function hideHub() { $('hub').classList.add('hidden'); for (const id of Object.values(TAB_SCREEN)) $(id).classList.add('hidden'); }
+
 function buildMenu() {
   $('logo').src = IMG.logo;
-  $('menuFlores').textContent = `🌼 ${save.flores}`;
-  gearRow();
-  const ac = $('acct');
-  if (nube.on) { ac.innerHTML = `☁️ ${nube.name}`; ac.title = 'Tu progreso se guarda en tu cuenta DarkShadow'; ac.removeAttribute('href'); ac.classList.remove('hidden'); }
-  else if (nube.can) { ac.innerHTML = '👤 Iniciar sesión'; ac.title = 'Guarda tu progreso en tu cuenta DarkShadow'; ac.href = loginUrl(); ac.classList.remove('hidden'); }
-  else ac.classList.add('hidden');
   if (!owned(selected)) selected = 'machetero';
-  const box = $('hunters'); box.innerHTML = '';
-  for (const [id, h] of Object.entries(HUNTERS)) {
-    const lock = !owned(id), cost = HUNTER_COST[id] || 0;
-    const div = document.createElement('div'); div.className = 'hcard' + (id === selected ? ' sel' : '') + (lock ? ' locked' : '');
-    div.innerHTML = `<img src="${IMG[id + '_quieto'] || IMG[id + '_ataque']}" alt=""><div class="n txt">${h.name}</div><div class="d">${h.blurb}</div><div class="a">Habilidad: ${h.ability}</div>` +
-      (lock ? `<div class="lockt txt">🔒 ${cost} 🌼<br><small>${save.flores >= cost ? 'Toca para abrir' : 'Junta flores jugando'}</small></div>` : '');
-    div.onclick = () => {
-      if (lock) {
-        if (save.flores < cost) { div.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], 250); return; }
-        save.flores -= cost; save.cazadores.push(id); persist(); Sfx.init(); Sfx.play('chest');
-      }
-      selected = id; buildMenu();
-    };
-    box.appendChild(div);
+  const h = HUNTERS[selected];
+  $('stageImg').src = portrait(selected);
+  $('plName').textContent = h.name; $('plTag').textContent = HUNTER_TAG[selected] || '';
+  const eq = save.equipo && save.armas[save.equipo];
+  if (eq) {
+    const R = RARITIES[eq.r];
+    $('eqIn').innerHTML = `<span class="ico" style="--rc:${R.color}">${wIco(save.equipo)}</span><span class="tx">Arma equipada<b style="color:${R.color}">${WEAPONS[save.equipo].name}</b><span class="st">${starsH(eq.e)}</span></span>`;
+  } else $('eqIn').innerHTML = `<span class="ico">🪅</span><span class="tx">Arma equipada<b>Ninguna</b>${save.pin.dia !== today() ? 'Tirada gratis en la Piñata' : 'Consíguelas en la Piñata'}</span>`;
+  $('eqCard').onclick = () => showTab(eq ? 'arsenal' : 'pinata');
+  $('abIn').innerHTML = `<span class="ico" style="--rc:#3ff0d8">${wIco(h.weapon)}</span><span class="tx">${WEAPONS[h.weapon].name} · ${h.hp} ❤️<b style="color:#9ff7ea">${h.ability}</b>Habilidad</span>`;
+  hubTop();
+}
+
+function buildCaz() {
+  if (!viewing || !HUNTERS[viewing]) viewing = selected;
+  const g = $('cazGrid'); g.innerHTML = '';
+  for (const [k, hh] of Object.entries(HUNTERS)) {
+    const lk = !owned(k), d = document.createElement('div');
+    d.className = 'frame ccard' + (lk ? ' locked' : '') + (k === viewing ? ' view' : '');
+    d.innerHTML = `<div class="in"><img src="${portrait(k)}" alt="">${lk ? `<div class="lk">🔒 ${HUNTER_COST[k]}🌼</div>` : ''}${k === selected ? '<div class="ok">✔</div>' : ''}<div class="tn">${hh.name}</div></div>`;
+    d.onclick = () => { viewing = k; Sfx.init(); Sfx.play('pick'); buildCaz(); };
+    g.appendChild(d);
   }
+  const id = viewing, h = HUNTERS[id], lock = !owned(id), cost = HUNTER_COST[id] || 0, W = WEAPONS[h.weapon];
+  const pct = (v, lo, hi) => Math.round(100 * Math.max(0.12, Math.min(1, (v - lo) / (hi - lo))));
+  const det = $('cazDet'); det.className = 'in' + (lock ? ' locked' : '');
+  det.innerHTML = `<div class="big"><img src="${portrait(id)}" alt=""></div><div class="info">
+    <div class="nm">${h.name}</div><div class="tg">${HUNTER_TAG[id] || ''}</div>
+    <div class="ds">${h.blurb}</div>
+    <div class="sbar"><span>❤️ Vida</span><div class="bar"><i style="width:${pct(h.hp, 70, 145)}%"></i></div><em>${h.hp}</em></div>
+    <div class="sbar"><span>💨 Velocidad</span><div class="bar"><i style="width:${pct(h.speed, 130, 160)}%"></i></div><em>${h.speed}</em></div>
+    <div class="ds ab">⚔️ <b>${W.name}:</b> ${W.desc}</div>
+    <div class="ds ab">✨ <b>${h.ability}:</b> ${h.abilityDesc}</div>
+    ${lock ? `<button class="obtn" id="cazAct"><b>🔒</b>Abrir por ${cost} 🌼</button><div class="ds" style="font-size:11px">${save.flores >= cost ? '¡Ya te alcanza!' : `Te faltan ${cost - save.flores} 🌼`}</div>`
+      : id === selected ? '<div class="tagok">✔ Es tu cazador</div>' : '<button class="obtn" id="cazAct"><b>✔</b>Elegir</button>'}
+  </div>`;
+  const act = $('cazAct');
+  if (act) act.onclick = () => {
+    if (lock && !unlockHunter(id, act)) return;
+    selected = id; Sfx.init(); Sfx.play('pick'); buildCaz(); hubTop();
+  };
+}
+
+function buildArs() {
+  document.querySelectorAll('#arsSeg button').forEach(b => { b.classList.toggle('on', b.dataset.s === arsSeg); b.onclick = () => { arsSeg = b.dataset.s; Sfx.init(); Sfx.play('pick'); buildArs(); }; });
+  const L = $('arsList'); L.innerHTML = '';
+  if (arsSeg === 'armas') {
+    const have = Object.keys(save.armas || {}).length;
+    $('arsTop').innerHTML = `Tienes <b>${have}/${Object.keys(WEAPONS).length}</b> armas de la Piñata. La que equipes entra contigo a la partida con su bono.`;
+    const order = Object.keys(WEAPONS).sort((x, y) => (y === save.equipo) - (x === save.equipo) || ((save.armas[y] ? save.armas[y].r + 1 : 0) - (save.armas[x] ? save.armas[x].r + 1 : 0)));
+    for (const id of order) {
+      const a = save.armas[id], W = WEAPONS[id], R = a && RARITIES[a.r], on = save.equipo === id;
+      const d = document.createElement('div'); d.className = 'frame wrow' + (a ? '' : ' none') + (on ? ' eq' : '');
+      let tx;
+      if (a) { const bb = gearBonus(a); tx = `<b>${W.name}</b><span class="rr" style="color:${R.color}">${R.name} <span class="st">${starsH(a.e)}</span></span><span>+${Math.round((bb.dmg - 1) * 100)}% de daño${bb.cd < 1 ? ` · −${Math.round((1 - bb.cd) * 100)}% espera` : ''}${bb.lv > 1 ? ` · nivel ${bb.lv}` : ''}</span>`; }
+      else tx = `<b>${W.name}</b><span>${W.desc}</span><span style="color:#8a7aa8">Consíguela en la Piñata</span>`;
+      d.innerHTML = `<div class="in"><span class="ico" style="--rc:${R ? R.color : '#3a2d4a'}">${wIco(id)}</span><span class="tx">${tx}</span>${a ? (on ? '<span class="eqt">✔ EQUIPADA</span><button class="obtn" data-q>Quitar</button>' : '<button class="obtn" data-e>Equipar</button>') : ''}</div>`;
+      const be = d.querySelector('[data-e]'), bq = d.querySelector('[data-q]');
+      if (be) be.onclick = () => { save.equipo = id; persist(); Sfx.init(); Sfx.play('chest'); buildArs(); hubTop(); };
+      if (bq) bq.onclick = () => { save.equipo = ''; persist(); Sfx.init(); Sfx.play('pick'); buildArs(); hubTop(); };
+      L.appendChild(d);
+    }
+    const go = document.createElement('button'); go.className = 'obtn'; go.innerHTML = '<b>🪅</b>Ir a la Piñata'; go.style.alignSelf = 'center'; go.onclick = () => showTab('pinata'); L.appendChild(go);
+  } else {
+    const ev = save.evos || [];
+    $('arsTop').innerHTML = `Descubriste <b>${ev.length}/${Object.keys(EVOS).length}</b> evoluciones. Sube un arma a nivel 8, junta su objeto pareja y abre un cofre.`;
+    const g = document.createElement('div'); g.className = 'egrid';
+    for (const [w, E] of Object.entries(EVOS)) {
+      const k = ev.includes(w), im = IMG['icono_evo_' + w] || IMG['icono_' + w];
+      const d = document.createElement('div'); d.className = 'frame ecard' + (k ? '' : ' unk');
+      d.innerHTML = `<div class="in"><span class="ico">${im ? `<img src="${im}" alt="">` : '❔'}</span><span class="tx">${k ? `<b>${E.name}</b>${WEAPONS[w].name} + ${PASSIVES[E.pas].name}<br>${E.desc}` : `<b>???</b>Sube <b style="display:inline;color:#cdbde6">${WEAPONS[w].name}</b> a nivel 8 y descubre su pareja.`}</span></div>`;
+      g.appendChild(d);
+    }
+    L.appendChild(g);
+  }
+}
+
+function showScene(on) {
+  $('scene').classList.toggle('hidden', !on);
+  const bg = $('bgimg'); if (bg && IMG.menu_fondo_v) { bg.style.setProperty('--bgv', `url(${IMG.menu_fondo_v})`); bg.style.setProperty('--bgh', `url(${IMG.menu_fondo_h || IMG.menu_fondo_v})`); }
+}
+(function petals() {
+  const box = document.getElementById('petals'); if (!box) return;
+  for (let i = 0; i < 16; i++) {
+    const p = document.createElement('i');
+    p.style.left = `${Math.random() * 100}%`; p.style.animationDuration = `${9 + Math.random() * 9}s`; p.style.animationDelay = `${-Math.random() * 18}s`;
+    p.style.transform = `scale(${0.6 + Math.random() * 0.8})`; box.appendChild(p);
+  }
+})();
+function openTitle() {
+  showScene(true); $('tLogo').src = IMG.logo; $('tVer').textContent = 'v' + VERSION;
+  $('title').classList.remove('hidden');
+  $('title').onclick = () => { Sfx.init(); $('title').classList.add('hidden'); showTab('jugar'); offerResume(); };
+}
+function setupHub() {
+  document.querySelectorAll('.hubnav button').forEach(b => { b.onclick = () => { Sfx.init(); Sfx.play('pick'); if (b.dataset.t === 'jugar' && tab === 'jugar' && !$('menu').classList.contains('hidden')) { openPrep(); return; } showTab(b.dataset.t); }; });
+  const open = (id) => { $(id).classList.remove('hidden'); };
+  document.querySelectorAll('.modal').forEach(m => { m.onclick = (e) => { if (e.target === m || e.target.hasAttribute('data-close')) m.classList.add('hidden'); }; });
+  $('setBtn').onclick = () => {
+    $('setVer').textContent = 'v' + VERSION; $('sndVal').textContent = Sfx.on ? 'Sí' : 'No';
+    const ac = $('acct');
+    if (nube.on) { $('acctVal').textContent = nube.name; ac.removeAttribute('href'); }
+    else if (nube.can) { $('acctVal').textContent = 'Iniciar sesión ›'; ac.href = loginUrl(); }
+    else { $('acctVal').textContent = 'Solo en leyendas.darkshadow-studios.com'; ac.removeAttribute('href'); }
+    open('setBox');
+  };
+  $('sndBtn').onclick = () => { Sfx.on = !Sfx.on; try { localStorage.setItem('ndl_snd', Sfx.on ? '1' : '0'); } catch (e) { /* nada */ } $('sndVal').textContent = Sfx.on ? 'Sí' : 'No'; };
+  try { if (localStorage.getItem('ndl_snd') === '0') Sfx.on = false; } catch (e) { /* nada */ }
+  $('howBtn').onclick = () => { $('setBox').classList.add('hidden'); open('howBox'); };
+  $('profBtn').onclick = () => {
+    const ev = (save.evos || []).length, ar = Object.keys(save.armas || {}).length;
+    $('profStats').innerHTML = [['Mejor noche', save.mejor ? fmtT(save.mejor) : '—'], ['Partidas', save.partidas || 0], ['Victorias contra La Llorona', save.victorias || 0],
+      ['Flores ganadas', save.ganadas || 0], ['Cazadores', `${save.cazadores.length}/${Object.keys(HUNTERS).length}`], ['Armas', `${ar}/${Object.keys(WEAPONS).length}`],
+      ['Evoluciones', `${ev}/${Object.keys(EVOS).length}`], ['Talentos', TALENTS.reduce((n, t) => n + tl(t.id), 0)]].map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
+    open('profBox');
+  };
+  setInterval(() => { if (!$('hub').classList.contains('hidden')) hubTop(); }, 700);
 }
 
 // ---------- Árbol de talentos ----------
@@ -1740,7 +1880,7 @@ function openPrep() {
   prep.opts = []; while (prep.opts.length < 2) { const k = pick(ids); if (!prep.opts.includes(k)) prep.opts.push(k); }
   prep.obj = prep.opts[0];
   save.malds = (save.malds || []).filter(c => CURSES[c]);
-  ['menu', 'end'].forEach(id => $(id).classList.add('hidden'));
+  ['menu', 'end'].forEach(id => $(id).classList.add('hidden')); hideHub();
   buildPrep(); $('prep').classList.remove('hidden');
 }
 function buildPrep() {
@@ -1758,7 +1898,7 @@ function startRun(resume) {
   Sfx.init();
   if (!resume) clearRun();
   if (!owned(selected)) selected = 'machetero';
-  ['menu', 'end', 'pause', 'levelup', 'tree', 'resumeBox', 'pinata', 'prep'].forEach(id => $(id).classList.add('hidden'));
+  ['menu', 'end', 'pause', 'levelup', 'tree', 'resumeBox', 'pinata', 'prep', 'title', 'howBox', 'setBox', 'profBox'].forEach(id => $(id).classList.add('hidden')); hideHub(); showScene(false);
   const sm = game.scene;
   if (sm.getScene('play')) sm.stop('play');
   sm.start('play', { hunter: resume ? resume.hunter : selected, resume: resume || null,
@@ -1771,7 +1911,7 @@ function toMenu() {
   if (s && s.sys.isActive() && !s.over) clearRun(); // salir a la mitad = se abandona
   if (s) game.scene.stop('play');
   ['end', 'pause', 'levelup', 'hud', 'count', 'fog', 'prep'].forEach(id => $(id).classList.add('hidden'));
-  buildMenu(); $('menu').classList.remove('hidden');
+  showTab('jugar');
   offerResume();
 }
 
@@ -1799,21 +1939,17 @@ async function boot() {
     scene: [],
   });
   game.scene.add('play', Play, false); if (DEV) window.__g = game;
-  buildMenu();
+  setupHub();
   $('startBtn').onclick = () => { Sfx.init(); openPrep(); };
   $('prepGo').onclick = () => { prep.go = true; startRun(); };
-  $('prepBack').onclick = () => { $('prep').classList.add('hidden'); $('menu').classList.remove('hidden'); };
+  $('prepBack').onclick = () => { $('prep').classList.add('hidden'); showTab('jugar'); };
   $('againBtn').onclick = () => startRun();
   $('menuBtn').onclick = toMenu;
-  $('treeBtn').onclick = () => openTree('menu');
   setupPinata(IMG, (k) => { Sfx.init(); Sfx.play(k); });
-  $('pinataBtn').onclick = () => { Sfx.init(); openPinata('menu'); };
-  $('endPinataBtn').onclick = () => { Sfx.init(); openPinata('end'); };
-  $('pnBack').onclick = () => { if (closePinata() === 'end') toMenu(); else { buildMenu(); $('menu').classList.remove('hidden'); } };
-  onNube(() => { if (!$('menu').classList.contains('hidden')) buildMenu(); });
+  $('endPinataBtn').onclick = () => { Sfx.init(); toMenu(); showTab('pinata'); };
+  $('endTreeBtn').onclick = () => { toMenu(); showTab('talentos'); };
+  onNube(() => { if (!$('hub').classList.contains('hidden')) showTab(tab); });
   startNube();
-  $('endTreeBtn').onclick = () => openTree('end');
-  $('treeBack').onclick = () => { $('tree').classList.add('hidden'); if (treeFrom === 'end') toMenu(); else { buildMenu(); $('menu').classList.remove('hidden'); } };
   $('quitBtn').onclick = toMenu;
   $('resumeBtn').onclick = () => game.scene.getScene('play').hud.resume();
   $('pauseBtn').onclick = () => game.scene.getScene('play').hud.pause();
@@ -1825,7 +1961,8 @@ async function boot() {
   window.addEventListener('pagehide', leave);
   window.addEventListener('blur', () => { const s = game.scene.getScene('play'); if (s && s.sys.isActive() && !s.over) s.saveRun(); });
   if (Q.has('go')) { if (HUNTERS[Q.get('go')]) { selected = Q.get('go'); if (!owned(selected) && (DEV || AUTO)) save.cazadores.push(selected); } startRun(); }
-  else offerResume();
+  else if (Q.has('menu')) { showTab(Q.get('menu') || 'jugar'); offerResume(); }
+  else openTitle();
 }
 boot();
 
