@@ -334,6 +334,7 @@ class Play extends Phaser.Scene {
 
   step(dt) {
     this.t += dt;
+    if (this.killsAt10 == null && this.t >= FLOWERS.afterT) this.killsAt10 = this.kills;
     this.saveAcc = (this.saveAcc || 0) + dt;
     if (this.saveAcc >= 3) { this.saveAcc = 0; this.saveRun(); }
     this.updatePlayer(dt);
@@ -1313,7 +1314,7 @@ class Play extends Phaser.Scene {
     const P = this.P, r1 = (v) => Math.round(v * 10) / 10;
     const run = {
       v: 1, at: Date.now(), hunter: this.hunterId, t: r1(this.t), kills: this.kills, level: this.level, xp: r1(this.xp), xpNeed: this.xpNeed, pendingLv: this.pendingLv,
-      energy: this.energy, W: this.W.map(w => [w.id, w.lv, w.evo ? 1 : 0]), Pass: this.Pass, mapChests: this.mapChests, chestFlores: this.chestFlores, punHits: this.punHits, hp: r1(P.hp), rerolls: this.rerolls, revived: this.revived, gear: this.gear,
+      energy: this.energy, W: this.W.map(w => [w.id, w.lv, w.evo ? 1 : 0]), Pass: this.Pass, mapChests: this.mapChests, chestFlores: this.chestFlores, punHits: this.punHits, killsAt10: this.killsAt10, hp: r1(P.hp), rerolls: this.rerolls, revived: this.revived, gear: this.gear,
       bossDone: this.bossDone, bossKills: this.bossKills, won: this.won, bossN: this.bossN, nextBossT: this.nextBossT === Infinity ? -1 : r1(this.nextBossT),
       helpT: r1(this.helpT), flockT: r1(this.flockT), dmgTaken: Math.round(this.dmgTaken || 0),
       E: this.E.filter(e => e.alive).slice(0, 260).map(e => [e.k, Math.round(e.x - P.x), Math.round(e.y - P.y), Math.round(e.hp), Math.round(e.max), e.boss ? 1 : 0, e.n || 0, e.loop || 0, e.wolf ? 1 : 0, e.stolen || 0, r1(e.dmg), r1(e.spd)]),
@@ -1330,7 +1331,7 @@ class Play extends Phaser.Scene {
     this.gear = r.gear || {};
     this.W = []; this.aura.setVisible(false);
     for (const [id, lv, evo] of r.W) { if (!WEAPONS[id]) continue; this.addWeapon(id); const w = this.W[this.W.length - 1]; w.lv = lv; w.evo = !!evo; if (w.evo && id === 'copal') this.aura.setTint(0x7dffb0); }
-    this.mapChests = r.mapChests || {}; this.chestFlores = r.chestFlores || 0; this.punHits = r.punHits || 0;
+    this.mapChests = r.mapChests || {}; this.chestFlores = r.chestFlores || 0; this.punHits = r.punHits || 0; this.killsAt10 = r.killsAt10 != null ? r.killsAt10 : null;
     this.Pass = r.Pass || {};
     P.hp = Math.min(this.maxHp, r.hp);
     for (const a of r.E) {
@@ -1359,13 +1360,16 @@ class Play extends Phaser.Scene {
 }
 
 function flowerLines(sc, win) {
-  const r = { tiempo: Math.floor(sc.t / FLOWERS.perSeconds), enemigos: Math.floor(sc.kills / FLOWERS.perKills), jefes: 0, cofres: sc.chestFlores || 0 };
-  for (const b of sc.bossKills) r.jefes += (FLOWERS.boss[b.k] || 0) * b.loop;
+  const F = FLOWERS, tA = Math.min(sc.t, F.afterT), tB = Math.max(0, sc.t - F.afterT);
+  const kA = sc.killsAt10 != null ? sc.killsAt10 : sc.kills, kB = sc.kills - kA;
+  const r = { tiempo: Math.floor((tA + tB * F.afterMul) / F.perSeconds), enemigos: Math.floor((kA + kB * F.afterMul) / F.perKills), jefes: 0, cofres: sc.chestFlores || 0 };
+  for (const b of sc.bossKills) r.jefes += F.boss[b.k] || 0;
   return r;
 }
 Play.prototype.flowerReward = function (win) {
   const r = flowerLines(this, win);
   let base = r.tiempo + r.enemigos + r.jefes + r.cofres;
+  r.tope = base > FLOWERS.cap; base = Math.min(base, FLOWERS.cap);
   const cosecha = 1 + 0.08 * tl('for_cosecha');
   const first = save.dia !== today();
   const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1));
@@ -1484,7 +1488,7 @@ class Hud {
     const r = sc.reward;
     if (r) {
       const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : ''].filter(Boolean).join(' · ');
-      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
+      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
     }
     $('end').classList.remove('hidden');
   }

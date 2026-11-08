@@ -137,7 +137,9 @@ export const HUNTER_COST = { luchadora: 400, cohetero: 900 };
 
 // Flores al terminar una partida
 // En la noche sin fin cada jefe da sus flores × la vuelta (vuelta 2 = ×2…).
-export const FLOWERS = { perSeconds: 10, perKills: 20, boss: { cadejo: 15, charro: 25, llorona: 60 }, firstOfDay: 2 };
+// Noche sin fin (7 nov 2026): después del minuto 10 el tiempo y los enemigos dan la mitad, los jefes de las vueltas
+// dan sus flores normales (sin ×vuelta) y cada partida tiene un tope de flores antes de los bonos (1ª del día, Cosecha).
+export const FLOWERS = { perSeconds: 10, perKills: 20, boss: { cadejo: 15, charro: 25, llorona: 60 }, firstOfDay: 2, afterT: 600, afterMul: 0.5, cap: 450 };
 
 // ---------- Piñata de armas (gacha) ----------
 // Cada tirada da una de las 7 armas con una rareza. Se equipa UNA antes de la partida: empiezas con ella y con su bono.
