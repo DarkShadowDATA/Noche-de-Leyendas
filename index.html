@@ -322,16 +322,153 @@
     .hthumb img { max-height:12vh; } .obtn.main { margin:8px 0 4px; padding:12px 30px; }
     #tLogo { width:auto; height:46vh; }
   }
+
+  /* ===== Hub v2 (barra de arriba, pestañas abajo, arte final) ===== */
+  #scene .bgimg { position:absolute; inset:0; background:var(--bgv) center/cover no-repeat; }
+  @media (min-aspect-ratio:4/5) { #scene .bgimg { background-image:var(--bgh); } }
+  #scene .shade { position:absolute; inset:0; background:linear-gradient(180deg, rgba(10,4,20,.15) 0%, rgba(10,4,20,0) 30%, rgba(10,4,20,.35) 75%, rgba(10,4,20,.8) 100%); }
+  #hub { position:fixed; inset:0; pointer-events:none; z-index:6; }
+  #hub > * { pointer-events:auto; }
+  .hubtop { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:6px; padding:max(8px, env(safe-area-inset-top)) 10px 8px; background:linear-gradient(180deg, rgba(10,4,20,.92), rgba(10,4,20,.55) 70%, transparent); }
+  .hubtop .grow { flex:1; }
+  .prof { display:flex; align-items:center; gap:7px; background:rgba(18,10,30,.8); border:1.5px solid var(--oro2); border-radius:26px; padding:3px 12px 3px 3px; cursor:pointer; color:#f3e6c8; min-width:0; }
+  .prof .av { width:38px; height:38px; border-radius:50%; overflow:hidden; border:2px solid var(--oro); background:radial-gradient(circle,#2f6f72,#102a2e); flex:none; }
+  .prof .av img { width:100%; height:180%; object-fit:cover; object-position:50% 0; }
+  .prof .pi { display:flex; flex-direction:column; align-items:flex-start; min-width:0; }
+  .prof b { font-family:var(--serif); font-size:13px; color:var(--oro); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:30vw; }
+  .prof small { font-family:system-ui,sans-serif; font-size:10.5px; color:#cdbde6; white-space:nowrap; }
+  .cur { font-family:'Lilita One',system-ui; font-size:17px; color:var(--oro); background:rgba(18,10,30,.85); border:1.5px solid var(--oro); border-radius:16px; padding:3px 10px; white-space:nowrap; }
+  .cur.bl { color:#7ff7ea; border-color:#3fe0d0; }
+  .gearb { width:36px; height:36px; border-radius:50%; border:1.5px solid var(--oro2); background:rgba(18,10,30,.85); font-size:17px; cursor:pointer; flex:none; }
+  .hubnav { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:center; align-items:flex-end; gap:2px; padding:0 6px max(6px, env(safe-area-inset-bottom));
+    background:linear-gradient(180deg, transparent, rgba(10,4,20,.92) 38%); }
+  .hubnav button { position:relative; flex:1; max-width:110px; display:flex; flex-direction:column; align-items:center; gap:1px; padding:8px 0 4px; border:none; cursor:pointer;
+    background:linear-gradient(180deg,#24153a,#140a22); color:#bfaedb; font-family:var(--serif); font-weight:700; font-size:10.5px;
+    clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%,0 8px); box-shadow:inset 0 2px 0 rgba(233,196,106,.35); }
+  .hubnav button i { font-style:normal; font-size:22px; filter:grayscale(.5) brightness(.85); transition:transform .15s; }
+  .hubnav button.on { color:var(--oro); background:linear-gradient(180deg,#3a2358,#1c1030); box-shadow:inset 0 2px 0 var(--oro), inset 0 0 14px rgba(233,196,106,.25); }
+  .hubnav button.on i { filter:none; transform:translateY(-2px) scale(1.12); }
+  .hubnav button.play { max-width:118px; margin:0 2px; padding:0 0 4px; background:none; box-shadow:none; clip-path:none; color:var(--oro); }
+  .hubnav button.play i { width:64px; height:64px; margin-top:-26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:30px; filter:none;
+    background:radial-gradient(circle at 50% 40%, #2a8a8c, #0b2a30 70%); box-shadow:0 0 0 3px var(--oro), 0 0 0 6px #0b2a30, 0 0 0 7px var(--oro2), 0 0 22px rgba(63,240,216,.6); }
+  .hubnav button.play.on i { transform:scale(1.06); }
+  .hubnav .dot { position:absolute; top:5px; right:calc(50% - 20px); width:10px; height:10px; border-radius:50%; background:#ff4d5e; box-shadow:0 0 0 2px #140a22, 0 0 8px #ff4d5e; }
+  .screen.tabp { top:calc(max(8px, env(safe-area-inset-top)) + 50px); bottom:calc(max(6px, env(safe-area-inset-bottom)) + 84px); padding:6px 12px 10px; background:transparent; backdrop-filter:none; }
+  .screen.tabp > :first-child { margin-top:0; }
+  #tree.tabp, #pinata.tabp { background:linear-gradient(180deg, rgba(10,4,20,.55), rgba(10,4,20,.72)); }
+  #tree.tabp > h1, #tree.tabp #treeFlores, #tree.tabp #treeBack, #pinata.tabp #pnBack, #pinata.tabp .pn-pills, #pinata.tabp #pnCol { display:none; }
+  #tree.tabp .controls { margin-bottom:6px; }
+
+  /* Jugar */
+  #menu.tabp { justify-content:flex-start; }
+  #menu #logo { width:auto; height:min(15vh, 120px); margin:0; }
+  .stage { position:relative; flex:1; min-height:150px; width:100%; max-width:520px; display:flex; justify-content:center; align-items:flex-end; }
+  .stage .glow { position:absolute; bottom:2%; left:50%; width:min(80vw, 380px); aspect-ratio:1/0.32; transform:translateX(-50%); border-radius:50%;
+    background:radial-gradient(ellipse, rgba(63,240,216,.55), rgba(63,240,216,.12) 55%, transparent 72%); filter:blur(2px); animation:aura 3s ease-in-out infinite; }
+  .stage img { position:relative; height:100%; max-height:52vh; max-width:94%; object-fit:contain; filter:drop-shadow(0 0 18px rgba(63,240,216,.3)) drop-shadow(0 10px 14px rgba(0,0,0,.7)); animation:idle 3s ease-in-out infinite; transform-origin:50% 100%; }
+  .plate { margin-top:-6px; position:relative; padding:6px 34px 7px; text-align:center; background:linear-gradient(#2b1a3c,#160c22); box-shadow:inset 0 0 0 2px var(--oro);
+    clip-path:polygon(16px 0,calc(100% - 16px) 0,100% 50%,calc(100% - 16px) 100%,16px 100%,0 50%); }
+  .plate .pn { font-family:var(--serif); font-weight:900; font-size:clamp(20px,5.6vw,28px); color:var(--oro); text-shadow:0 2px 0 #3a1a00; line-height:1.05; }
+  .plate .pt { font-family:var(--serif); font-weight:700; font-size:12px; color:#f3e6c8; }
+  .hrow { display:flex; gap:8px; width:100%; max-width:440px; margin-top:8px; }
+  .frame.mini { flex:1; --c:10px; border:none; cursor:pointer; font:inherit; color:inherit; text-align:left; }
+  .frame.mini .in { display:flex; align-items:center; gap:8px; padding:7px 9px; min-height:52px; }
+  .frame.mini .ico { width:38px; height:38px; flex:none; display:flex; align-items:center; justify-content:center; border-radius:8px; border:2px solid var(--rc, #5a3f7a); background:#1a0f2a; font-size:20px; }
+  .frame.mini .ico img { width:32px; height:32px; }
+  .frame.mini .tx { display:flex; flex-direction:column; min-width:0; font-family:system-ui,sans-serif; font-size:11px; color:#cdbde6; line-height:1.2; }
+  .frame.mini .tx b { font-family:var(--serif); font-size:13px; color:#fff1cf; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .frame.mini .tx .st { color:var(--oro); letter-spacing:-1px; } .frame.mini .tx .st i { font-style:normal; opacity:.25; }
+  #menu .obtn.main { margin:10px 0 2px; }
+
+  /* Cazadores */
+  #cazGrid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%; max-width:560px; margin-bottom:10px; }
+  .ccard { --c:10px; cursor:pointer; }
+  .ccard .in { position:relative; display:flex; flex-direction:column; align-items:center; padding:4px 2px 6px; background:radial-gradient(70% 55% at 50% 40%, rgba(63,240,216,.22), transparent 70%), linear-gradient(180deg,#2a1846,#130a20); }
+  .ccard img { width:100%; height:clamp(80px, 15vh, 140px); object-fit:contain; object-position:50% 100%; }
+  .ccard .tn { font-family:var(--serif); font-weight:700; font-size:10.5px; color:#f3e6c8; text-align:center; line-height:1.05; margin-top:2px; }
+  .ccard.locked img { filter:grayscale(1) brightness(.3); }
+  .ccard .lk { position:absolute; top:34%; left:0; right:0; text-align:center; font-family:'Lilita One',system-ui; font-size:13px; color:var(--oro); text-shadow:0 2px 0 #000; }
+  .ccard .ok { position:absolute; top:4px; right:6px; font-size:13px; color:#7dff8a; text-shadow:0 1px 0 #000; }
+  .ccard.view { filter:drop-shadow(0 0 8px rgba(233,196,106,.7)); }
+  .ccard.view .in { background:radial-gradient(70% 55% at 50% 40%, rgba(233,196,106,.3), transparent 70%), linear-gradient(180deg,#3a2358,#1c1030); }
+  #cazadores > .frame { width:100%; max-width:560px; }
+  #cazDet { display:flex; gap:10px; padding:10px 12px; align-items:center; }
+  #cazDet .big { width:34%; max-width:170px; flex:none; }
+  #cazDet .big img { width:100%; filter:drop-shadow(0 6px 8px rgba(0,0,0,.6)); }
+  #cazDet.locked .big img { filter:grayscale(1) brightness(.35); }
+  #cazDet .info { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  #cazDet .nm { font-family:var(--serif); font-weight:900; font-size:clamp(18px,5vw,24px); color:var(--oro); line-height:1.05; }
+  #cazDet .tg { font-family:var(--serif); font-weight:700; font-size:12px; color:#f3e6c8; }
+  #cazDet .ds { font-family:Georgia,serif; font-style:italic; font-size:12.5px; color:#e9dcff; line-height:1.3; }
+  #cazDet .ab b { color:#9ff7ea; font-style:normal; font-family:var(--serif); }
+  .sbar { display:flex; align-items:center; gap:6px; font-family:var(--serif); font-weight:700; font-size:11px; color:#f3e6c8; }
+  .sbar span { width:86px; white-space:nowrap; font-size:10.5px; } .sbar .bar { flex:1; height:6px; border-radius:3px; background:#2a1d3a; overflow:hidden; } .sbar .bar i { display:block; height:100%; background:linear-gradient(90deg,#3ff0d8,#b8fff4); } .sbar em { font-style:normal; font-family:system-ui; color:#9ff7ea; width:28px; text-align:right; }
+  #cazDet .obtn { margin:6px 0 0; align-self:flex-start; }
+  .tagok { font-family:var(--serif); font-weight:700; color:#7dff8a; font-size:13px; margin-top:4px; }
+
+  /* Arsenal */
+  .seg { display:flex; gap:0; margin-bottom:8px; clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,10px 100%,0 50%); box-shadow:inset 0 0 0 1.5px var(--oro2); background:#160c22; }
+  .seg button { font-family:var(--serif); font-weight:700; font-size:13px; color:#bfaedb; background:none; border:none; padding:8px 18px; cursor:pointer; }
+  .seg button.on { color:#1a0b00; background:linear-gradient(#ffe39a,#e0a840); }
+  #arsTop { width:100%; max-width:560px; font-family:system-ui,sans-serif; font-size:12.5px; color:#cdbde6; text-align:center; margin-bottom:6px; }
+  #arsTop b { color:var(--oro); }
+  #arsList { width:100%; max-width:560px; display:flex; flex-direction:column; gap:7px; }
+  .wrow { --c:9px; }
+  .wrow .in { display:flex; align-items:center; gap:10px; padding:8px 10px; }
+  .wrow .ico { width:50px; height:50px; flex:none; display:flex; align-items:center; justify-content:center; border-radius:10px; border:2.5px solid var(--rc, #4a3a5a); background:radial-gradient(circle, color-mix(in srgb, var(--rc, #333) 30%, #140a22), #140a22); box-shadow:0 0 10px color-mix(in srgb, var(--rc, #000) 45%, transparent); font-size:24px; }
+  .wrow .ico img { width:42px; height:42px; }
+  .wrow .tx { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; font-family:system-ui,sans-serif; font-size:11.5px; color:#cdbde6; }
+  .wrow .tx b { font-family:var(--serif); font-size:14.5px; color:#fff1cf; }
+  .wrow .tx .rr { font-family:var(--serif); font-weight:700; font-size:11.5px; }
+  .wrow .tx .st { color:var(--oro); letter-spacing:-1px; font-size:12px; } .wrow .tx .st i { font-style:normal; opacity:.25; }
+  .wrow .obtn { margin:0; padding:7px 12px; font-size:12.5px; flex:none; }
+  .wrow.eq .in { background:radial-gradient(80% 100% at 0% 50%, rgba(233,196,106,.22), transparent 70%), linear-gradient(180deg,rgba(32,20,52,.95),rgba(12,7,22,.97)); }
+  .wrow.none .ico img, .wrow.none .ico { filter:grayscale(1) brightness(.45); }
+  .wrow .eqt { font-family:var(--serif); font-weight:900; font-size:11.5px; color:#7dff8a; flex:none; }
+  .egrid { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
+  .ecard { --c:10px; } .ecard .in { display:flex; gap:8px; align-items:center; padding:8px; min-height:74px; }
+  .ecard .ico { width:54px; height:54px; flex:none; } .ecard .ico img { width:100%; height:100%; }
+  .ecard.unk .ico img { filter:brightness(0) drop-shadow(0 0 3px rgba(150,90,255,.8)); opacity:.75; }
+  .ecard .tx { font-family:system-ui,sans-serif; font-size:11px; color:#cdbde6; line-height:1.25; min-width:0; }
+  .ecard .tx b { display:block; font-family:var(--serif); font-size:12.5px; color:var(--oro); }
+  .ecard.unk .tx b { color:#8a7aa8; }
+
+  /* Ventanas */
+  .modal { position:fixed; inset:0; z-index:16; background:rgba(8,3,16,.72); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal .frame { width:100%; max-width:420px; }
+  .mbody { padding:16px 18px; display:flex; flex-direction:column; gap:6px; }
+  .mbody .htitle { font-family:var(--serif); font-weight:900; font-size:22px; color:var(--oro); text-align:center; margin-bottom:4px; }
+  .mbody.how { font-family:system-ui,sans-serif; font-size:13.5px; color:#e9dcff; } .mbody.how p { margin:2px 0; } .mbody.how b { color:var(--oro); }
+  .mrow { display:flex; justify-content:space-between; align-items:center; width:100%; padding:11px 12px; border:none; cursor:pointer; text-decoration:none; font-family:var(--serif); font-weight:700; font-size:14px; color:#fff1cf; background:rgba(40,24,64,.8); box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:8px; }
+  .mrow b { color:var(--oro); font-family:system-ui; }
+  .mfoot { font-family:system-ui,sans-serif; font-size:11px; color:#a898c4; text-align:center; margin:6px 0; }
+  .mbody .obtn { align-self:center; margin-top:6px; }
+  #profStats { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  #profStats div { background:rgba(40,24,64,.8); box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:8px; padding:8px; text-align:center; font-family:system-ui,sans-serif; font-size:11px; color:#cdbde6; }
+  #profStats b { display:block; font-family:'Lilita One',system-ui; font-size:20px; color:var(--oro); }
+  @media (orientation:landscape) and (min-width:700px) {
+    .stage img { max-height:44vh; } #menu #logo { height:12vh; } .hrow { max-width:520px; }
+    #cazGrid .ccard img { height:18vh; }
+  }
+
+  /* Talentos con el mismo estilo */
+  .tabs button { font-family:var(--serif); font-weight:700; font-size:13.5px; color:#bfaedb; border-radius:0; border:none; background:#160c22; box-shadow:inset 0 0 0 1.5px #5a3f7a; clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%); padding:8px 14px; }
+  .tabs button.on { color:#1a0b00; background:linear-gradient(#ffe39a,#e0a840); box-shadow:none; }
+  .branch h3 { font-family:var(--serif); font-weight:900; }
+  .tnode { border:none; border-radius:0; background:linear-gradient(180deg,rgba(32,20,52,.95),rgba(12,7,22,.97)); box-shadow:inset 0 0 0 1.5px var(--oro2);
+    clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0 calc(100% - 10px),0 10px); }
+  .tnode.max { box-shadow:inset 0 0 0 2px #5ee87a; } .tnode.final { box-shadow:inset 0 0 0 2px var(--oro), inset 0 0 18px rgba(233,196,106,.25); }
+  .tnode .tn { font-family:var(--serif); font-weight:900; font-size:15px; color:var(--oro); }
+  .tnode .buy { font-family:var(--serif) !important; font-weight:900; border:none !important; border-radius:0 !important; color:var(--oro) !important;
+    background:radial-gradient(90% 120% at 50% 50%, #1f6a6e, #0b2a30 75%) !important; box-shadow:inset 0 0 0 2px var(--oro), inset 0 0 12px rgba(63,240,216,.4) !important;
+    clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%); text-shadow:0 2px 0 #3a1a00; }
+  .tnode .buy:disabled { filter:grayscale(.8) brightness(.6); }
 </style>
 </head>
 <body>
 <div id="game"></div>
 <div id="scene" class="hidden">
-  <div class="sky"></div><div class="moon"></div>
-  <svg class="ruins" viewBox="0 0 400 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-    <path class="far" d="M0 260V150h18v-20h10v20h30v-40l14-14 14 14v40h22V120h8v-8h8v8h8v40h40v-30l20-22 20 22v30h26V96l10-16v-14h6v14l10 16v64h30v-18h12v-12h12v12h12v18h30v100z"/>
-    <path class="near" d="M0 260V196c14 0 22-20 22-34h8v-8h8v8h6c0 18 10 38 22 38v-36c0-12 8-22 18-22s18 10 18 22v36h18v-30c0-12 8-22 18-22s18 10 18 22v30h14v60zM270 260v-92h10l14-26v-26l12-14 12 14v26l14 26h10v92zm28-112h16v-14c0-5-3-9-8-9s-8 4-8 9z"/>
-  </svg>
+  <div class="bgimg" id="bgimg"></div><div class="shade"></div>
   <div class="mist"></div><div id="petals"></div><div class="wisp w1"></div><div class="wisp w2"></div><div class="wisp w3"></div>
 </div>
 
@@ -370,35 +507,17 @@
   <div class="tfoot">DarkShadow Studios · <span id="tVer"></span></div>
 </div>
 
-<div id="menu" class="screen scenic hidden">
-  <div class="topbar">
-    <a id="acct" class="chip hidden" target="_top"></a>
-    <span class="grow"></span>
-    <div class="chip gold" id="menuFlores">🌼 0</div>
-  </div>
+<div id="menu" class="screen scenic tabp hidden">
   <img id="logo" alt="Noche de Leyendas">
-  <div class="ribbon"><span>✿</span> Elige a tu cazador <span>✿</span></div>
-  <div class="pick">
-    <div class="frame big" id="featWrap"><div class="in" id="feat"></div></div>
-    <div id="hunters"></div>
+  <div class="stage" id="stage">
+    <div class="glow"></div><img id="stageImg" alt="">
   </div>
-  <div id="gearRow"></div>
+  <div class="plate"><div class="pn" id="plName"></div><div class="pt" id="plTag"></div></div>
+  <div class="hrow">
+    <button class="frame mini" id="eqCard"><div class="in" id="eqIn"></div></button>
+    <div class="frame mini"><div class="in" id="abIn"></div></div>
+  </div>
   <button class="obtn main" id="startBtn"><span>¡A cazar!</span></button>
-  <div class="srow">
-    <button class="obtn" id="treeBtn"><b>🌼</b>Talentos</button>
-    <button class="obtn" id="pinataBtn"><b>🪅</b>Piñata</button>
-    <button class="obtn" id="howBtn"><b>📜</b>Cómo jugar</button>
-  </div>
-  <button class="obtn hidden" id="installBtn"><b>📲</b>Instalar · jugar sin internet</button>
-  <div class="controls hidden" id="iosHint">📲 Para jugar sin internet: toca Compartir y luego «Agregar a inicio».</div>
-  <div id="howBox" class="hidden"><div class="frame"><div class="in how">
-    <div class="htitle">Cómo jugar</div>
-    <p><b>Celular:</b> arrastra el dedo para moverte · doble toque o botón para esquivar · botón grande para la habilidad.</p>
-    <p><b>Computadora:</b> WASD o flechas · Espacio para esquivar · E para la habilidad · Esc para pausa.</p>
-    <p><b>Jefes:</b> El Cadejo 3:00 · El Charro Negro 6:00 · La Llorona 9:00. Si la vences, la noche sigue y vuelven más fuertes.</p>
-    <p><b>Cada noche</b> eliges un objetivo y, si te atreves, maldiciones que dan más flores 🌼 para el árbol de talentos.</p>
-    <button class="obtn" id="howClose">Entendido</button>
-  </div></div></div>
   <div id="resumeBox" class="hidden">
     <div class="rb txt">
       <div class="rt">Tienes una partida a medias</div>
@@ -409,6 +528,62 @@
   </div>
 </div>
 
+<div id="cazadores" class="screen scenic tabp hidden">
+  <div class="ribbon"><span>✿</span> Cazadores <span>✿</span></div>
+  <div id="cazGrid"></div>
+  <div class="frame"><div class="in" id="cazDet"></div></div>
+</div>
+
+<div id="arsenal" class="screen scenic tabp hidden">
+  <div class="ribbon"><span>✿</span> Arsenal <span>✿</span></div>
+  <div class="seg" id="arsSeg"><button data-s="armas" class="on">⚔️ Armas</button><button data-s="evos">📖 Evoluciones</button></div>
+  <div id="arsTop"></div>
+  <div id="arsList"></div>
+</div>
+
+<div id="hub" class="hidden">
+  <div class="hubtop">
+    <button class="prof" id="profBtn"><span class="av"><img id="profImg" alt=""></span><span class="pi"><b id="profName">Invitado</b><small id="profRec"></small></span></button>
+    <span class="grow"></span>
+    <div class="cur" id="curFl">🌼 0</div><div class="cur bl hidden" id="curBo">🎟️ 0</div>
+    <button class="gearb" id="setBtn" aria-label="Ajustes">⚙️</button>
+  </div>
+  <nav class="hubnav">
+    <button data-t="cazadores"><i>🎭</i><span>Cazadores</span></button>
+    <button data-t="arsenal"><i>⚔️</i><span>Arsenal</span><em class="dot hidden" id="dotArs"></em></button>
+    <button data-t="jugar" class="play"><i>🌙</i><span>Jugar</span></button>
+    <button data-t="talentos"><i>🌼</i><span>Talentos</span><em class="dot hidden" id="dotTal"></em></button>
+    <button data-t="pinata"><i>🪅</i><span>Piñata</span><em class="dot hidden" id="dotPin"></em></button>
+  </nav>
+</div>
+
+<div id="setBox" class="modal hidden"><div class="frame"><div class="in mbody">
+  <div class="htitle">Ajustes</div>
+  <button class="mrow" id="sndBtn"><span>🔊 Sonido</span><b id="sndVal">Sí</b></button>
+  <button class="mrow" id="howBtn"><span>📜 Cómo jugar</span><b>›</b></button>
+  <a class="mrow" id="acct" target="_top"><span>👤 Cuenta DarkShadow</span><b id="acctVal">›</b></a>
+  <button class="mrow hidden" id="installBtn"><span>📲 Instalar · jugar sin internet</span><b>›</b></button>
+  <div class="controls hidden" id="iosHint">📲 Para jugar sin internet: toca Compartir y luego «Agregar a inicio».</div>
+  <div class="mfoot">Noche de Leyendas · <span id="setVer"></span><br>Hecho por DarkShadow Studios · darkshadow-studios.com</div>
+  <button class="obtn" data-close>Cerrar</button>
+</div></div></div>
+
+<div id="profBox" class="modal hidden"><div class="frame"><div class="in mbody">
+  <div class="htitle">Tu cazador</div>
+  <div id="profStats"></div>
+  <button class="obtn" data-close>Cerrar</button>
+</div></div></div>
+
+<div id="howBox" class="modal hidden"><div class="frame"><div class="in mbody how">
+  <div class="htitle">Cómo jugar</div>
+  <p><b>Celular:</b> arrastra el dedo para moverte · doble toque o botón para esquivar · botón grande para la habilidad.</p>
+  <p><b>Computadora:</b> WASD o flechas · Espacio para esquivar · E para la habilidad · Esc para pausa.</p>
+  <p><b>Jefes:</b> El Cadejo 3:00 · El Charro Negro 6:00 · La Llorona 9:00. Si la vences, la noche sigue y vuelven más fuertes.</p>
+  <p><b>Cada noche</b> eliges un objetivo y, si te atreves, maldiciones que dan más flores 🌼 para el árbol de talentos.</p>
+  <p><b>Arsenal:</b> las armas de la Piñata se equipan ahí; entras a la partida con ella y su bono. Junta un arma en nivel 8 con su objeto pareja y abre un cofre para evolucionarla.</p>
+  <button class="obtn" data-close>Entendido</button>
+</div></div></div>
+
 <div id="levelup" class="screen hidden">
   <h1 class="txt" id="luTitle">¡Subiste de nivel!</h1>
   <h2 class="txt" id="luSub">Elige una carta</h2>
@@ -416,7 +591,7 @@
   <button class="btn alt hidden" id="rerollBtn">🔄 Cambiar cartas</button>
 </div>
 
-<div id="tree" class="screen hidden">
+<div id="tree" class="screen scenic tabp hidden">
   <h1 class="txt">Árbol de talentos</h1>
   <div class="flpill big txt" id="treeFlores">🌼 0</div>
   <div class="tabs" id="treeTabs"></div>
@@ -425,7 +600,7 @@
   <button class="btn" id="treeBack">Listo</button>
 </div>
 
-<div id="pinata" class="screen hidden">
+<div id="pinata" class="screen scenic tabp hidden">
   <h1 class="txt">Piñata de armas</h1>
   <div class="pn-pills"><div class="flpill big txt" id="pnFlores">🌼 0</div><div class="flpill big txt bl" id="pnBoletos">🎟️ 0</div></div>
   <div id="pnBig">🪅</div>
