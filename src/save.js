@@ -19,7 +19,9 @@ export function persist() {
   try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* sin espacio o bloqueado */ }
   if (onChange) onChange();
 }
-export const tl = (id) => save.tal[id] || 0;
+/** Noche del Pozo: todos juegan parejo, sin talentos. */
+export const pozoFlag = { on: false };
+export const tl = (id) => (pozoFlag.on ? 0 : save.tal[id] || 0);
 export const today = () => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); } catch (e) { return new Date().toISOString().slice(0, 10); } };
 
 /** Junta el guardado del celular con el de la nube sin perder nada: la base es el que más flores ha ganado; talentos, cazadores y armas se suman al mejor. */

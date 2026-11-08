@@ -5,7 +5,9 @@ import { dsTrack } from './dsev.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
 import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS } from './data.js';
-import { save, persist, tl, today, RUN_KEY, readRun, clearRun } from './save.js';
+import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
+import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
+let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
 
@@ -260,7 +262,7 @@ class Play extends Phaser.Scene {
     this.aura = this.add.image(0, 0, 'aura').setBlendMode(Phaser.BlendModes.ADD).setVisible(false).setDepth(-70000);
     // Arma de la piñata equipada: empieza con ella (o sube la inicial si es la misma) y tiene su bono toda la partida
     this.gear = {};
-    const eq = save.equipo && save.armas[save.equipo] ? save.equipo : null;
+    const eq = !POZO && save.equipo && save.armas[save.equipo] ? save.equipo : null;   // en el Pozo, sin arma de la Piñata
     this.addWeapon(H.weapon);
     this.W[0].lv += tl('for_arranque');
     if (eq) {
@@ -350,6 +352,10 @@ class Play extends Phaser.Scene {
 
   step(dt) {
     this.t += dt;
+    if (POZO) {   // registro por minuto para el servidor y fin a los 15 minutos
+      if (this.t >= POZO.next) { POZO.cp.push([Math.floor(this.t), this.kills, this.level]); POZO.next += POZO_NDL.cpEvery; }
+      if (this.t >= POZO_NDL.maxT) { this.endRun(this.won); return; }
+    }
     if (this.killsAt10 == null && this.t >= FLOWERS.afterT) this.killsAt10 = this.kills;
     this.saveAcc = (this.saveAcc || 0) + dt;
     if (this.saveAcc >= 3) { this.saveAcc = 0; this.saveRun(); }
@@ -763,7 +769,7 @@ class Play extends Phaser.Scene {
     const s = e.s;
     this.tweens.add({ targets: s, scaleX: s.scaleX * 1.25, scaleY: 0, alpha: 0, duration: 160, onComplete: () => { s.setVisible(false); this.pool.push(s); } });
     if (e.boss) {
-      this.bossKills.push({ k: e.k, loop: e.loop || 1 });
+      this.bossKills.push({ k: e.k, loop: e.loop || 1, t: Math.floor(this.t) });
       Sfx.play('boom'); this.cameras.main.shake(500, 0.01);
       for (let i = 0; i < 40; i++) this.dropSoul(e.x + rnd(-90, 90), e.y + rnd(-70, 70), 5);
       if (this.bossAlive === e) this.bossAlive = this.E.find(o => o.alive && o.boss) || null;
@@ -1474,7 +1480,7 @@ class Play extends Phaser.Scene {
   }
 
   // ---------- Partida a medias: se guarda sola y se recupera al volver ----------
-  get counts() { return (!GOD && START_T === 0 && !AUTO) || DEV; }
+  get counts() { return !POZO && ((!GOD && START_T === 0 && !AUTO) || DEV); }
   saveRun() {
     if (this.over || !this.counts) return;
     const P = this.P, r1 = (v) => Math.round(v * 10) / 10;
@@ -1525,7 +1531,23 @@ class Play extends Phaser.Scene {
     clearRun();
     this.reward = this.flowerReward(win);
     Sfx.play(win ? 'win' : 'lose');
-    this.time.delayedCall(win ? 200 : 700, () => this.hud.end(win));
+    let pozo = null;
+    if (POZO) {
+      const log = { t: Math.floor(this.t), kills: this.kills, level: this.level, bosses: this.bossKills.map(b => [b.k, b.t || 0]), cp: POZO.cp };
+      const score = pozoScore(this.t, this.kills, this.bossKills.length);
+      pozo = finishPozo(POZO.attemptId, log).then(r => ({ ...r, mine: score })).catch(e => ({ ok: false, error: e.message, mine: score }));
+      POZO = null; pozoFlag.on = false;
+    }
+    this.time.delayedCall(win ? 200 : 700, () => {
+      this.hud.end(win);
+      if (!pozo) return;
+      $('endFlowers').innerHTML = '<div class="fl-big">💰 Noche del Pozo</div><div class="fl-rows">Revisando tu partida…</div>';
+      pozo.then(r => {
+        $('endFlowers').innerHTML = r.ok
+          ? `<div class="fl-big">${r.score} pts</div><div class="fl-rows">${r.record ? '¡Nuevo récord del Pozo!' : 'Partida registrada'}${r.rank ? ` · vas #${r.rank} esta semana` : ''}</div>`
+          : `<div class="fl-big">💰 Pozo</div><div class="fl-rows">${r.error || 'No se pudo registrar la partida'}</div>`;
+      });
+    });
   }
 }
 
@@ -1545,7 +1567,7 @@ Play.prototype.flowerReward = function (win) {
   const cosecha = 1 + 0.08 * tl('for_cosecha');
   const first = save.dia !== today();
   const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1));
-  const counts = (!GOD && START_T === 0 && !AUTO) || DEV;
+  const counts = !POZO && ((!GOD && START_T === 0 && !AUTO) || DEV);
   if (counts) {
     save.flores += total; save.ganadas += total; save.partidas++; save.mejor = Math.max(save.mejor, Math.floor(this.t));
     if (win) save.victorias++;
@@ -1895,7 +1917,10 @@ function buildPrep() {
   $('prepBonus').innerHTML = n ? `Flores ×${(1 + CURSE_BONUS * n).toFixed(1)} por ${n} ${n === 1 ? 'maldición' : 'maldiciones'}` : 'Cada maldición da +20 % de flores';
 }
 
-function startRun(resume) {
+function startRun(resume, pozo) {
+  POZO = pozo ? { attemptId: pozo.attemptId, cp: [], next: POZO_NDL.cpEvery } : null;
+  pozoFlag.on = !!POZO;
+  if (POZO) resume = null;
   dsTrack('game_started', 'leyendas');   // analítica anónima del estudio: empezó una partida
   Sfx.init();
   if (!resume) clearRun();
@@ -1903,7 +1928,7 @@ function startRun(resume) {
   ['menu', 'end', 'pause', 'levelup', 'tree', 'resumeBox', 'pinata', 'prep', 'title', 'howBox', 'setBox', 'profBox'].forEach(id => $(id).classList.add('hidden')); hideHub(); showScene(false);
   const sm = game.scene;
   if (sm.getScene('play')) sm.stop('play');
-  sm.start('play', { hunter: resume ? resume.hunter : selected, resume: resume || null,
+  sm.start('play', POZO ? { hunter: 'machetero', resume: null, obj: 'llorona', curses: [] } : { hunter: resume ? resume.hunter : selected, resume: resume || null,
     obj: Q.get('obj') || prep.obj, curses: Q.has('mald') ? Q.get('mald').split(',') : (save.malds || []) });
 }
 
@@ -1944,6 +1969,7 @@ async function boot() {
   game.scene.add('play', Play, false); if (DEV) window.__g = game;
   setupHub();
   $('startBtn').onclick = () => { Sfx.init(); openPrep(); };
+  $('pozoBtn').onclick = () => { Sfx.init(); openPozo(a => startRun(null, a)); };
   $('prepGo').onclick = () => { prep.go = true; startRun(); };
   $('prepBack').onclick = () => { $('prep').classList.add('hidden'); showTab('jugar'); };
   $('againBtn').onclick = () => startRun();
