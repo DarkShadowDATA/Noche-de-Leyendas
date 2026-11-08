@@ -1,0 +1,20 @@
+Noche de Leyendas · Fase 2 — 4 imágenes para ChatGPT (objetivos y eventos)
+
+Cómo:
+- 1 y 2 (objetos): adjunta obj_cofre.png como referencia de estilo.
+- 3: adjunta chupacabras_camina.png (para que salga el mismo chupacabras, pero dorado).
+- 4: adjunta lobo_camina.png (para que salga el mismo lobo, pero más grande y temible).
+- Un prompt por imagen. Si sale con piso, sombra, texto o recortada, pide otra. Guarda cada una con su nombre y mándamelas.
+- El juego ya funciona sin ellas (con dibujos de código); el devlog y el video se hacen cuando lleguen.
+
+1) obj_altar.png  (altar maldito que hay que romper)
+Same exact art style, outline thickness, lighting and camera angle as the attached image. A small cursed stone altar from a Mexican Day of the Dead night: cracked dark stone block with carved skulls, melted black candles, a glowing purple crystal skull on top, purple cursed smoke and floating embers. Hand-painted 2D mobile game asset, bold chunky shapes, thick dark-brown outline, rich painted shading, warm light from the top-left, 3/4 top-down view. One single object, centered, filling about 80% of the image. Transparent background, no ground, no cast shadow, no text, no border, no other objects. Square 1:1, clean readable silhouette even when very small.
+
+2) obj_cofre_maldito.png  (cofre maldito: premio grande pero llama a un minijefe)
+Same exact art style, outline thickness, lighting and camera angle as the attached image. The same treasure chest but cursed: black wood with purple-glowing cracks, bone and iron bands, a padlock shaped like a skull with glowing purple eyes, chains wrapped around it, purple fog leaking from the lid. Hand-painted 2D mobile game asset, bold chunky shapes, thick dark-brown outline, rich painted shading, warm light from the top-left, 3/4 top-down view. One single object, centered, filling about 80% of the image. Transparent background, no ground, no cast shadow, no text, no border, no other objects. Square 1:1, clean readable silhouette even when very small.
+
+3) chupacabras_dorado.png  (Chupacabras dorado que huye; adjunta chupacabras_camina.png)
+Same exact character, art style, outline thickness, lighting and camera angle as the attached image. The same chupacabras but golden: shiny gold skin with metallic highlights, glowing yellow eyes, golden spikes on its back, little sparkles around it, in the same running pose. Full body visible and centered, filling about 80% of the image, facing slightly to the right. Transparent background, no ground, no cast shadow, no text, no border, no other objects. Square 1:1.
+
+4) lobo_alfa.png  (minijefe del cofre maldito; adjunta lobo_camina.png)
+Same exact character, art style, outline thickness, lighting and camera angle as the attached image. The same nahual wolf but as a huge alpha mini-boss: bigger and more muscular, dark purple-black fur, glowing purple eyes, cursed purple flames on its back and tail, a bone collar with a skull, snarling. Full body visible and centered, filling about 80% of the image, facing slightly to the right. Transparent background, no ground, no cast shadow, no text, no border, no other objects. Square 1:1.

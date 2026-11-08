@@ -80,6 +80,20 @@
   #resumeBox .rt { font-size:24px; color:#ffcf5a; }
   #resumeBox .ri { font-family:system-ui,sans-serif; font-size:15px; margin:8px 0 6px; }
   .won { color:#ffcf5a; font-size:20px; margin-bottom:4px; }
+  #objhud { position:absolute; top:calc(max(8px, env(safe-area-inset-top)) + 50px); left:0; right:0; text-align:center; font-size:15px; color:#ffe6b0; pointer-events:none; }
+  #fog { position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse 40% 34% at 50% 50%, transparent 0%, rgba(14,8,26,.5) 50%, rgba(10,5,20,.88) 90%); }
+  #fog.hidden { display:none; }
+  .psub { font-size:20px; color:#ffcf5a; margin:10px 0 4px; } .psub small { font-size:14px; color:#cdbde6; }
+  #prepObjs { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:640px; }
+  .pobj { width:min(46vw, 290px); background:linear-gradient(#3a2358,#24143a); border:3px solid #4a2f6a; border-radius:14px; padding:10px; text-align:center; cursor:pointer; }
+  .pobj.on { border-color:#ffcf5a; box-shadow:0 0 14px #ffcf5a77; }
+  .pobj .pi { font-size:34px; } .pobj .pn { font-family:'Lilita One',system-ui; font-size:18px; color:#fff4e0; }
+  .pobj .pd { font-family:system-ui,sans-serif; font-size:13px; margin:4px 0; } .pobj .pf { color:#ffcf5a; font-size:14px; }
+  #prepCurses { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:640px; }
+  .pcur { background:#24143a; border:2px solid #4a2f6a; border-radius:10px; color:var(--tinta); padding:5px 9px; font-family:system-ui,sans-serif; font-size:12.5px; display:flex; flex-direction:column; align-items:flex-start; cursor:pointer; max-width:200px; text-align:left; }
+  .pcur b { font-size:14px; } .pcur.on { border-color:#ff6a8a; background:#4a1a3a; box-shadow:0 0 10px #ff6a8a66; }
+  #prepBonus { font-size:16px; color:#ffcf5a; margin:8px 0 4px; }
+  .objend { font-size:17px; margin-bottom:4px; } .objend.ok { color:#7dff8a; } .objend.no { color:#ff8a8a; }
   #acct { position:absolute; top:calc(12px + env(safe-area-inset-top)); left:12px; background:#2a1840; border:2px solid #6a4a9a; border-radius:20px; padding:5px 12px; font-size:15px; color:var(--tinta); text-decoration:none; }
   #gearRow { font-family:system-ui,sans-serif; font-size:15px; margin:6px 0 2px; cursor:pointer; display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center; }
   #gearRow .gr { display:inline-flex; width:34px; height:34px; border:2px solid var(--rc); border-radius:8px; background:#24143a; align-items:center; justify-content:center; }
@@ -187,12 +201,14 @@
 </head>
 <body>
 <div id="game"></div>
+<div id="fog" class="hidden"></div>
 <div id="vignette"></div>
 
 <div id="hud" class="hidden">
   <div id="xpbar"><div id="xpfill"></div></div>
   <div id="lvl" class="txt">Nv 1</div>
   <div id="timer" class="txt">0:00</div>
+  <div id="objhud" class="txt"></div>
   <div id="kills" class="txt">💀 0</div>
   <button id="pauseBtn">II</button>
   <div id="slots"></div>
@@ -203,6 +219,15 @@
   <div id="hint" class="txt"></div>
 </div>
 <div id="count" class="txt hidden"></div>
+<div id="prep" class="screen hidden">
+  <h1 class="txt">Prepara la noche</h1>
+  <div class="psub txt">Elige tu objetivo</div>
+  <div id="prepObjs"></div>
+  <div class="psub txt">Maldiciones <small>(opcional)</small></div>
+  <div id="prepCurses"></div>
+  <div id="prepBonus" class="txt"></div>
+  <div><button class="btn" id="prepGo">¡Empezar!</button><button class="btn alt" id="prepBack">Volver</button></div>
+</div>
 
 <div id="menu" class="screen">
   <a id="acct" class="txt hidden" target="_top"></a>
@@ -214,7 +239,7 @@
   <div><button class="btn" id="startBtn">¡A cazar!</button><button class="btn alt" id="treeBtn">🌼 Talentos</button><button class="btn alt" id="pinataBtn">🪅 Piñata</button></div>
   <button class="btn alt hidden" id="installBtn">📲 Instalar · jugar sin internet</button>
   <div class="controls hidden" id="iosHint">📲 Para jugar sin internet: toca Compartir y luego «Agregar a inicio».</div>
-  <div class="controls">Celular: arrastra el dedo para moverte · doble toque o botón para esquivar · botón grande para la habilidad.<br>Computadora: WASD o flechas · Espacio para esquivar · E para la habilidad · Esc para pausa.<br>Jefes: El Cadejo 3:00 · El Charro Negro 6:00 · La Llorona 9:00. Si la vences, la noche sigue y vuelven más fuertes: ¿cuánto aguantas? · v0.6</div>
+  <div class="controls">Celular: arrastra el dedo para moverte · doble toque o botón para esquivar · botón grande para la habilidad.<br>Computadora: WASD o flechas · Espacio para esquivar · E para la habilidad · Esc para pausa.<br>Jefes: El Cadejo 3:00 · El Charro Negro 6:00 · La Llorona 9:00. Si la vences, la noche sigue y vuelven más fuertes: ¿cuánto aguantas?<br>Antes de cada noche eliges un objetivo y, si te atreves, maldiciones que dan más flores. · v0.7</div>
   <div id="resumeBox" class="hidden">
     <div class="rb txt">
       <div class="rt">Tienes una partida a medias</div>

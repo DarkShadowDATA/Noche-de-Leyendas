@@ -69,6 +69,29 @@ export const EVOS = {
   lazo: { pas: 'espuelas', name: 'Lazo de fuego', desc: 'Quema a todo lo que atrapa.' },
   agua: { pas: 'maguey', name: 'Diluvio', desc: 'Los charcos te siguen a donde vayas.' },
 };
+// ---------- Fase 2: ninguna partida igual ----------
+// Objetivos: antes de jugar el juego ofrece 2 al azar y eliges uno. Cumplirlo da flores extra (después del tope).
+export const OBJECTIVES = {
+  llorona: { icon: '👻', name: 'Vence a La Llorona', desc: 'Sobrevive y vence a La Llorona.', flores: 40 },
+  altares: { icon: '🪦', name: 'Altares malditos', desc: 'Rompe los 5 altares antes de que llegue La Llorona. Sigue las flechas moradas.', flores: 80 },
+  carreta: { icon: '🛒', name: 'Escolta la carreta', desc: 'La carreta solo avanza si estás junto a ella. Llévala hasta la cruz antes de las 9:00 sin que la destruyan.', flores: 80 },
+  dorado: { icon: '✨', name: 'Chupacabras dorado', desc: 'Aparece 3 veces y huye de ti. Cázalo antes de que se escape las 3.', flores: 70 },
+  ofrenda: { icon: '🕯️', name: 'Protege la ofrenda', desc: 'Los enemigos que la tocan le quitan vida; tú la curas si estás cerca. Que siga en pie a las 9:00.', flores: 80 },
+};
+export const OBJ_DEADLINE = 540; // 9:00
+export const DORADO_TIMES = [110, 290, 450], DORADO_LIFE = 18;
+// Maldiciones opcionales: se acumulan y cada una da +20 % de flores
+export const CURSES = {
+  prisa: { icon: '💨', name: 'Prisa', desc: 'Enemigos 25 % más rápidos.' },
+  sincura: { icon: '🩸', name: 'Sin curación', desc: 'Nada te cura.' },
+  mochila: { icon: '🎒', name: 'Mochila chica', desc: 'Máximo 3 armas.' },
+  niebla: { icon: '🌫️', name: 'Niebla', desc: 'Ves menos lejos.' },
+  impaciente: { icon: '⏰', name: 'Jefe impaciente', desc: 'La Llorona llega en el minuto 7.' },
+};
+export const CURSE_BONUS = 0.2;
+// Eventos al azar durante la partida (el primero en el minuto 2, luego cada 70–95 s)
+export const EVENTS = { first: 120, every: [70, 95], list: ['luna', 'parvada', 'cofre', 'almas'] };
+
 // Cofres que aparecen en el mapa (además de los que sueltan los jefes), en segundos de partida
 export const MAP_CHESTS = [90, 270, 450];
 // Premio del cofre cuando no hay evolución que dar: además de la carta, flores al final de la partida
@@ -94,6 +117,10 @@ export const ENEMIES = {
   nahual: { tex: ['nahual_camina', 'nahual_ataque'], hp: 48, spd: 62, dmg: 11, size: 72, flap: 3, r: 22, xp: 3 },
   lobo: { tex: ['lobo_camina', 'lobo_ataque'], hp: 0, spd: 140, dmg: 13, size: 74, flap: 6, r: 24, xp: 3 },
   chupacabras: { tex: ['chupacabras_camina', 'chupacabras_ataque'], hp: 64, spd: 70, dmg: 15, size: 70, flap: 3.5, r: 24, xp: 4 },
+  // Fase 2 (objetivos y eventos)
+  altar: { tex: ['obj_altar', 'obj_altar'], hp: 300, spd: 0, dmg: 0, size: 92, r: 34, xp: 0, static: true },
+  chupadorado: { tex: ['chupacabras_dorado', 'chupacabras_dorado'], hp: 380, spd: 138, dmg: 0, size: 82, flap: 3.5, r: 26, xp: 0, flee: true, tint: 0xffd84a },
+  loboalfa: { tex: ['lobo_alfa', 'lobo_alfa'], hp: 1500, spd: 102, dmg: 24, size: 150, r: 42, xp: 0, mini: true, tint: 0xb07aff },
   anima: { tex: ['anima_camina', 'anima_ataque'], hp: 24, spd: 56, dmg: 8, size: 62, r: 20, xp: 2 },
   cadejo: { tex: ['cadejo_camina', 'cadejo_ataque'], hp: 1100, spd: 78, dmg: 18, size: 150, r: 52, xp: 0, boss: 'El Cadejo', flap: 3 },
   charro: { tex: ['charro_camina', 'charro_ataque'], hp: 2300, spd: 86, dmg: 20, size: 176, r: 58, xp: 0, boss: 'El Charro Negro', flap: 3 },

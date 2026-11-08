@@ -1,7 +1,7 @@
 // Noche de Leyendas — prototipo jugable (Phaser 3)
 import Phaser from 'phaser';
 import '@fontsource/lilita-one/400.css';
-import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES } from './data.js';
+import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun } from './save.js';
 import { setupPinata, openPinata, closePinata, gearRow } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
@@ -206,7 +206,15 @@ function makeTextures(s) {
 // ---------- Escena de juego ----------
 class Play extends Phaser.Scene {
   constructor() { super('play'); }
-  init(data) { this.hunterId = data.hunter || 'machetero'; this.resume = data.resume || null; }
+  init(data) {
+    this.hunterId = data.hunter || 'machetero'; this.resume = data.resume || null;
+    const r = this.resume || data;
+    this.objId = OBJECTIVES[r.obj] ? r.obj : 'llorona';
+    this.curses = new Set((r.curses || []).filter(c => CURSES[c]));
+  }
+  cursed(c) { return this.curses.has(c); }
+  bossTime(k) { return k === 'llorona' && this.cursed('impaciente') ? 420 : BOSS_TIMES[k]; }
+  heal(v) { if (this.cursed('sincura')) return; this.P.hp = Math.min(this.maxHp, this.P.hp + v); }
 
   preload() {
     for (const k in IMG) if (!this.textures.exists(k)) this.load.image(k, IMG[k]);
@@ -222,9 +230,10 @@ class Play extends Phaser.Scene {
     this.W = []; this.Pass = {};
     this.E = []; this.S = []; this.B = []; this.puddles = []; this.hazards = []; this.chests = []; this.fx = [];
     this.mapChests = {}; this.chestFlores = 0; this.punHits = 0;
+    this.obj = { id: this.objId, done: false, failed: false, n: 0, esc: 0, di: 0 }; this.evT = EVENTS.first; this.lastEv = ''; this.soulRainT = 0;
     this.pool = []; this.soulPool = []; this.numPool = [];
     this.spawnAcc = 0; this.flockT = 95; this.bossDone = {};
-    for (const [k, bt] of Object.entries(BOSS_TIMES)) if (bt < START_T - 5) this.bossDone[k] = true;
+    for (const k of Object.keys(BOSS_TIMES)) if (this.bossTime(k) < START_T - 5) this.bossDone[k] = true;
     this.bossAlive = null; this.shakeT = 0;
     this.won = false; this.loop = 1; this.bossN = Object.keys(this.bossDone).length; this.nextBossT = 0; this.helpers = []; this.helpT = rnd(HELPER_EVERY[0], HELPER_EVERY[1]) + 10; this.freezeT = 0;
 
@@ -268,6 +277,8 @@ class Play extends Phaser.Scene {
     this.hud = new Hud(this);
     this.hud.show();
     if (START_T > 0) { for (let i = 0; i < Math.min(14, Math.floor(START_T / 40)); i++) this.levelUpAuto(); }
+    if (!this.resume) this.setupObjective();
+    $('fog').classList.toggle('hidden', !this.cursed('niebla'));
     if (this.resume) this.restore(this.resume);
     else this.banner('¡Que empiece la noche!', 'Sobrevive y caza a La Llorona', 2200);
     window.__ndl = this;
@@ -372,7 +383,7 @@ class Play extends Phaser.Scene {
     P.x += vx * dt; P.y += vy * dt;
     P.hurtCd -= dt; P.inv -= dt; P.dashCd -= dt; P.atkT -= dt; P.slowT -= dt;
     const regen = 0.3 * this.pl('maguey') + 0.25 * tl('sup_sanar');
-    if (regen > 0) P.hp = Math.min(this.maxHp, P.hp + regen * dt);
+    if (regen > 0) this.heal(regen * dt);
 
     // Pose y animación por código
     const s = this.pSpr;
@@ -414,9 +425,11 @@ class Play extends Phaser.Scene {
   // ---------- Director: qué sale y cuándo ----------
   updateDirector(dt) {
     const t = this.t;
-    if (!this.won) { for (const [k, bt] of Object.entries(BOSS_TIMES)) if (t >= bt && !this.bossDone[k]) { this.bossDone[k] = true; this.spawnBoss(k); } }
+    if (!this.won) { for (const k of Object.keys(BOSS_TIMES)) if (t >= this.bossTime(k) && !this.bossDone[k]) { this.bossDone[k] = true; this.spawnBoss(k); } }
     else if (!this.bossAlive && t >= this.nextBossT) { this.nextBossT = Infinity; this.spawnBoss(ENDLESS.order[this.bossN % 3]); }
     this.updateHelpers(dt);
+    this.updateObjective(dt);
+    this.updateEvents(dt);
     // Cofres del mapa (con flecha): otra oportunidad de evolucionar, además de los de jefe
     MAP_CHESTS.forEach((ct, i) => {
       if (t >= ct && !this.mapChests[i]) {
@@ -425,7 +438,6 @@ class Play extends Phaser.Scene {
         this.banner('¡Apareció un cofre!', 'Sigue la flecha dorada', 1600);
       }
     });
-    if (t > 270 && Math.floor(t) % 120 === 30 && this.lastEvent !== Math.floor(t)) { this.lastEvent = Math.floor(t); this.moonT = 25; this.banner('¡Luna llena!', 'Los nahuales salen al doble', 1800); }
     this.moonT = (this.moonT || 0) - dt;
 
     const alive = this.E.length;
@@ -480,7 +492,7 @@ class Play extends Phaser.Scene {
     const hpMul = d.boss ? 1 : 1 + this.t / 110 + Math.pow(this.t / 330, 2);
     const key = this.tex(d.tex[0], d.tex[1]);
     const s = this.getSprite(key);
-    const e = { k, d, x, y, hp: d.hp * hpMul, max: d.hp * hpMul, spd: d.spd * rnd(0.9, 1.1), dmg: d.dmg, r: d.r, s, kx: 0, ky: 0, flash: 0, slowT: 0, stun: 0, ph: Math.random() * 6, state: 'walk', st: 0, cd: rnd(0.5, 2), alive: true, vx: 0, vy: 0 };
+    const e = { k, d, x, y, hp: d.hp * hpMul, max: d.hp * hpMul, spd: d.spd * rnd(0.9, 1.1) * (this.cursed('prisa') ? 1.25 : 1), dmg: d.dmg, r: d.r, s, kx: 0, ky: 0, flash: 0, slowT: 0, stun: 0, ph: Math.random() * 6, state: 'walk', st: 0, cd: rnd(0.5, 2), alive: true, vx: 0, vy: 0 };
     e.bs = d.size / (d.boss ? 336 : 205); s.setScale(e.bs);
     this.E.push(e);
     return e;
@@ -512,7 +524,7 @@ class Play extends Phaser.Scene {
     }
   }
   near(x, y, r, cb) {
-    const G = this.grid, x0 = Math.floor((x - r) / 80), x1 = Math.floor((x + r) / 80), y0 = Math.floor((y - r) / 80), y1 = Math.floor((y + r) / 80);
+    const G = this.grid; if (!G) return; const x0 = Math.floor((x - r) / 80), x1 = Math.floor((x + r) / 80), y0 = Math.floor((y - r) / 80), y1 = Math.floor((y + r) / 80);
     for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
       const c = G.get((cx + 5000) * 100000 + (cy + 5000)); if (!c) continue;
       for (const e of c) if (e.alive) { const dx = e.x - x, dy = e.y - y, rr = r + e.r; if (dx * dx + dy * dy <= rr * rr) cb(e); }
@@ -581,6 +593,12 @@ class Play extends Phaser.Scene {
         e.cd2 -= dt; if (e.cd2 <= 0) { e.cd2 = 6.5; for (let i = 0; i < 3; i++) this.hazardPuddle(P.x + rnd(-160, 160), P.y + rnd(-130, 130)); }
         e.cd3 -= dt; if (e.cd3 <= 0) { e.cd3 = 11; for (let i = 0; i < 4; i++) { const a = i / 4 * 6.28 + 0.4; this.spawn('anima', e.x + Math.cos(a) * 110, e.y + Math.sin(a) * 110); } }
       }
+      else if (e.d.static) { e.kx = 0; e.ky = 0; }
+      else if (e.d.flee) { // Chupacabras dorado: huye de ti y se escapa si no lo cazas a tiempo
+        vx = -dx / dist * e.spd * slow; vy = -dy / dist * e.spd * slow;
+        e.life -= dt; if (Math.random() < 0.4) this.fxSpark.emitParticleAt(e.x, e.y - 40, 1);
+        if (e.life <= 0) { this.remove(e); this.doradoEscaped(); continue; }
+      }
       else { vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow; }
 
       // Empujes
@@ -598,7 +616,7 @@ class Play extends Phaser.Scene {
       }
 
       // Daño al cazador
-      if (!e.ghost && !(this.freezeT > 0 && !e.boss) && dist < e.r + 18 && P.hurtCd <= 0 && P.inv <= 0 && P.jump <= 0) this.hurtPlayer(e.dmg);
+      if (e.dmg > 0 && !e.ghost && !(this.freezeT > 0 && !e.boss) && dist < e.r + 18 && P.hurtCd <= 0 && P.inv <= 0 && P.jump <= 0) this.hurtPlayer(e.dmg);
 
       // Dibujo
       const s = e.s;
@@ -607,11 +625,12 @@ class Play extends Phaser.Scene {
       let key = attacking ? this.tex(e.d.tex[1], e.d.tex[0]) : this.tex(e.d.tex[0], e.d.tex[1]);
       // dos cuadros al caminar (aleteo, galope) cuando hay una segunda imagen
       if (!attacking && key === e.d.tex[0] && this.textures.exists(key + '2') && Math.floor(e.ph * (e.d.flap || 5)) % 2) key = key + '2';
-      if (s.texture.key !== key) { s.setTexture(key); e.bs = e.d.size / (e.boss ? 336 : 205); }
+      if (s.texture.key !== key) { s.setTexture(key); e.bs = e.d.size / (e.boss ? 336 : 205); if (e.d.static) e.bs = e.d.size / s.height; }
       const moving = Math.abs(vx) + Math.abs(vy) > 5;
       e.ph += dt * (moving ? 1 : 0.3);
       let bob = 0, sq = 1, rot = 0;
-      if (e.d.flyer || e.k === 'anima' || e.k === 'llorona') { bob = 10 + Math.sin(e.ph * 6) * 5; sq = 1 + Math.sin(e.ph * 12) * 0.03; }
+      if (e.d.static) { bob = 0; sq = 1 + Math.sin(this.t * 3) * 0.02; }
+      else if (e.d.flyer || e.k === 'anima' || e.k === 'llorona') { bob = 10 + Math.sin(e.ph * 6) * 5; sq = 1 + Math.sin(e.ph * 12) * 0.03; }
       else { bob = Math.abs(Math.sin(e.ph * 9)) * (e.boss ? 5 : 3.5); sq = 1 - 0.06 * Math.abs(Math.cos(e.ph * 9)); rot = Math.sin(e.ph * 9) * 0.07; }
       if (e.state === 'wind') { s.x = e.x + Math.sin(this.t * 70) * 3; sq = 0.84; } else s.x = e.x;
       if (e.state === 'leap') { bob = 26; rot = 0.25 * Math.sign(e.lx || 1); }
@@ -626,6 +645,7 @@ class Play extends Phaser.Scene {
       else if (e.state === 'wind' || e.state === 'aim') s.setTint(0xff7070);
       else if (e.stun > 0 || (this.freezeT > 0 && !e.boss)) s.setTint(0xa0d8ff);
       else if (e.wolf) s.setTint(0xffe2c0);
+      else if (e.d.tint && key !== e.d.tex[0]) s.setTint(e.d.tint); // sin su imagen todavía: la de base pintada
       else s.clearTint();
       s.setAlpha(e.ghost ? 0.28 : 1);
     }
@@ -716,7 +736,7 @@ class Play extends Phaser.Scene {
     if (e.boss) dmg *= 1 + 0.1 * tl('atk_jefes');
     if (tl('atk_crit') && Math.random() < 0.04 * tl('atk_crit')) { dmg *= 2; opt = Object.assign({}, opt, { big: true, quiet: false }); }
     e.hp -= dmg; e.flash = 0.07;
-    const kb = e.boss ? 0.08 : (e.k === 'chupacabras' && e.state === 'leap') ? 0.2 : 1;
+    const kb = e.boss || e.d.mini || e.d.static ? 0.08 : (e.k === 'chupacabras' && e.state === 'leap') ? 0.2 : 1;
     e.kx += kx * kb; e.ky += ky * kb;
     if (opt.stun) e.stun = Math.max(e.stun, e.boss ? opt.stun * 0.3 : opt.stun);
     if (opt.slow) e.slowT = Math.max(e.slowT, opt.slow);
@@ -746,6 +766,7 @@ class Play extends Phaser.Scene {
       this.spawnHelper('iman', e.x + 70, e.y + 10);
       if (e.k === 'llorona' && !this.won) {
         this.won = true; this.nextBossT = this.t + ENDLESS.first;
+        if (this.obj.id === 'llorona') this.objDone();
         Sfx.play('win'); this.banner('¡Venciste a La Llorona!', 'La noche sigue… los jefes volverán más fuertes', 3200);
       } else {
         if (this.won) this.nextBossT = this.t + ENDLESS.gap;
@@ -753,6 +774,7 @@ class Play extends Phaser.Scene {
       }
       return;
     }
+    if (e.k === 'altar' || e.k === 'chupadorado' || e.k === 'loboalfa') { this.specialKill(e); return; }
     const v = e.d.xp + (e.stolen || 0);
     if (v > 0) this.dropSoul(e.x, e.y, v);
   }
@@ -798,7 +820,7 @@ class Play extends Phaser.Scene {
     if (this.helpT <= 0) {
       this.helpT = rnd(HELPER_EVERY[0], HELPER_EVERY[1]);
       const P = this.P, miss = 1 - P.hp / this.maxHp, souls = this.S.length;
-      const w = [['tamal', 0.6 + 3 * miss], ['iman', 0.3 + Math.min(2.5, souls / 50)]];
+      const w = [['tamal', this.cursed('sincura') ? 0 : 0.6 + 3 * miss], ['iman', 0.3 + Math.min(2.5, souls / 50)]];
       if (this.t > 120) w.push(['campana', 0.7]);
       let tot = 0; for (const [, v] of w) tot += v;
       let r = Math.random() * tot, k = 'tamal'; for (const [kk, v] of w) { r -= v; if (r <= 0) { k = kk; break; } }
@@ -830,7 +852,7 @@ class Play extends Phaser.Scene {
       this.ring(P.x, P.y - 20, 420, 0xff5a5a, 600, false);
       Sfx.play('chest'); this.dmgText(P.x, P.y - 110, '¡Imán!', '#ff8a8a', 26);
     } else if (k === 'tamal') {
-      P.hp = Math.min(this.maxHp, P.hp + this.maxHp * 0.3);
+      this.heal(this.maxHp * 0.3);
       this.ring(P.x, P.y - 20, 90, 0x7dff8a, 400, true);
       Sfx.play('lvl'); this.dmgText(P.x, P.y - 110, '+30% vida', '#7dff8a', 24);
     } else if (k === 'campana') {
@@ -845,7 +867,7 @@ class Play extends Phaser.Scene {
     const g = this.helpArrows || (this.helpArrows = this.add.graphics().setDepth(1e6 + 1));
     g.clear();
     const v = this.cameras.main.worldView, m = 26 / this.cameras.main.zoom;
-    for (const h of [...this.helpers, ...this.chests.map(c => ({ x: c.x, y: c.y, col: 0xffcf5a }))]) {
+    for (const h of [...this.helpers, ...this.chests.map(c => ({ x: c.x, y: c.y, col: c.cursed ? 0xb050ff : 0xffcf5a })), ...this.objTargets()]) {
       if (h.x > v.x && h.x < v.right && h.y - 30 > v.y && h.y < v.bottom) continue;
       const cx = v.centerX, cy = v.centerY, a = Math.atan2(h.y - cy, h.x - cx);
       const hw = v.width / 2 - m, hh = v.height / 2 - m, k = Math.min(Math.abs(hw / Math.cos(a)), Math.abs(hh / Math.sin(a)));
@@ -856,18 +878,23 @@ class Play extends Phaser.Scene {
   }
 
   // ---------- Cofres ----------
-  spawnChest(x, y) {
-    const ck = this.tex('obj_cofre', 'chest'); const s = this.add.image(x, y, ck).setOrigin(0.5, 0.9).setDepth(y); s.setScale((ck === 'obj_cofre' ? 74 : 64) / s.height);
-    const gl = this.add.image(x, y - 26, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(0xffcf5a).setScale(1.6).setAlpha(0.6).setDepth(y - 1);
+  spawnChest(x, y, cursed) {
+    const ck = cursed ? this.tex('obj_cofre_maldito', 'obj_cofre', 'chest') : this.tex('obj_cofre', 'chest');
+    const s = this.add.image(x, y, ck).setOrigin(0.5, 0.9).setDepth(y); s.setScale((ck === 'chest' ? 64 : 74) / s.height);
+    if (cursed && ck !== 'obj_cofre_maldito') s.setTint(0xb07aff);
+    const gl = this.add.image(x, y - 26, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(cursed ? 0xb050ff : 0xffcf5a).setScale(1.6).setAlpha(0.6).setDepth(y - 1);
     this.tweens.add({ targets: s, y: y - 8, yoyo: true, repeat: -1, duration: 600, ease: 'Sine.InOut' });
-    this.chests.push({ x, y, s, gl });
+    this.chests.push({ x, y, s, gl, cursed: !!cursed });
   }
   updateChests() {
     for (const c of this.chests) {
       if (Math.hypot(this.P.x - c.x, this.P.y - c.y) < 50) {
         c.dead = true; c.s.destroy(); c.gl.destroy(); Sfx.play('chest');
         this.fxSpark.explode(40, c.x, c.y - 30);
-        this.P.hp = Math.min(this.maxHp, this.P.hp + this.maxHp * 0.25);
+        this.heal(this.maxHp * 0.25);
+        if (c.cursed) { // Cofre maldito: premio grande (2 cartas y 40 flores) pero sale el Lobo alfa
+          this.chestFlores += 40; this.spawnMini(); this.pendingLv += 2; this.chestPick = true; this.hud.openCards(); continue;
+        }
         const w = this.evoReady();
         if (w) { this.evolve(w); continue; }
         this.chestFlores += CHEST_FLORES;
@@ -875,6 +902,135 @@ class Play extends Phaser.Scene {
       }
     }
     if (this.chests.some(c => c.dead)) this.chests = this.chests.filter(c => !c.dead);
+  }
+
+  // ---------- Fase 2: objetivo de la partida ----------
+  setupObjective() {
+    const o = this.obj;
+    if (o.id === 'altares') {
+      const a0 = rnd(0, 6.28);
+      for (let i = 0; i < 5; i++) {
+        const a = a0 + i / 5 * 6.28 + rnd(-0.3, 0.3), d = rnd(650, 1150);
+        const e = this.spawn('altar', Math.cos(a) * d, Math.sin(a) * d * 0.85); e.hp = e.max = 300;
+      }
+    } else if (o.id === 'carreta') {
+      const a = rnd(0, 6.28);
+      o.cart = { x: 0, y: 160, hp: 400, max: 400, tx: Math.cos(a) * 2300, ty: 160 + Math.sin(a) * 2000 };
+    } else if (o.id === 'ofrenda') o.ofr = { x: 0, y: -170, hp: 600, max: 600 };
+    this.buildObjectiveProps();
+  }
+  buildObjectiveProps() {
+    const o = this.obj;
+    if (o.cart) {
+      o.cartS = this.add.image(o.cart.x, o.cart.y, this.tex('prop_carreta', 'chest')).setOrigin(0.5, 0.9); o.cartS.setScale(120 / o.cartS.height);
+      o.goalS = this.add.image(o.cart.tx, o.cart.ty, this.tex('prop_cruz', 'chest')).setOrigin(0.5, 0.9).setDepth(o.cart.ty); o.goalS.setScale(110 / o.goalS.height);
+      o.goalG = this.add.image(o.cart.tx, o.cart.ty - 40, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(0x7dff8a).setScale(2.4).setAlpha(0.5).setDepth(o.cart.ty - 1);
+    }
+    if (o.ofr) { o.ofrS = this.add.image(o.ofr.x, o.ofr.y, this.tex('prop_ofrenda', 'chest')).setOrigin(0.5, 0.9).setDepth(o.ofr.y); o.ofrS.setScale(120 / o.ofrS.height); }
+    o.bar = this.add.graphics().setDepth(1e6);
+  }
+  objDone() {
+    const o = this.obj; if (o.done || o.failed) return;
+    o.done = true; Sfx.play('win');
+    this.banner('¡Objetivo cumplido!', `${OBJECTIVES[o.id].name} · +${OBJECTIVES[o.id].flores} 🌼`, 2400);
+  }
+  objFail(why) {
+    const o = this.obj; if (o.done || o.failed) return;
+    o.failed = true; Sfx.play('lose'); this.banner('Objetivo perdido', why, 2200);
+  }
+  updateObjective(dt) {
+    const o = this.obj, P = this.P, t = this.t;
+    if (o.done || o.failed) { if (o.bar) o.bar.clear(); return; }
+    const dl = Math.min(OBJ_DEADLINE, this.bossTime('llorona'));
+    const bar = (x, y, f, col) => { o.bar.fillStyle(0x0c0614, 1).fillRoundedRect(x - 42, y, 84, 10, 4); o.bar.fillStyle(col, 1).fillRoundedRect(x - 40, y + 2, 80 * clamp(f, 0, 1), 6, 3); };
+    if (o.bar) o.bar.clear();
+    if (o.id === 'altares') { if (t >= dl) this.objFail('La Llorona llegó antes de romper los 5 altares'); }
+    else if (o.id === 'carreta') {
+      const c = o.cart, near = Math.hypot(P.x - c.x, P.y - c.y) < 210;
+      if (near) { const a = Math.atan2(c.ty - c.y, c.tx - c.x); c.x += Math.cos(a) * 48 * dt; c.y += Math.sin(a) * 48 * dt; }
+      o.tick = (o.tick || 0) - dt;
+      if (o.tick <= 0) { o.tick = 0.5; this.near(c.x, c.y, 70, (e) => { if (!e.d.static && !e.d.flee) c.hp -= e.dmg * 0.5; }); }
+      o.cartS.setPosition(c.x, c.y).setDepth(c.y); o.cartS.rotation = near ? Math.sin(t * 12) * 0.03 : 0;
+      bar(c.x, c.y + 10, c.hp / c.max, 0xffcf5a);
+      if (Math.hypot(c.tx - c.x, c.ty - c.y) < 40) { this.objDone(); o.cartS.setAlpha(0.6); }
+      else if (c.hp <= 0) { this.objFail('Destruyeron la carreta'); this.fxDeath.explode(30, c.x, c.y - 40); o.cartS.setAlpha(0.35); }
+      else if (t >= dl) this.objFail('La carreta no llegó a tiempo');
+    } else if (o.id === 'ofrenda') {
+      const f = o.ofr;
+      o.tick = (o.tick || 0) - dt;
+      if (o.tick <= 0) { o.tick = 0.5; this.near(f.x, f.y, 75, (e) => { if (!e.d.static && !e.d.flee) f.hp -= e.dmg * 0.5; }); }
+      if (Math.hypot(P.x - f.x, P.y - f.y) < 130) f.hp = Math.min(f.max, f.hp + 6 * dt);
+      bar(f.x, f.y + 10, f.hp / f.max, 0x7dff8a);
+      if (f.hp <= 0) { this.objFail('Los enemigos destruyeron la ofrenda'); o.ofrS.setAlpha(0.35); this.fxDeath.explode(30, f.x, f.y - 40); }
+      else if (t >= dl) this.objDone();
+    } else if (o.id === 'dorado') {
+      if (o.di < DORADO_TIMES.length && t >= DORADO_TIMES[o.di]) {
+        o.di++; const [x, y] = this.edgePoint(-80);
+        const e = this.spawn('chupadorado', x, y); e.hp = e.max = 380 * (1 + t / 240); e.life = DORADO_LIFE;
+        Sfx.play('boss'); this.banner('¡El Chupacabras dorado!', `Cázalo antes de que huya (${o.di}/3)`, 1800);
+      }
+    }
+  }
+  doradoEscaped() {
+    const o = this.obj; if (o.id !== 'dorado' || o.done) return;
+    o.esc++; this.banner('Se escapó…', o.esc >= 3 ? '' : `Volverá (${o.esc}/3)`, 1500);
+    if (o.esc >= 3) this.objFail('El Chupacabras dorado se escapó 3 veces');
+  }
+  specialKill(e) {
+    if (e.k === 'altar') {
+      const o = this.obj; o.n++;
+      for (let i = 0; i < 18; i++) this.dropSoul(e.x + rnd(-50, 50), e.y + rnd(-40, 40), 2);
+      this.fxDeath.setParticleTint(0xb050ff); this.fxDeath.explode(40, e.x, e.y - 40); this.cameras.main.shake(200, 0.005); Sfx.play('boom');
+      if (o.n >= 5) this.objDone(); else this.banner('¡Altar roto!', `${o.n}/5`, 1200);
+    } else if (e.k === 'chupadorado') {
+      for (let i = 0; i < 40; i++) this.dropSoul(e.x + rnd(-80, 80), e.y + rnd(-60, 60), 3);
+      this.spawnChest(e.x, e.y); this.objDone();
+    } else if (e.k === 'loboalfa') {
+      for (let i = 0; i < 30; i++) this.dropSoul(e.x + rnd(-80, 80), e.y + rnd(-60, 60), 3);
+      this.cameras.main.shake(300, 0.008); Sfx.play('boom'); this.banner('¡Venciste al Lobo alfa!', '', 1400);
+    }
+  }
+  objText() {
+    const o = this.obj, O = OBJECTIVES[o.id];
+    if (o.done) return `✅ ${O.name}`;
+    if (o.failed) return `❌ ${O.name}`;
+    if (o.id === 'altares') return `${O.icon} Altares ${o.n}/5`;
+    if (o.id === 'carreta') { const c = o.cart; const d0 = Math.hypot(c.tx, c.ty - 160), d = Math.hypot(c.tx - c.x, c.ty - c.y); return `${O.icon} Carreta ${Math.round(100 * (1 - d / d0))}%`; }
+    if (o.id === 'ofrenda') return `${O.icon} Ofrenda ${Math.max(0, Math.round(o.ofr.hp / o.ofr.max * 100))}% · hasta ${fmt(Math.min(OBJ_DEADLINE, this.bossTime('llorona')))}`;
+    if (o.id === 'dorado') return `${O.icon} Dorado · escapes ${o.esc}/3`;
+    return `${O.icon} ${O.name}`;
+  }
+  objTargets() { // para las flechas del borde
+    const o = this.obj, out = [];
+    if (o.done || o.failed) return out;
+    if (o.id === 'altares') for (const e of this.E) if (e.alive && e.k === 'altar') out.push({ x: e.x, y: e.y, col: 0xb050ff });
+    if (o.id === 'carreta') { out.push({ x: o.cart.x, y: o.cart.y, col: 0xffcf5a }); out.push({ x: o.cart.tx, y: o.cart.ty, col: 0x7dff8a }); }
+    if (o.id === 'ofrenda') out.push({ x: o.ofr.x, y: o.ofr.y, col: 0x7dff8a });
+    if (o.id === 'dorado') for (const e of this.E) if (e.alive && e.k === 'chupadorado') out.push({ x: e.x, y: e.y, col: 0xffd84a });
+    return out;
+  }
+
+  // ---------- Fase 2: eventos al azar ----------
+  updateEvents(dt) {
+    this.evT -= dt;
+    if (this.soulRainT > 0) {
+      this.soulRainT -= dt; this.soulAcc = (this.soulAcc || 0) + dt;
+      while (this.soulAcc > 0.06) { this.soulAcc -= 0.06; const a = rnd(0, 6.28), d = rnd(60, 380); this.dropSoul(this.P.x + Math.cos(a) * d, this.P.y + Math.sin(a) * d * 0.8, Math.random() < 0.2 ? 3 : 1); }
+    }
+    if (this.evT > 0 || this.bossAlive) return;
+    this.evT = rnd(EVENTS.every[0], EVENTS.every[1]);
+    const opts = EVENTS.list.filter(k => k !== this.lastEv && !(k === 'luna' && this.t < 140));
+    const k = this.__force || pick(opts); this.__force = null; this.lastEv = k;
+    if (k === 'luna') { this.moonT = 30; this.banner('¡Luna llena!', 'Los nahuales salen al triple', 1800); this.cameras.main.flash(300, 120, 140, 255); }
+    else if (k === 'parvada') { this.banner('¡Parvada de lechuzas!', 'Vienen de todos lados', 1600); for (let i = 0; i < 3; i++) this.time.delayedCall(i * 900, () => this.spawnFlock()); }
+    else if (k === 'cofre') { const a = rnd(0, 6.28), d = rnd(300, 400); this.spawnChest(this.P.x + Math.cos(a) * d, this.P.y + Math.sin(a) * d * 0.8, true); this.banner('¡Cofre maldito!', 'Gran premio… pero algo lo cuida', 1800); }
+    else if (k === 'almas') { this.soulRainT = 10; this.banner('¡Lluvia de almas!', '¡Junta todas las que puedas!', 1600); Sfx.play('lvl'); }
+  }
+  spawnMini() {
+    const [x, y] = this.edgePoint(-40);
+    const e = this.spawn('loboalfa', x, y); e.hp = e.max = 1500 * (1 + this.t / 200);
+    Sfx.play('boss'); this.cameras.main.shake(300, 0.006);
+    this.banner('¡El Lobo alfa!', 'El cofre maldito lo despertó', 1800);
   }
 
   // ---------- Evoluciones ----------
@@ -1158,7 +1314,7 @@ class Play extends Phaser.Scene {
           else b.dead = true;
         } else if (b.kind === 'card') {
           this.hurt(e, b.dmg, b.vx * 0.2, b.vy * 0.2, b.fx === 1 ? { stun: 0.8 } : {}); b.hit.add(e);
-          if (b.fx === 2) P.hp = Math.min(this.maxHp, P.hp + 1);
+          if (b.fx === 2) this.heal(1);
           if (b.fx === 4) { this.near(e.x, e.y, 60 * this.areaMul, (o) => { if (o !== e) this.hurt(o, b.dmg * 0.6, 0, 0, { quiet: true }); }); this.ring(e.x, e.y - 20, 60 * this.areaMul, 0xb07aff, 220, true); }
           if (b.pierce-- <= 0) b.dead = true;
         }
@@ -1187,7 +1343,7 @@ class Play extends Phaser.Scene {
         break;
       }
       case 'curandera': {
-        P.hp = Math.min(this.maxHp, P.hp + this.maxHp * 0.25);
+        this.heal(this.maxHp * 0.25);
         this.near(P.x, P.y, 250 * A, (e) => { const a = Math.atan2(e.y - P.y, e.x - P.x); this.hurt(e, 20, Math.cos(a) * 520, Math.sin(a) * 520, { slow: 2 }); });
         this.ring(P.x, P.y - 20, 250 * A, 0x3fe0d0, 500, true);
         this.fxSmoke.explode(40, P.x, P.y - 20);
@@ -1287,7 +1443,7 @@ class Play extends Phaser.Scene {
   cardOptions() {
     const opts = [];
     for (const w of this.W) if (w.lv < 8) opts.push({ type: 'w', id: w.id, lv: w.lv + 1, weight: 3 });
-    if (this.W.length < 6) for (const id in WEAPONS) if (!this.wl(id)) opts.push({ type: 'w', id, lv: 1, weight: 1.6 });
+    if (this.W.length < (this.cursed('mochila') ? 3 : 6)) for (const id in WEAPONS) if (!this.wl(id)) opts.push({ type: 'w', id, lv: 1, weight: 1.6 });
     const pc = Object.keys(this.Pass).length;
     for (const id in PASSIVES) { const l = this.pl(id); if (l > 0 && l < 5) opts.push({ type: 'p', id, lv: l + 1, weight: 1.6 }); else if (l === 0 && pc < 6) opts.push({ type: 'p', id, lv: 1, weight: 1 }); }
     const out = [];
@@ -1301,9 +1457,14 @@ class Play extends Phaser.Scene {
     return out;
   }
   applyCard(o) {
-    if (o.type === 'w') { const w = this.W.find(w => w.id === o.id); if (w) w.lv++; else this.addWeapon(o.id); }
+    if (o.type === 'w') {
+      const w = this.W.find(w => w.id === o.id);
+      if (w) w.lv++;
+      else if (this.W.length >= (this.cursed('mochila') ? 3 : 6)) { const m = this.W.filter(w => w.lv < 8).sort((a, b) => a.lv - b.lv)[0]; if (m) m.lv++; else this.heal(this.maxHp * 0.3); }
+      else this.addWeapon(o.id);
+    }
     else if (o.type === 'p') { this.Pass[o.id] = (this.Pass[o.id] || 0) + 1; if (o.id === 'maguey') this.P.hp += 20; }
-    else this.P.hp = Math.min(this.maxHp, this.P.hp + this.maxHp * 0.3);
+    else this.heal(this.maxHp * 0.3);
     this.hud.slots();
   }
 
@@ -1314,12 +1475,14 @@ class Play extends Phaser.Scene {
     const P = this.P, r1 = (v) => Math.round(v * 10) / 10;
     const run = {
       v: 1, at: Date.now(), hunter: this.hunterId, t: r1(this.t), kills: this.kills, level: this.level, xp: r1(this.xp), xpNeed: this.xpNeed, pendingLv: this.pendingLv,
-      energy: this.energy, W: this.W.map(w => [w.id, w.lv, w.evo ? 1 : 0]), Pass: this.Pass, mapChests: this.mapChests, chestFlores: this.chestFlores, punHits: this.punHits, killsAt10: this.killsAt10, hp: r1(P.hp), rerolls: this.rerolls, revived: this.revived, gear: this.gear,
+      energy: this.energy, W: this.W.map(w => [w.id, w.lv, w.evo ? 1 : 0]), Pass: this.Pass, mapChests: this.mapChests, chestFlores: this.chestFlores, punHits: this.punHits, killsAt10: this.killsAt10,
+      obj: this.obj.id, curses: [...this.curses], evT: r1(this.evT), lastEv: this.lastEv, moonT: r1(this.moonT || 0),
+      objSt: { done: this.obj.done, failed: this.obj.failed, n: this.obj.n, esc: this.obj.esc, di: this.obj.di, cart: this.obj.cart ? { ...this.obj.cart, x: this.obj.cart.x - P.x, y: this.obj.cart.y - P.y, tx: this.obj.cart.tx - P.x, ty: this.obj.cart.ty - P.y } : null, ofr: this.obj.ofr ? { ...this.obj.ofr, x: this.obj.ofr.x - P.x, y: this.obj.ofr.y - P.y } : null }, hp: r1(P.hp), rerolls: this.rerolls, revived: this.revived, gear: this.gear,
       bossDone: this.bossDone, bossKills: this.bossKills, won: this.won, bossN: this.bossN, nextBossT: this.nextBossT === Infinity ? -1 : r1(this.nextBossT),
       helpT: r1(this.helpT), flockT: r1(this.flockT), dmgTaken: Math.round(this.dmgTaken || 0),
       E: this.E.filter(e => e.alive).slice(0, 260).map(e => [e.k, Math.round(e.x - P.x), Math.round(e.y - P.y), Math.round(e.hp), Math.round(e.max), e.boss ? 1 : 0, e.n || 0, e.loop || 0, e.wolf ? 1 : 0, e.stolen || 0, r1(e.dmg), r1(e.spd)]),
       S: this.S.slice(0, 300).map(o => [Math.round(o.x - P.x), Math.round(o.y - P.y), o.v]),
-      C: this.chests.map(c => [Math.round(c.x - P.x), Math.round(c.y - P.y)]),
+      C: this.chests.map(c => [Math.round(c.x - P.x), Math.round(c.y - P.y), c.cursed ? 1 : 0]),
       H: this.helpers.map(h => [h.k, Math.round(h.x - P.x), Math.round(h.y - P.y)]),
     };
     try { localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch (e) { /* sin espacio */ }
@@ -1332,6 +1495,8 @@ class Play extends Phaser.Scene {
     this.W = []; this.aura.setVisible(false);
     for (const [id, lv, evo] of r.W) { if (!WEAPONS[id]) continue; this.addWeapon(id); const w = this.W[this.W.length - 1]; w.lv = lv; w.evo = !!evo; if (w.evo && id === 'copal') this.aura.setTint(0x7dffb0); }
     this.mapChests = r.mapChests || {}; this.chestFlores = r.chestFlores || 0; this.punHits = r.punHits || 0; this.killsAt10 = r.killsAt10 != null ? r.killsAt10 : null;
+    if (r.evT != null) { this.evT = r.evT; this.lastEv = r.lastEv || ''; this.moonT = r.moonT || 0; }
+    if (r.objSt) { Object.assign(this.obj, { done: r.objSt.done, failed: r.objSt.failed, n: r.objSt.n || 0, esc: r.objSt.esc || 0, di: r.objSt.di || 0, cart: r.objSt.cart, ofr: r.objSt.ofr }); this.buildObjectiveProps(); }
     this.Pass = r.Pass || {};
     P.hp = Math.min(this.maxHp, r.hp);
     for (const a of r.E) {
@@ -1342,7 +1507,7 @@ class Play extends Phaser.Scene {
       if (boss) { e.boss = true; e.cd = 2.5; e.cd2 = 6; e.cd3 = 9; e.n = n; e.loop = loop; e.bs = e.d.size / 336; e.s.setScale(e.bs); this.bossAlive = e; }
     }
     for (const [dx, dy, v] of r.S) this.dropSoul(dx, dy, v);
-    for (const [dx, dy] of r.C || []) this.spawnChest(dx, dy);
+    for (const [dx, dy, cu] of r.C || []) this.spawnChest(dx, dy, !!cu);
     for (const [k, dx, dy] of r.H || []) this.spawnHelper(k, dx, dy);
     this.hud.slots();
     // después de dibujar dos cuadros (la cámara ya sabe qué se ve y el suelo queda completo)
@@ -1362,14 +1527,16 @@ class Play extends Phaser.Scene {
 function flowerLines(sc, win) {
   const F = FLOWERS, tA = Math.min(sc.t, F.afterT), tB = Math.max(0, sc.t - F.afterT);
   const kA = sc.killsAt10 != null ? sc.killsAt10 : sc.kills, kB = sc.kills - kA;
-  const r = { tiempo: Math.floor((tA + tB * F.afterMul) / F.perSeconds), enemigos: Math.floor((kA + kB * F.afterMul) / F.perKills), jefes: 0, cofres: sc.chestFlores || 0 };
+  const r = { tiempo: Math.floor((tA + tB * F.afterMul) / F.perSeconds), enemigos: Math.floor((kA + kB * F.afterMul) / F.perKills), jefes: 0, cofres: sc.chestFlores || 0,
+    objetivo: sc.obj && sc.obj.done ? OBJECTIVES[sc.obj.id].flores : 0, maldiciones: sc.curses ? sc.curses.size : 0 };
   for (const b of sc.bossKills) r.jefes += F.boss[b.k] || 0;
   return r;
 }
 Play.prototype.flowerReward = function (win) {
   const r = flowerLines(this, win);
   let base = r.tiempo + r.enemigos + r.jefes + r.cofres;
-  r.tope = base > FLOWERS.cap; base = Math.min(base, FLOWERS.cap);
+  r.tope = base > FLOWERS.cap; base = Math.min(base, FLOWERS.cap) + r.objetivo;
+  base *= 1 + CURSE_BONUS * r.maldiciones;
   const cosecha = 1 + 0.08 * tl('for_cosecha');
   const first = save.dia !== today();
   const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1));
@@ -1405,6 +1572,7 @@ class Hud {
     $('xpfill').style.width = (sc.xp / sc.xpNeed * 100).toFixed(1) + '%';
     $('lvl').textContent = 'Nv ' + sc.level;
     $('timer').textContent = fmt(sc.t);
+    $('objhud').textContent = sc.objText();
     $('kills').textContent = '💀 ' + sc.kills;
     const f = sc.energy / sc.energyNeed;
     $('abilityFill').style.height = (f * 100) + '%';
@@ -1483,12 +1651,13 @@ class Hud {
     const jefes = sc.bossKills.length, loopMax = sc.bossKills.reduce((m, b) => Math.max(m, b.loop), 0);
     const brag = win ? `<div class="won txt">🏆 Venciste a La Llorona${loopMax > 1 ? ` · llegaste a la vuelta ${loopMax}` : ''}</div>` : '';
     const best = sc.reward && sc.reward.counts && Math.floor(sc.t) >= save.mejor ? ' · <b class="rec">¡Récord!</b>' : '';
-    $('endStats').innerHTML = `${brag}${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b>${best} · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b>${jefes ? ` · Jefes <b>${jefes}</b>` : ''}<br>` +
+    const O = OBJECTIVES[sc.obj.id], objLine = `<div class="objend ${sc.obj.done ? 'ok' : 'no'}">${sc.obj.done ? '✅' : '❌'} ${O.name}${sc.curses.size ? ` · ${[...sc.curses].map(c => CURSES[c].icon).join(' ')}` : ''}</div>`;
+    $('endStats').innerHTML = `${brag}${objLine}${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b>${best} · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b>${jefes ? ` · Jefes <b>${jefes}</b>` : ''}<br>` +
       sc.W.map(w => `<span class="endw${w.evo ? ' evo' : ''}">${wIcon(w)} ${wName(w)}${w.evo ? '' : ' ' + w.lv}</span>`).join(' ');
     const r = sc.reward;
     if (r) {
       const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : ''].filter(Boolean).join(' · ');
-      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
+      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
     }
     $('end').classList.remove('hidden');
   }
@@ -1564,14 +1733,36 @@ function buildTree() {
 function openTree(from) { treeFrom = from; ['menu', 'end', 'pinata'].forEach(id => $(id).classList.add('hidden')); buildTree(); $('tree').classList.remove('hidden'); }
 let treeFrom = 'menu';
 
+// ---------- Antes de jugar: objetivo (2 al azar) y maldiciones opcionales ----------
+const prep = { opts: [], obj: 'llorona' };
+function openPrep() {
+  const ids = Object.keys(OBJECTIVES);
+  prep.opts = []; while (prep.opts.length < 2) { const k = pick(ids); if (!prep.opts.includes(k)) prep.opts.push(k); }
+  prep.obj = prep.opts[0];
+  save.malds = (save.malds || []).filter(c => CURSES[c]);
+  ['menu', 'end'].forEach(id => $(id).classList.add('hidden'));
+  buildPrep(); $('prep').classList.remove('hidden');
+}
+function buildPrep() {
+  $('prepObjs').innerHTML = prep.opts.map(k => { const O = OBJECTIVES[k]; return `<div class="pobj${k === prep.obj ? ' on' : ''}" data-k="${k}"><div class="pi">${O.icon}</div><div class="pn">${O.name}</div><div class="pd">${O.desc}</div><div class="pf">+${O.flores} 🌼</div></div>`; }).join('');
+  $('prepObjs').querySelectorAll('.pobj').forEach(el => { el.onclick = () => { prep.obj = el.dataset.k; Sfx.play('pick'); buildPrep(); }; });
+  $('prepCurses').innerHTML = Object.entries(CURSES).map(([k, C]) => `<button class="pcur${save.malds.includes(k) ? ' on' : ''}" data-k="${k}"><b>${C.icon} ${C.name}</b><span>${C.desc}</span></button>`).join('');
+  $('prepCurses').querySelectorAll('.pcur').forEach(el => { el.onclick = () => {
+    const k = el.dataset.k; save.malds = save.malds.includes(k) ? save.malds.filter(x => x !== k) : [...save.malds, k]; persist(); Sfx.play('pick'); buildPrep();
+  }; });
+  const n = save.malds.length;
+  $('prepBonus').innerHTML = n ? `Flores ×${(1 + CURSE_BONUS * n).toFixed(1)} por ${n} ${n === 1 ? 'maldición' : 'maldiciones'}` : 'Cada maldición da +20 % de flores';
+}
+
 function startRun(resume) {
   Sfx.init();
   if (!resume) clearRun();
   if (!owned(selected)) selected = 'machetero';
-  ['menu', 'end', 'pause', 'levelup', 'tree', 'resumeBox', 'pinata'].forEach(id => $(id).classList.add('hidden'));
+  ['menu', 'end', 'pause', 'levelup', 'tree', 'resumeBox', 'pinata', 'prep'].forEach(id => $(id).classList.add('hidden'));
   const sm = game.scene;
   if (sm.getScene('play')) sm.stop('play');
-  sm.start('play', { hunter: resume ? resume.hunter : selected, resume: resume || null });
+  sm.start('play', { hunter: resume ? resume.hunter : selected, resume: resume || null,
+    obj: Q.get('obj') || prep.obj, curses: Q.has('mald') ? Q.get('mald').split(',') : (save.malds || []) });
 }
 
 function toMenu() {
@@ -1579,7 +1770,7 @@ function toMenu() {
   if (s && s.hud) s.hud.stopCount();
   if (s && s.sys.isActive() && !s.over) clearRun(); // salir a la mitad = se abandona
   if (s) game.scene.stop('play');
-  ['end', 'pause', 'levelup', 'hud', 'count'].forEach(id => $(id).classList.add('hidden'));
+  ['end', 'pause', 'levelup', 'hud', 'count', 'fog', 'prep'].forEach(id => $(id).classList.add('hidden'));
   buildMenu(); $('menu').classList.remove('hidden');
   offerResume();
 }
@@ -1607,9 +1798,11 @@ async function boot() {
     audio: { noAudio: true },
     scene: [],
   });
-  game.scene.add('play', Play, false);
+  game.scene.add('play', Play, false); if (DEV) window.__g = game;
   buildMenu();
-  $('startBtn').onclick = () => startRun();
+  $('startBtn').onclick = () => { Sfx.init(); openPrep(); };
+  $('prepGo').onclick = () => { prep.go = true; startRun(); };
+  $('prepBack').onclick = () => { $('prep').classList.add('hidden'); $('menu').classList.remove('hidden'); };
   $('againBtn').onclick = () => startRun();
   $('menuBtn').onclick = toMenu;
   $('treeBtn').onclick = () => openTree('menu');
