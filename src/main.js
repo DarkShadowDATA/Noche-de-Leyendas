@@ -1,6 +1,7 @@
 // Noche de Leyendas — prototipo jugable (Phaser 3)
 import Phaser from 'phaser';
 import '@fontsource/lilita-one/400.css';
+import { dsTrack } from './dsev.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
 import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS } from './data.js';
@@ -1895,6 +1896,7 @@ function buildPrep() {
 }
 
 function startRun(resume) {
+  dsTrack('game_started', 'leyendas');   // analítica anónima del estudio: empezó una partida
   Sfx.init();
   if (!resume) clearRun();
   if (!owned(selected)) selected = 'machetero';
@@ -1929,6 +1931,7 @@ function offerResume() {
 }
 
 async function boot() {
+  dsTrack('game_opened', 'leyendas');    // analítica anónima del estudio: se abrió el juego
   try { await document.fonts.load('20px "Lilita One"'); } catch (e) { /* sigue */ }
   game = new Phaser.Game({
     type: Phaser.AUTO, parent: 'game', backgroundColor: '#140c20',
