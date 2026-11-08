@@ -360,9 +360,10 @@
   #tree.tabp .controls { margin-bottom:6px; }
 
   /* Jugar */
-  #menu.tabp { justify-content:flex-start; }
+  #menu.tabp { justify-content:flex-start; overflow-x:hidden; }
+  #feat .art, .obtn.main { contain:paint; }
   #menu #logo { width:auto; height:min(15vh, 120px); margin:0; }
-  .stage { position:relative; flex:1; min-height:150px; width:100%; max-width:520px; display:flex; justify-content:center; align-items:flex-end; }
+  .stage { position:relative; flex:1; min-height:150px; overflow:hidden; padding-top:8px; box-sizing:border-box; width:100%; max-width:520px; display:flex; justify-content:center; align-items:flex-end; }
   .stage .glow { position:absolute; bottom:2%; left:50%; width:min(80vw, 380px); aspect-ratio:1/0.32; transform:translateX(-50%); border-radius:50%;
     background:radial-gradient(ellipse, rgba(63,240,216,.55), rgba(63,240,216,.12) 55%, transparent 72%); filter:blur(2px); animation:aura 3s ease-in-out infinite; }
   .stage img { position:relative; height:100%; max-height:52vh; max-width:94%; object-fit:contain; filter:drop-shadow(0 0 18px rgba(63,240,216,.3)) drop-shadow(0 10px 14px rgba(0,0,0,.7)); animation:idle 3s ease-in-out infinite; transform-origin:50% 100%; }
