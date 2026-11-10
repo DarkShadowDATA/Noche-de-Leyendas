@@ -408,7 +408,18 @@ class Play extends Phaser.Scene {
     const want = P.atkT > 0 ? this.tex(`${this.hunterId}_ataque`)
       : P.moving ? this.tex(`${this.hunterId}_camina`, `${this.hunterId}_ataque`)
         : this.tex(`${this.hunterId}_quieto`, `${this.hunterId}_camina`, `${this.hunterId}_ataque`);
-    if (s.texture.key !== want) s.setTexture(want);
+    // Caminar de verdad: 6 poses dibujadas (hoja de animación) que avanzan según lo que camina.
+    const hasW = this.textures.exists(`${this.hunterId}_w0`);
+    const walkF = hasW && P.moving && P.dashT <= 0;
+    if (walkF) {
+      P.wd = (P.wd || 0) + spd * dt;
+      const fr = Math.floor(P.wd / 15) % 6, k = `${this.hunterId}_w${fr}`;
+      if (s.texture.key !== k) { s.setTexture(k); if ((fr === 0 || fr === 3) && !(P.jump >= 2)) this.fxDust.emitParticleAt(P.x - P.dx * 10 + rnd(-4, 4), P.y - 2, 2); }
+      s.setOrigin(0.5, 0.906);
+    } else {
+      if (s.texture.key !== want) s.setTexture(want);
+      s.setOrigin(hasW ? (want.endsWith('_quieto') ? 0.566 : want.endsWith('_ataque') ? 0.54 : 0.5) : 0.5, 0.92);
+    }
     // Animación suave: nada de brincos. mv = qué tanto va corriendo (0 quieto … 1 a tope), con arranque y frenado.
     const ka = 1 - Math.exp(-dt * 12);
     P.mv = (P.mv || 0) + ((P.moving ? 1 : 0) - (P.mv || 0)) * ka;
@@ -419,18 +430,18 @@ class Play extends Phaser.Scene {
     const prev = Math.sin(P.ph);
     P.ph += dt * (2.2 + 9.8 * P.mv);
     const step = Math.sin(P.ph);
-    if (P.mv > 0.6 && prev * step < 0 && P.dashT <= 0 && P.jump < 2) this.fxDust.emitParticleAt(P.x - P.dx * 10 + rnd(-4, 4), P.y - 2, 2); // polvito en cada paso
-    const walkBob = (1 - Math.cos(P.ph * 2)) * 1.6 * P.mv;     // sube y baja suave dos veces por ciclo
+    if (!hasW && P.mv > 0.6 && prev * step < 0 && P.dashT <= 0 && P.jump < 2) this.fxDust.emitParticleAt(P.x - P.dx * 10 + rnd(-4, 4), P.y - 2, 2); // polvito en cada paso
+    const walkBob = hasW ? 0 : (1 - Math.cos(P.ph * 2)) * 1.6 * P.mv;     // sube y baja suave dos veces por ciclo
     const breathe = Math.sin(this.t * 2.4) * (1 - P.mv);
     const atk = P.atkT > 0 ? Math.sin(Math.min(1, (0.2 - P.atkT) / 0.2) * Math.PI) : 0; // 0→1→0 durante el golpe
-    const sy = 1 + 0.025 * breathe + 0.03 * Math.cos(P.ph * 2) * P.mv - 0.10 * Math.max(0, -acc) + 0.07 * Math.max(0, acc) + 0.05 * atk;
+    const sy = 1 + 0.025 * breathe + (hasW ? 0 : 0.03) * Math.cos(P.ph * 2) * P.mv - 0.10 * Math.max(0, -acc) + 0.07 * Math.max(0, acc) + 0.05 * atk;
     const sx = (2 - sy) * (1 + 0.04 * atk);
     const J = 1 + (P.jump || 0) / 160;
     s.setFlipX(false);
     const fdx = P.dx || 0, fdy = P.dy || 0;
     s.x = P.x + fdx * 9 * atk; s.y = P.y - walkBob - (P.jump || 0) + fdy * 5 * atk;
     s.setScale(this.pBase * sx * J * P.fx, this.pBase * sy * J);
-    s.rotation = P.lean + step * 0.035 * P.mv + fdx * 0.10 * atk;
+    s.rotation = P.lean * (hasW ? 0.5 : 1) + step * (hasW ? 0 : 0.035) * P.mv + fdx * 0.10 * atk;
     s.setDepth(P.y);
     s.setAlpha(P.inv > 0 && P.dashT <= 0 ? 0.6 + 0.4 * Math.sin(this.t * 40) : 1);
     if (P.hurtFlash > 0) { P.hurtFlash -= dt; s.setTint(0xff6a6a); } else s.clearTint();
