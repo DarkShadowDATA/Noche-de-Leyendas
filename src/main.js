@@ -260,6 +260,7 @@ class Play extends Phaser.Scene {
       hurtCd: 0, inv: 0, dashT: 0, dashCd: 0, dx: 1, dy: 0, atkT: 0, slowT: 0, pushVx: 0, pushVy: 0, pushT: 0, ph: 0, jump: 0,
     };
     this.pGlow = this.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(0xffa040).setAlpha(0.35).setScale(2.2).setDepth(-80000);
+    this.fxDust = this.add.particles(0, 0, 'glow', { speed: { min: 8, max: 26 }, angle: { min: 200, max: 340 }, lifespan: 420, scale: { start: 0.16, end: 0.34 }, alpha: { start: 0.28, end: 0 }, tint: 0xcdbfae, emitting: false }).setDepth(-70000);
     this.pSpr = this.add.image(0, 0, this.tex(`${this.hunterId}_camina`, `${this.hunterId}_ataque`)).setOrigin(0.5, 0.92);
     this.pBase = 92 / 205; this.pSpr.setScale(this.pBase);
     this.hpBar = this.add.graphics().setDepth(1e6);
@@ -408,14 +409,26 @@ class Play extends Phaser.Scene {
       : P.moving ? this.tex(`${this.hunterId}_camina`, `${this.hunterId}_ataque`)
         : this.tex(`${this.hunterId}_quieto`, `${this.hunterId}_camina`, `${this.hunterId}_ataque`);
     if (s.texture.key !== want) s.setTexture(want);
-    if (P.moving) P.ph += dt * 9; else P.ph += dt * 2.2;
-    const bob = P.moving ? Math.abs(Math.sin(P.ph)) * 6 : Math.sin(P.ph) * 1.5;
-    const sq = P.moving ? 1 - 0.06 * Math.abs(Math.cos(P.ph)) : 1 + 0.02 * Math.sin(P.ph);
-    if (Math.abs(P.dx) > 0.15) s.setFlipX(P.dx < 0);
-    s.x = P.x; s.y = P.y - bob - P.jump;
-    const atkPop = P.atkT > 0 ? 1.08 : 1;
-    s.setScale(this.pBase * atkPop * (2 - sq) * (1 + P.jump / 160), this.pBase * atkPop * sq * (1 + P.jump / 160));
-    s.rotation = P.moving ? Math.sin(P.ph) * 0.07 + P.dx * 0.06 : 0;
+    // Animación suave: nada de brincos. mv = qué tanto va corriendo (0 quieto … 1 a tope), con arranque y frenado.
+    const k = 1 - Math.exp(-dt * 12);
+    P.mv = (P.mv || 0) + ((P.moving ? 1 : 0) - (P.mv || 0)) * k;
+    const acc = (P.moving ? 1 : 0) - P.mv;                    // >0 arrancando, <0 frenando
+    P.fx = (P.fx == null ? 1 : P.fx) + ((P.dx < -0.15 ? -1 : P.dx > 0.15 ? 1 : Math.sign(P.fx) || 1) - P.fx) * (1 - Math.exp(-dt * 18)); // voltea girando, no de golpe
+    P.lean = (P.lean || 0) + ((P.moving ? P.dx * 0.13 : 0) - (P.lean || 0)) * k;
+    const prev = Math.sin(P.ph);
+    P.ph += dt * (2.2 + 9.8 * P.mv);
+    const step = Math.sin(P.ph);
+    if (P.mv > 0.6 && prev * step < 0 && P.dashT <= 0 && P.jump < 2) this.fxDust.emitParticleAt(P.x - P.dx * 10 + rnd(-4, 4), P.y - 2, 2); // polvito en cada paso
+    const walkBob = (1 - Math.cos(P.ph * 2)) * 1.6 * P.mv;     // sube y baja suave dos veces por ciclo
+    const breathe = Math.sin(this.t * 2.4) * (1 - P.mv);
+    const atk = P.atkT > 0 ? Math.sin(Math.min(1, (0.2 - P.atkT) / 0.2) * Math.PI) : 0; // 0→1→0 durante el golpe
+    const sy = 1 + 0.025 * breathe + 0.03 * Math.cos(P.ph * 2) * P.mv - 0.10 * Math.max(0, -acc) + 0.07 * Math.max(0, acc) + 0.05 * atk;
+    const sx = (2 - sy) * (1 + 0.04 * atk);
+    const J = 1 + P.jump / 160;
+    s.setFlipX(false);
+    s.x = P.x + P.dx * 9 * atk; s.y = P.y - walkBob - P.jump + P.dy * 5 * atk;
+    s.setScale(this.pBase * sx * J * P.fx, this.pBase * sy * J);
+    s.rotation = P.lean + step * 0.035 * P.mv + P.dx * 0.10 * atk;
     s.setDepth(P.y);
     s.setAlpha(P.inv > 0 && P.dashT <= 0 ? 0.6 + 0.4 * Math.sin(this.t * 40) : 1);
     if (P.hurtFlash > 0) { P.hurtFlash -= dt; s.setTint(0xff6a6a); } else s.clearTint();
@@ -650,7 +663,7 @@ class Play extends Phaser.Scene {
       let bob = 0, sq = 1, rot = 0;
       if (e.d.static) { bob = 0; sq = 1 + Math.sin(this.t * 3) * 0.02; }
       else if (e.d.flyer || e.k === 'anima' || e.k === 'llorona') { bob = 10 + Math.sin(e.ph * 6) * 5; sq = 1 + Math.sin(e.ph * 12) * 0.03; }
-      else { bob = Math.abs(Math.sin(e.ph * 9)) * (e.boss ? 5 : 3.5); sq = 1 - 0.06 * Math.abs(Math.cos(e.ph * 9)); rot = Math.sin(e.ph * 9) * 0.07; }
+      else { bob = (1 - Math.cos(e.ph * 18)) * (e.boss ? 1.6 : 1.2); sq = 1 + 0.03 * Math.cos(e.ph * 18); rot = Math.sin(e.ph * 9) * 0.045 + (dx > 0 ? 0.05 : -0.05); } // paso suave, inclinado hacia donde camina
       if (e.state === 'wind') { s.x = e.x + Math.sin(this.t * 70) * 3; sq = 0.84; } else s.x = e.x;
       if (e.state === 'leap') { bob = 26; rot = 0.25 * Math.sign(e.lx || 1); }
       if (e.state === 'aim') { s.x = e.x + Math.sin(this.t * 60) * 3; }
