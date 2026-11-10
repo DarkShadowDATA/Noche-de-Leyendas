@@ -2,7 +2,7 @@
 const KEY = 'ndl_save_v1';
 const DEF = () => ({
   flores: 0, ganadas: 0, tal: {}, cazadores: ['machetero', 'curandera'], dia: '', partidas: 0, mejor: 0, victorias: 0,
-  armas: {}, equipo: '', pin: { n: 0, pe: 0, pl: 0, dia: '' }, boletosUsados: 0, evos: [],
+  armas: {}, equipo: '', pin: { n: 0, pe: 0, pl: 0, dia: '' }, boletosUsados: 0, evos: [], mapa: 'pueblo', mexico: false, mapWins: {},
 });
 
 function read() {
@@ -30,6 +30,8 @@ export function mergeSaves(a, b) {
   for (const [k, v] of Object.entries(o.tal || {})) out.tal[k] = Math.max(out.tal[k] || 0, v);
   for (const h of o.cazadores || []) if (!out.cazadores.includes(h)) out.cazadores.push(h);
   for (const v of o.evos || []) if (!out.evos.includes(v)) out.evos.push(v);
+  out.mexico = !!(out.mexico || o.mexico);
+  out.mapWins = { ...(out.mapWins || {}) }; for (const [k, v] of Object.entries(o.mapWins || {})) out.mapWins[k] = Math.max(out.mapWins[k] || 0, v);
   for (const [k, v] of Object.entries(o.armas || {})) {
     const m = out.armas[k];
     if (!m || v.r > m.r || (v.r === m.r && (v.e || 0) > (m.e || 0))) out.armas[k] = { r: v.r, e: v.e || 0 };

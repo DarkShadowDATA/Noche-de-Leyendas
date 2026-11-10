@@ -1,0 +1,45 @@
+NOCHE DE LEYENDAS — FASE 3: EL PANTEÓN Y LOS CANALES (prompts para ChatGPT)
+Usa el mismo chat de las otras imágenes del juego para que salga el mismo estilo (caricatura pintada, colores fuertes, contorno oscuro, noche morada con luz turquesa y cempasúchil).
+Los objetos van con FONDO TRANSPARENTE y vistos de lado, un poco desde arriba, como las tumbas, la carreta y el farol que ya tiene el juego.
+Los suelos y el agua son CUADROS QUE SE REPITEN (que no se note la unión al ponerlos uno junto al otro), vistos desde arriba.
+
+--- EL PANTEÓN ---
+
+1) suelo_panteon — cuadro que se repite, 1024x1024, vista desde arriba
+Textura de suelo para un videojuego, vista totalmente desde arriba: tierra oscura de panteón mexicano de noche con pasto seco, piedritas, hojas secas y algunos pétalos de cempasúchil sueltos. Tonos morados y verde grisáceo con un poco de luz turquesa. Sin objetos grandes, sin tumbas, sin sombras de cosas. Debe repetirse sin que se note la unión (seamless tile).
+
+2) prop_cripta — fondo transparente, 1024x1024
+Cripta pequeña de panteón mexicano (mausoleo de piedra) con techo en forma de capilla, una cruz arriba, puerta de reja oxidada, velas encendidas y cempasúchil en la entrada, musgo y grietas. Vista de lado un poco desde arriba. Fondo transparente, sin texto.
+
+3) prop_angel — fondo transparente, 1024x1024
+Estatua de ángel de piedra gris de panteón, con alas cerradas y las manos en la cara llorando, sobre un pedestal con musgo y una corona de cempasúchil. Vista de lado un poco desde arriba. Fondo transparente, sin texto.
+
+4) prop_tumba_abierta — fondo transparente, 1024x1024
+Tumba de tierra recién abierta con la lápida rota y caída, tierra levantada, huesitos y dos manos de calaquita (esqueleto caricaturesco) saliendo del hoyo, un brillo morado saliendo de adentro. Vista de lado un poco desde arriba. Fondo transparente, sin texto.
+
+--- LOS CANALES ---
+
+5) suelo_canales — cuadro que se repite, 1024x1024, vista desde arriba
+Textura de suelo para un videojuego, vista totalmente desde arriba: orilla de los canales de Xochimilco de noche, tierra húmeda y pasto verde oscuro con charquitos, piedras con musgo y algunos pétalos de cempasúchil. Tonos azul verdoso y morado. Sin objetos grandes. Debe repetirse sin que se note la unión (seamless tile).
+
+6) agua_canal — cuadro que se repite, 1024x1024, vista desde arriba
+Textura de agua de canal vista totalmente desde arriba, de noche: agua oscura verde turquesa con reflejos suaves de luna morada, algunos lirios acuáticos y pétalos de cempasúchil flotando, niebla muy ligera. Sin orillas ni bordes. Debe repetirse sin que se note la unión (seamless tile).
+
+7) prop_trajinera — fondo transparente, 1536x768 (horizontal)
+Trajinera de Xochimilco vista de lado, larga y colorida (madera pintada de rojo, amarillo, verde y azul), con su arco de flores al frente sin letras, mesa y bancas vacías, farolitos de papel encendidos colgando, flotando un poco. Vista de lado un poco desde arriba, apuntando a la derecha. Fondo transparente, sin texto, sin personas.
+
+8) prop_ahuejote — fondo transparente, 1024x1536 (vertical)
+Ahuejote (árbol alto y delgado típico de los canales de Xochimilco) de noche, con hojas verde oscuro y luz de luna morada, raíces en un poco de tierra. Vista de lado. Fondo transparente, sin texto.
+
+9) prop_muelle — fondo transparente, 1024x1024
+Muelle pequeño de tablas de madera vieja con un poste, un farolito encendido y una cuerda, de los canales de Xochimilco. Vista de lado un poco desde arriba. Fondo transparente, sin texto.
+
+--- SELECTOR DE MAPA (tarjetas en «Prepara la noche») ---
+
+10) mapa_panteon — 768x1024 (vertical), con fondo
+Ilustración vertical de un panteón mexicano de noche visto de frente: criptas, cruces y tumbas, ofrendas encendidas con velas y cempasúchil, una estatua de ángel llorando, luna morada y niebla turquesa a ras del suelo. Mismo estilo que el fondo del menú. Sin personajes, sin texto.
+
+11) mapa_canales — 768x1024 (vertical), con fondo
+Ilustración vertical de los canales de Xochimilco de noche: agua oscura, trajineras coloridas con farolitos, ahuejotes, niebla turquesa sobre el agua y, muy a lo lejos, la silueta blanca de La Llorona flotando sobre el canal. Luna morada. Mismo estilo que el fondo del menú. Sin texto.
+
+(El Pueblo abandonado usa el fondo del menú que ya tienes, no hace falta otra imagen.)

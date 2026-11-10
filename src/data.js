@@ -188,3 +188,13 @@ export function gearBonus(item) { // item = { r: índice de rareza, e: estrellas
   const R = RARITIES[item.r];
   return { dmg: 1 + R.dmg + STAR_DMG * (item.e || 0), cd: 1 - R.cd, lv: R.lv };
 }
+
+// ---------- Fase 3: mapas de México ----------
+// win = victorias contra La Llorona que se necesitan para abrirlo; bonus = flores extra (multiplica al final)
+export const MAPS = {
+  pueblo: { name: 'Pueblo abandonado', icon: '🏚️', win: 0, bonus: 0, desc: 'La plaza del pueblo. Donde empieza todo.', suelo: 'suelo_pueblo', card: 'menu_fondo_v' },
+  panteon: { name: 'El Panteón', icon: '🪦', win: 1, bonus: 0.15, desc: 'Las tumbas se abren y sacan calaquitas. Las ofrendas encendidas te curan.', suelo: 'suelo_panteon', card: 'mapa_panteon', tint: 0xa79cc8 },
+  canales: { name: 'Los Canales', icon: '🛶', win: 3, bonus: 0.3, desc: 'El agua te frena y las trajineras tapan el paso. Aquí vive La Llorona, y es más fuerte.', suelo: 'suelo_canales', card: 'mapa_canales', tint: 0x8fc4b8 },
+};
+export const PANTEON = { tombEvery: [7, 11], tombN: 3, healR: 110, healPerSec: 3, ofrendaChance: 0.22 };
+export const CANALES = { period: 1100, y0: 380, h: 250, slow: 0.6, bridgeEvery: 1500, bridgeW: 170, boatW: 300, boatH: 92, lloronaHp: 1.35, lloronaDmg: 1.15, regionFlores: 150 };

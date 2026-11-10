@@ -1,6 +1,6 @@
 // Noche de Leyendas: guarda el juego en el celular para jugar sin internet.
 // Con internet siempre baja la versión nueva; sin internet usa la guardada.
-const CACHE = 'ndl-v6';
+const CACHE = 'ndl-v7';
 const FILES = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {

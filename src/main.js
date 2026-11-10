@@ -4,7 +4,7 @@ import '@fontsource/lilita-one/400.css';
 import { dsTrack } from './dsev.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
-import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS } from './data.js';
+import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun } from './save.js';
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
@@ -216,6 +216,7 @@ class Play extends Phaser.Scene {
     const r = this.resume || data;
     this.objId = OBJECTIVES[r.obj] ? r.obj : 'llorona';
     this.curses = new Set((r.curses || []).filter(c => CURSES[c]));
+    this.mapId = MAPS[r.map] ? r.map : 'pueblo'; this.M = MAPS[this.mapId];
   }
   cursed(c) { return this.curses.has(c); }
   bossTime(k) { return k === 'llorona' && this.cursed('impaciente') ? 420 : BOSS_TIMES[k]; }
@@ -243,8 +244,11 @@ class Play extends Phaser.Scene {
     this.won = false; this.loop = 1; this.bossN = Object.keys(this.bossDone).length; this.nextBossT = 0; this.helpers = []; this.helpT = rnd(HELPER_EVERY[0], HELPER_EVERY[1]) + 10; this.freezeT = 0;
 
     // Suelo, sombras, adornos
-    this.groundTS = this.add.tileSprite(0, 0, 10, 10, this.tex('suelo_pueblo', 'ground')).setOrigin(0).setDepth(-100000);
-    this.groundScale = this.textures.exists('suelo_pueblo') ? 0.55 : 1; this.groundTS.setTileScale(this.groundScale);
+    const gk = this.tex(this.M.suelo, 'suelo_pueblo', 'ground');
+    this.groundTS = this.add.tileSprite(0, 0, 10, 10, gk).setOrigin(0).setDepth(-100000);
+    this.groundScale = gk !== 'ground' ? 0.55 : 1; this.groundTS.setTileScale(this.groundScale);
+    if (gk !== this.M.suelo && this.M.tint) this.groundTS.setTint(this.M.tint); // sin arte final: el suelo del pueblo teñido
+    this.setupMap();
     this.shadows = this.add.graphics().setDepth(-90000);
     this.chunks = new Map(); this.propPool = [];
 
@@ -364,6 +368,7 @@ class Play extends Phaser.Scene {
     this.updateSouls(dt);
     this.updateChests();
     this.updateWorld();
+    this.updateMap(dt);
     this.drawShadows();
     this.hud.tick(dt);
   }
@@ -382,6 +387,7 @@ class Play extends Phaser.Scene {
     P.moving = ml > 0.05;
     if (P.moving) { P.dx = mx / Math.max(ml, 1e-6); P.dy = my / Math.max(ml, 1e-6); P.face = Math.atan2(P.dy, P.dx); }
     let spd = P.speed * (1 + 0.08 * this.pl('huaraches') + 0.05 * this.pl('espuelas') + 0.05 * tl('sup_paso')) * (P.slowT > 0 ? 0.55 : 1);
+    if (this.inWater(P.x, P.y)) spd *= CANALES.slow;
     let vx = mx * spd, vy = my * spd;
     if (P.dashT > 0) { P.dashT -= dt; vx = P.dx * 560; vy = P.dy * 560; if (Math.random() < 0.6) this.afterimage(); }
     if (P.pushT > 0) { P.pushT -= dt; vx += P.pushVx; vy += P.pushVy; }
@@ -453,18 +459,19 @@ class Play extends Phaser.Scene {
     while (this.spawnAcc >= 1) {
       this.spawnAcc -= 1;
       if (alive >= cap) break;
-      const w = [['calaquita', 10]];
-      if (t > 50) w.push(['chaneque', 3 + t / 60]);
+      const mp = this.mapId;
+      const w = [['calaquita', mp === 'panteon' ? 13 : 10]];
+      if (t > 50) w.push(['chaneque', (3 + t / 60) * (mp === 'canales' ? 1.4 : 1)]);
       if (t > 140) w.push(['nahual', (2 + t / 120) * (this.moonT > 0 ? 3 : 1)]);
       if (t > 210) w.push(['chupacabras', 1 + t / 200]);
-      if (t > 270) w.push(['anima', 2 + t / 150]);
+      if (t > (mp === 'panteon' ? 150 : 270)) w.push(['anima', (2 + t / 150) * (mp === 'panteon' ? 1.8 : 1)]);
       let tot = 0; for (const [, v] of w) tot += v;
       let r = Math.random() * tot, k = 'calaquita';
       for (const [kk, v] of w) { r -= v; if (r <= 0) { k = kk; break; } }
       const [x, y] = this.edgePoint();
       this.spawn(k, x, y);
     }
-    if (t > 85) { this.flockT -= dt; if (this.flockT <= 0) { this.flockT = rnd(18, 28); this.spawnFlock(); } }
+    if (t > 85) { this.flockT -= dt; if (this.flockT <= 0) { this.flockT = this.mapId === 'canales' ? rnd(11, 17) : rnd(18, 28); this.spawnFlock(); } }
   }
 
   edgePoint(extra = 60) {
@@ -511,6 +518,7 @@ class Play extends Phaser.Scene {
       e.hp = e.max = ENEMIES.llorona.hp * Math.pow(ENDLESS.hpGrow, e.n - 2);
       e.dmg = e.d.dmg * (1 + ENDLESS.dmgPerLoop * (e.loop - 1)); e.spd *= 1 + ENDLESS.spdPerLoop * (e.loop - 1);
     }
+    if (this.mapId === 'canales' && k === 'llorona') { e.hp = e.max = e.max * CANALES.lloronaHp; e.dmg *= CANALES.lloronaDmg; }
     this.bossAlive = e;
     Sfx.play('boss');
     this.cameras.main.shake(400, 0.006);
@@ -565,7 +573,7 @@ class Play extends Phaser.Scene {
       }
       const dx = P.x - e.x, dy = P.y - e.y, dist = Math.hypot(dx, dy) || 1;
       let vx = 0, vy = 0;
-      const slow = e.slowT > 0 ? (e.boss ? 0.8 : 0.55) : 1; // a los jefes el humo y el agua los frenan menos
+      const slow = (e.slowT > 0 ? (e.boss ? 0.8 : 0.55) : 1) * (!e.d.flyer && !e.boss && this.inWater(e.x, e.y) ? CANALES.slow : 1); // a los jefes el humo y el agua los frenan menos
       e.slowT -= dt; e.flash -= dt; e.cd -= dt; e.st -= dt;
       if (this.freezeT > 0 && !e.boss) { /* congelados por la campana */ }
       else if (e.stun > 0) { e.stun -= dt; }
@@ -772,7 +780,9 @@ class Play extends Phaser.Scene {
       if (e.k === 'llorona' && !this.won) {
         this.won = true; this.nextBossT = this.t + ENDLESS.first;
         if (this.obj.id === 'llorona') this.objDone();
-        Sfx.play('win'); this.banner('¡Venciste a La Llorona!', 'La noche sigue… los jefes volverán más fuertes', 3200);
+        Sfx.play('win');
+        if (this.mapId === 'canales' && !save.mexico) { this.regionWon = true; this.banner('¡Liberaste México!', `Venciste a La Llorona en su canal · +${CANALES.regionFlores} 🌼`, 3800); }
+        else this.banner('¡Venciste a La Llorona!', 'La noche sigue… los jefes volverán más fuertes', 3200);
       } else {
         if (this.won) this.nextBossT = this.t + ENDLESS.gap;
         this.banner(`¡Venciste a ${this.bossLabel(e)}!`, 'Soltó un cofre y un imán', 2000);
@@ -1395,6 +1405,7 @@ class Play extends Phaser.Scene {
         const P = this.propList(), tot = P.reduce((a, q) => a + q.w, 0);
         let rr = r() * tot, q = P[0]; for (const o of P) { rr -= o.w; if (rr <= 0) { q = o; break; } }
         const x = cx * CH + r() * CH, y = cy * CH + r() * CH;
+        if (this.inWater(x, y, 40)) continue;
         const im = (this.propPool.pop() || this.add.image(0, 0, q.k)).setTexture(q.k).setVisible(true).setOrigin(0.5, 0.95).setPosition(x, y).setDepth(y).setFlipX(q.flip !== false && r() < 0.5);
         im.setScale(q.h / im.height * (0.9 + r() * 0.2));
         items.push(im);
@@ -1407,6 +1418,9 @@ class Play extends Phaser.Scene {
 
   propList() {
     if (this._props) return this._props;
+    const extra = { panteon: [{ k: 'prop_cripta', h: 170, w: 2, glow: [-50, 1.6] }, { k: 'prop_angel', h: 150, w: 1 }, { k: 'prop_tumba1', h: 92, w: 5 }, { k: 'prop_tumba2', h: 92, w: 4, glow: [-20, 1.2] }, { k: 'prop_cruz', h: 88, w: 4 }, { k: 'prop_velas', h: 58, w: 3, glow: [-40, 1.8] }],
+      canales: [{ k: 'prop_ahuejote', h: 260, w: 2 }, { k: 'prop_muelle', h: 90, w: 1, glow: [-60, 1.6] }, { k: 'prop_rocas', h: 52, w: 3 }, { k: 'prop_cempasuchil', h: 50, w: 3 }, { k: 'prop_farol', h: 180, w: 1, glow: [-150, 2.2], flip: false }] }[this.mapId];
+    if (extra) { const L = extra.filter(q => this.textures.exists(q.k)); if (L.length >= 3) return (this._props = L); }
     const L = [
       { k: 'prop_tumba1', h: 92, w: 3 }, { k: 'prop_tumba2', h: 92, w: 2, glow: [-20, 1.2] }, { k: 'prop_cruz', h: 88, w: 2 },
       { k: 'prop_velas', h: 58, w: 2, glow: [-40, 1.8] }, { k: 'prop_ofrenda', h: 88, w: 1, glow: [-60, 1.8] }, { k: 'prop_cempasuchil', h: 50, w: 3 },
@@ -1473,6 +1487,140 @@ class Play extends Phaser.Scene {
     this.hud.slots();
   }
 
+  // ---------- Mapas (Fase 3): El Panteón y Los Canales ----------
+  setupMap() {
+    this.mapG = this.add.graphics().setDepth(-94000);
+    this.mapPool = { agua: [], img: [] }; this.mapUsed = [];
+    this.tombs = []; this.tombT = rnd(PANTEON.tombEvery[0], PANTEON.tombEvery[1]) + 4; this.healTick = 0;
+    if (this.mapId === 'canales') {
+      canvasTex(this, 'agua', 256, 256, (c, w, h) => { // agua dibujada con código mientras llega el arte final
+        c.fillStyle = '#11434f'; c.fillRect(0, 0, w, h); const r = seeded(7);
+        for (let i = 0; i < 40; i++) { c.fillStyle = r() < 0.5 ? 'rgba(10,40,50,.35)' : 'rgba(40,110,120,.18)'; const x = r() * w, y = r() * h, rr = 14 + r() * 30; for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) { c.beginPath(); c.arc(x + ox, y + oy, rr, 0, 7); c.fill(); } }
+        c.strokeStyle = 'rgba(160,255,240,.18)'; c.lineWidth = 2;
+        for (let i = 0; i < 26; i++) { const x = r() * w, y = r() * h, l = 10 + r() * 26; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + l / 2, y - 3, x + l, y); c.stroke(); }
+        for (let i = 0; i < 5; i++) { const x = r() * w, y = r() * h; c.fillStyle = 'rgba(60,140,70,.75)'; c.beginPath(); c.ellipse(x, y, 9, 6, 0, 0.3, 6); c.fill(); }
+        for (let i = 0; i < 6; i++) { c.fillStyle = 'rgba(255,150,40,.7)'; c.beginPath(); c.ellipse(r() * w, r() * h, 3, 2, r() * 3, 0, 7); c.fill(); }
+      });
+      canvasTex(this, 'trajinera', 300, 120, (c) => {
+        c.fillStyle = '#5a2a14'; c.beginPath(); c.moveTo(6, 70); c.lineTo(294, 70); c.lineTo(270, 108); c.lineTo(30, 108); c.closePath(); c.fill();
+        const cols = ['#e63946', '#f4a261', '#2a9d8f', '#e9c46a', '#3a86ff', '#ff70a6'];
+        for (let i = 0; i < 6; i++) { c.fillStyle = cols[i]; c.fillRect(32 + i * 40, 76, 38, 12); }
+        c.fillStyle = '#7a3b1c'; c.fillRect(40, 40, 6, 32); c.fillRect(254, 40, 6, 32); c.fillRect(40, 36, 220, 8);
+        c.fillStyle = '#ffcf5a'; c.font = 'bold 16px sans-serif'; for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(56 + i * 24, 30, 7, 0, 7); c.fillStyle = cols[i % 6]; c.fill(); }
+        c.fillStyle = 'rgba(255,220,120,.9)'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(80 + i * 46, 52, 5, 0, 7); c.fill(); }
+      });
+    }
+    if (this.mapId === 'panteon') {
+      this.ofrendas = new Map(); // celdas con ofrenda que cura
+    }
+  }
+  inWater(x, y, m = 0) {
+    if (this.mapId !== 'canales') return false;
+    const C = CANALES, yy = (((y - C.y0 + m) % C.period) + C.period) % C.period;
+    if (yy >= C.h + 2 * m) return false;
+    const xx = (((x + C.bridgeW / 2) % C.bridgeEvery) + C.bridgeEvery) % C.bridgeEvery;
+    return xx > C.bridgeW + m; // en los puentes no hay agua
+  }
+  mapImg(key, x, y, depth) {
+    const im = (this.mapPool.img.pop() || this.add.image(0, 0, key)).setTexture(key).setVisible(true).setPosition(x, y).setDepth(depth).setAlpha(1).clearTint().setFlipX(false).setOrigin(0.5, 0.95).setScale(1).setBlendMode(Phaser.BlendModes.NORMAL);
+    this.mapUsed.push(im); return im;
+  }
+  updateMap(dt) {
+    if (this.mapId === 'pueblo') return;
+    for (const im of this.mapUsed) { im.setVisible(false); this.mapPool.img.push(im); } this.mapUsed = [];
+    const v = this.cameras.main.worldView, g = this.mapG; g.clear();
+    if (this.mapId === 'canales') this.drawCanales(v, g, dt); else this.drawPanteon(v, g, dt);
+  }
+  drawCanales(v, g, dt) {
+    const C = CANALES, P = this.P;
+    const k0 = Math.floor((v.y - C.y0 - C.h) / C.period), k1 = Math.floor((v.bottom - C.y0) / C.period) + 1;
+    let ai = 0;
+    for (let k = k0; k <= k1; k++) {
+      const top = C.y0 + k * C.period; if (top > v.bottom + 20 || top + C.h < v.y - 20) continue;
+      let ts = this.mapPool.agua[ai]; if (!ts) { ts = this.add.tileSprite(0, 0, 10, 10, this.tex('agua_canal', 'agua')).setOrigin(0).setDepth(-96000); this.mapPool.agua[ai] = ts; }
+      ai++; const sc = ts.texture.key === 'agua_canal' ? 0.4 : 1;
+      ts.setVisible(true).setPosition(v.x - 2, top).setSize(v.width + 4, C.h).setTileScale(sc).setTilePosition((v.x - 2) / sc + this.t * 6, top / sc);
+      // orillas y puentes
+      g.fillStyle(0x0a1a1c, 0.55); g.fillRect(v.x, top - 6, v.width, 8); g.fillRect(v.x, top + C.h - 2, v.width, 8);
+      g.lineStyle(2, 0x9ff7ea, 0.25); g.lineBetween(v.x, top + 3, v.right, top + 3); g.lineBetween(v.x, top + C.h - 3, v.right, top + C.h - 3);
+      const b0 = Math.floor((v.x - C.bridgeW) / C.bridgeEvery), b1 = Math.floor(v.right / C.bridgeEvery) + 1;
+      for (let b = b0; b <= b1; b++) {
+        const bx = b * C.bridgeEvery - C.bridgeW / 2;
+        if (this.textures.exists('puente_canal')) { const im = this.mapImg('puente_canal', bx + C.bridgeW / 2, top + C.h + 14, -95500); im.setOrigin(0.5, 1); im.setDisplaySize(C.bridgeW, C.h + 28); }
+        else {
+          g.fillStyle(0x6b4423, 1); g.fillRect(bx, top - 10, C.bridgeW, C.h + 20);
+          g.fillStyle(0x4a2c14, 1); for (let yy = top - 10; yy < top + C.h + 10; yy += 18) g.fillRect(bx, yy, C.bridgeW, 3);
+          g.fillStyle(0x3a2010, 1); g.fillRect(bx - 6, top - 14, 8, C.h + 28); g.fillRect(bx + C.bridgeW - 2, top - 14, 8, C.h + 28);
+        }
+      }
+      // trajineras: dos por canal, se mueven solas (sin estado: dependen del tiempo)
+      const h1 = ((k * 2654435761) >>> 0) / 4294967296, dir = (k & 1) ? 1 : -1, spd = 42 + h1 * 30, span = 2800;
+      for (let j = 0; j < 2; j++) {
+        const base = h1 * span + j * span / 2 + dir * spd * this.t;
+        const x = P.x + ((((base - P.x) % span) + span) % span) - span / 2, y = top + C.h * 0.58;
+        if (x < v.x - C.boatW || x > v.right + C.boatW) continue;
+        const key = this.tex('prop_trajinera', 'trajinera');
+        const im = this.mapImg(key, x, y + C.boatH * 0.45, y + C.boatH * 0.45); im.setScale(C.boatW / im.width).setFlipX(dir < 0);
+        this.boatPush(x, y);
+      }
+    }
+    for (let i = ai; i < this.mapPool.agua.length; i++) this.mapPool.agua[i].setVisible(false);
+    // olitas al caminar en el agua
+    if (this.inWater(P.x, P.y) && P.moving && Math.random() < 0.25) this.fxSmoke.emitParticleAt(P.x + rnd(-10, 10), P.y, 1);
+  }
+  boatPush(bx, by) {
+    const C = CANALES, hw = C.boatW * 0.46, hh = C.boatH * 0.5;
+    const push = (o, isP) => {
+      const dx = o.x - bx, dy = o.y - by;
+      if (Math.abs(dx) > hw || Math.abs(dy) > hh) return;
+      const ny = dy < 0 ? by - hh : by + hh; o.y = ny; if (isP && Math.random() < 0.05) this.cameras.main.shake(80, 0.002);
+    };
+    push(this.P, true);
+    for (const e of this.E) if (e.alive && !e.d.flyer && !e.boss && Math.abs(e.x - bx) < hw + 30) push(e, false);
+  }
+  drawPanteon(v, g, dt) {
+    const P = this.P, CELL = 700, c0 = Math.floor(v.x / CELL) - 1, c1 = Math.floor(v.right / CELL) + 1, r0 = Math.floor(v.y / CELL) - 1, r1 = Math.floor(v.bottom / CELL) + 1;
+    let healing = false;
+    for (let cx = c0; cx <= c1; cx++) for (let cy = r0; cy <= r1; cy++) {
+      if (cx === 0 && cy === 0) continue;
+      const r = seeded((cx * 92837111) ^ (cy * 689287499) ^ 0x5eed);
+      if (r() > PANTEON.ofrendaChance) continue;
+      const x = cx * CELL + 150 + r() * (CELL - 300), y = cy * CELL + 150 + r() * (CELL - 300);
+      if (x < v.x - 200 || x > v.right + 200 || y < v.y - 200 || y > v.bottom + 260) continue;
+      const near = Math.hypot(P.x - x, P.y - y) < PANTEON.healR;
+      const pul = 0.5 + 0.5 * Math.sin(this.t * 3);
+      g.lineStyle(3, 0x7dffb0, near ? 0.8 : 0.35 + pul * 0.2); g.strokeEllipse(x, y, PANTEON.healR * 2, PANTEON.healR * 1.1);
+      g.fillStyle(0x7dffb0, near ? 0.16 : 0.07); g.fillEllipse(x, y, PANTEON.healR * 2, PANTEON.healR * 1.1);
+      const im = this.mapImg(this.tex('prop_ofrenda', 'chest'), x, y, y); im.setScale(110 / im.height);
+      const gl = this.mapImg('glow', x, y - 60, -85000); gl.setOrigin(0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0x9dffb8).setScale(2 + pul * 0.4).setAlpha(0.5);
+      if (near) healing = true;
+    }
+    if (healing && !this.cursed('sincura') && P.hp < this.maxHp) {
+      this.heal(PANTEON.healPerSec * dt); this.healTick -= dt;
+      if (this.healTick <= 0) { this.healTick = 1; this.dmgText(P.x, P.y - 70, '+' + PANTEON.healPerSec, '#7dffb0', 18); }
+    }
+    // tumbas que se abren y sacan calaquitas
+    this.tombT -= dt;
+    if (this.tombT <= 0 && !this.over) {
+      this.tombT = rnd(PANTEON.tombEvery[0], PANTEON.tombEvery[1]) * (this.bossAlive ? 1.6 : 1);
+      const a = rnd(0, 6.28), d = rnd(240, 340);
+      this.tombs.push({ x: P.x + Math.cos(a) * d, y: P.y + Math.sin(a) * d * 0.75, t: 0, n: PANTEON.tombN + Math.floor(this.t / 150) });
+    }
+    for (const tb of this.tombs) {
+      tb.t += dt;
+      const key = this.tex('prop_tumba_abierta', 'prop_tumba1', 'chest');
+      const im = this.mapImg(key, tb.x + (tb.t < 0.8 ? Math.sin(tb.t * 60) * 3 : 0), tb.y, tb.y); im.setScale(100 / im.height);
+      if (key !== 'prop_tumba_abierta') im.setTint(0xc9a0ff);
+      if (tb.t > 7) im.setAlpha(Math.max(0, 1 - (tb.t - 7)));
+      if (tb.t < 1.2) { const gl = this.mapImg('glow', tb.x, tb.y - 30, -85000); gl.setOrigin(0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0xb07aff).setScale(1.2 + tb.t).setAlpha(0.7 - tb.t * 0.5); }
+      if (!tb.spawned && tb.t >= 0.8) {
+        tb.spawned = true; this.fxSmoke.emitParticleAt(tb.x, tb.y - 20, 8);
+        for (let i = 0; i < tb.n; i++) this.spawn('calaquita', tb.x + rnd(-40, 40), tb.y + rnd(-20, 30));
+      }
+    }
+    this.tombs = this.tombs.filter(tb => tb.t < 8);
+  }
+
   // ---------- Partida a medias: se guarda sola y se recupera al volver ----------
   get counts() { return (!GOD && START_T === 0 && !AUTO) || DEV; }
   saveRun() {
@@ -1481,7 +1629,7 @@ class Play extends Phaser.Scene {
     const run = {
       v: 1, at: Date.now(), hunter: this.hunterId, t: r1(this.t), kills: this.kills, level: this.level, xp: r1(this.xp), xpNeed: this.xpNeed, pendingLv: this.pendingLv,
       energy: this.energy, W: this.W.map(w => [w.id, w.lv, w.evo ? 1 : 0]), Pass: this.Pass, mapChests: this.mapChests, chestFlores: this.chestFlores, punHits: this.punHits, killsAt10: this.killsAt10,
-      obj: this.obj.id, curses: [...this.curses], evT: r1(this.evT), lastEv: this.lastEv, moonT: r1(this.moonT || 0),
+      obj: this.obj.id, curses: [...this.curses], map: this.mapId, regionWon: this.regionWon ? 1 : 0, evT: r1(this.evT), lastEv: this.lastEv, moonT: r1(this.moonT || 0),
       objSt: { done: this.obj.done, failed: this.obj.failed, n: this.obj.n, esc: this.obj.esc, di: this.obj.di, cart: this.obj.cart ? { ...this.obj.cart, x: this.obj.cart.x - P.x, y: this.obj.cart.y - P.y, tx: this.obj.cart.tx - P.x, ty: this.obj.cart.ty - P.y } : null, ofr: this.obj.ofr ? { ...this.obj.ofr, x: this.obj.ofr.x - P.x, y: this.obj.ofr.y - P.y } : null }, hp: r1(P.hp), rerolls: this.rerolls, revived: this.revived, gear: this.gear,
       bossDone: this.bossDone, bossKills: this.bossKills, won: this.won, bossN: this.bossN, nextBossT: this.nextBossT === Infinity ? -1 : r1(this.nextBossT),
       helpT: r1(this.helpT), flockT: r1(this.flockT), dmgTaken: Math.round(this.dmgTaken || 0),
@@ -1496,7 +1644,7 @@ class Play extends Phaser.Scene {
     const P = this.P;
     Object.assign(this, { t: r.t, kills: r.kills, level: r.level, xp: r.xp, xpNeed: r.xpNeed, pendingLv: r.pendingLv, energy: r.energy, rerolls: r.rerolls, revived: r.revived,
       bossDone: r.bossDone || {}, bossKills: r.bossKills || [], won: !!r.won, bossN: r.bossN || 0, nextBossT: r.nextBossT < 0 ? Infinity : r.nextBossT, helpT: r.helpT, flockT: r.flockT, dmgTaken: r.dmgTaken || 0 });
-    this.gear = r.gear || {};
+    this.gear = r.gear || {}; this.regionWon = !!r.regionWon;
     this.W = []; this.aura.setVisible(false);
     for (const [id, lv, evo] of r.W) { if (!WEAPONS[id]) continue; this.addWeapon(id); const w = this.W[this.W.length - 1]; w.lv = lv; w.evo = !!evo; if (w.evo && id === 'copal') this.aura.setTint(0x7dffb0); }
     this.mapChests = r.mapChests || {}; this.chestFlores = r.chestFlores || 0; this.punHits = r.punHits || 0; this.killsAt10 = r.killsAt10 != null ? r.killsAt10 : null;
@@ -1533,7 +1681,7 @@ function flowerLines(sc, win) {
   const F = FLOWERS, tA = Math.min(sc.t, F.afterT), tB = Math.max(0, sc.t - F.afterT);
   const kA = sc.killsAt10 != null ? sc.killsAt10 : sc.kills, kB = sc.kills - kA;
   const r = { tiempo: Math.floor((tA + tB * F.afterMul) / F.perSeconds), enemigos: Math.floor((kA + kB * F.afterMul) / F.perKills), jefes: 0, cofres: sc.chestFlores || 0,
-    objetivo: sc.obj && sc.obj.done ? OBJECTIVES[sc.obj.id].flores : 0, maldiciones: sc.curses ? sc.curses.size : 0 };
+    objetivo: sc.obj && sc.obj.done ? OBJECTIVES[sc.obj.id].flores : 0, maldiciones: sc.curses ? sc.curses.size : 0, mapa: sc.M ? sc.M.bonus : 0, region: sc.regionWon ? CANALES.regionFlores : 0 };
   for (const b of sc.bossKills) r.jefes += F.boss[b.k] || 0;
   return r;
 }
@@ -1541,7 +1689,7 @@ Play.prototype.flowerReward = function (win) {
   const r = flowerLines(this, win);
   let base = r.tiempo + r.enemigos + r.jefes + r.cofres;
   r.tope = base > FLOWERS.cap; base = Math.min(base, FLOWERS.cap) + r.objetivo;
-  base *= 1 + CURSE_BONUS * r.maldiciones;
+  base *= (1 + CURSE_BONUS * r.maldiciones) * (1 + r.mapa); base += r.region;
   const cosecha = 1 + 0.08 * tl('for_cosecha');
   const first = save.dia !== today();
   const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1));
@@ -1549,6 +1697,8 @@ Play.prototype.flowerReward = function (win) {
   if (counts) {
     save.flores += total; save.ganadas += total; save.partidas++; save.mejor = Math.max(save.mejor, Math.floor(this.t));
     if (win) save.victorias++;
+    if (this.regionWon) save.mexico = true;
+    if (win) { save.mapWins = save.mapWins || {}; save.mapWins[this.mapId] = (save.mapWins[this.mapId] || 0) + 1; }
     if (first) save.dia = today();
     persist();
   }
@@ -1662,7 +1812,7 @@ class Hud {
     const r = sc.reward;
     if (r) {
       const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : ''].filter(Boolean).join(' · ');
-      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
+      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡México liberada! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
     }
     $('end').classList.remove('hidden');
   }
@@ -1884,7 +2034,19 @@ function openPrep() {
   ['menu', 'end'].forEach(id => $(id).classList.add('hidden')); hideHub();
   buildPrep(); $('prep').classList.remove('hidden');
 }
+const mapOpen = (k) => (save.victorias || 0) >= MAPS[k].win || DEV;
 function buildPrep() {
+  if (!MAPS[save.mapa] || !mapOpen(save.mapa)) save.mapa = 'pueblo';
+  $('prepMaps').innerHTML = Object.entries(MAPS).map(([k, M]) => {
+    const op = mapOpen(k), img = IMG[M.card];
+    return `<div class="frame pmap${k === save.mapa ? ' on' : ''}${op ? '' : ' locked'}" data-k="${k}"><div class="in" ${img ? `style="background-image:url(${img})"` : ''}>
+      <div class="mt">${M.icon} ${M.name}</div><div class="mb">${op ? (M.bonus ? `+${Math.round(M.bonus * 100)}% 🌼` : 'Normal') : `🔒 Gana ${M.win} ${M.win === 1 ? 'noche' : 'noches'}`}</div></div></div>`;
+  }).join('');
+  $('prepMaps').querySelectorAll('.pmap').forEach(el => { el.onclick = () => {
+    const k = el.dataset.k; if (!mapOpen(k)) { shake(el); Sfx.play('pick'); return; } save.mapa = k; persist(); Sfx.play('pick'); buildPrep();
+  }; });
+  const M = MAPS[save.mapa], vic = save.victorias || 0, next = Object.values(MAPS).find(m => m.win > vic);
+  $('prepMapDesc').innerHTML = `${M.desc}${save.mapa === 'canales' && !save.mexico ? ' <b>Vence aquí a La Llorona para liberar México.</b>' : ''}${next ? `<br><small>Llevas ${vic} ${vic === 1 ? 'victoria' : 'victorias'} contra La Llorona · ${next.name} se abre con ${next.win}</small>` : (save.mexico ? '<br><small>🏆 México liberada</small>' : '')}`;
   $('prepObjs').innerHTML = prep.opts.map(k => { const O = OBJECTIVES[k]; return `<div class="pobj${k === prep.obj ? ' on' : ''}" data-k="${k}"><div class="pi">${O.icon}</div><div class="pn">${O.name}</div><div class="pd">${O.desc}</div><div class="pf">+${O.flores} 🌼</div></div>`; }).join('');
   $('prepObjs').querySelectorAll('.pobj').forEach(el => { el.onclick = () => { prep.obj = el.dataset.k; Sfx.play('pick'); buildPrep(); }; });
   $('prepCurses').innerHTML = Object.entries(CURSES).map(([k, C]) => `<button class="pcur${save.malds.includes(k) ? ' on' : ''}" data-k="${k}"><b>${C.icon} ${C.name}</b><span>${C.desc}</span></button>`).join('');
@@ -1892,7 +2054,8 @@ function buildPrep() {
     const k = el.dataset.k; save.malds = save.malds.includes(k) ? save.malds.filter(x => x !== k) : [...save.malds, k]; persist(); Sfx.play('pick'); buildPrep();
   }; });
   const n = save.malds.length;
-  $('prepBonus').innerHTML = n ? `Flores ×${(1 + CURSE_BONUS * n).toFixed(1)} por ${n} ${n === 1 ? 'maldición' : 'maldiciones'}` : 'Cada maldición da +20 % de flores';
+  const mult = (1 + CURSE_BONUS * n) * (1 + MAPS[save.mapa].bonus);
+  $('prepBonus').innerHTML = mult > 1 ? `Flores ×${mult.toFixed(2).replace(/0$/, '')}${n ? ` · ${n} ${n === 1 ? 'maldición' : 'maldiciones'}` : ''}${MAPS[save.mapa].bonus ? ` · ${MAPS[save.mapa].name}` : ''}` : 'Cada maldición da +20 % de flores';
 }
 
 function startRun(resume) {
@@ -1904,7 +2067,7 @@ function startRun(resume) {
   const sm = game.scene;
   if (sm.getScene('play')) sm.stop('play');
   sm.start('play', { hunter: resume ? resume.hunter : selected, resume: resume || null,
-    obj: Q.get('obj') || prep.obj, curses: Q.has('mald') ? Q.get('mald').split(',') : (save.malds || []) });
+    map: Q.get('map') || save.mapa || 'pueblo', obj: Q.get('obj') || prep.obj, curses: Q.has('mald') ? Q.get('mald').split(',') : (save.malds || []) });
 }
 
 function toMenu() {
