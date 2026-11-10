@@ -11,6 +11,8 @@ let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
 
+// Hojas de caminar: dónde queda la cabeza en la pose quieta (q) y de ataque (a), y la altura de los pies (oy), para que no brinque al cambiar de pose
+const WALK = { machetero: { q: 0.566, a: 0.54, oy: 0.906 }, curandera: { q: 0.575, a: 0.442, oy: 0.906 }, luchadora: { q: 0.391, a: 0.548, oy: 0.907 }, cohetero: { q: 0.405, a: 0.477, oy: 0.907 } };
 const IMGS = import.meta.glob('./img/*.webp', { eager: true, query: '?url', import: 'default' });
 import PKG from '../package.json';
 const VERSION = PKG.version.replace(/\.0$/, '');
@@ -409,16 +411,16 @@ class Play extends Phaser.Scene {
       : P.moving ? this.tex(`${this.hunterId}_camina`, `${this.hunterId}_ataque`)
         : this.tex(`${this.hunterId}_quieto`, `${this.hunterId}_camina`, `${this.hunterId}_ataque`);
     // Caminar de verdad: 6 poses dibujadas (hoja de animación) que avanzan según lo que camina.
-    const hasW = this.textures.exists(`${this.hunterId}_w0`);
+    const hasW = !!WALK[this.hunterId] && this.textures.exists(`${this.hunterId}_w0`);
     const walkF = hasW && P.moving && P.dashT <= 0;
     if (walkF) {
       P.wd = (P.wd || 0) + spd * dt;
       const fr = Math.floor(P.wd / 15) % 6, k = `${this.hunterId}_w${fr}`;
       if (s.texture.key !== k) { s.setTexture(k); if ((fr === 0 || fr === 3) && !(P.jump >= 2)) this.fxDust.emitParticleAt(P.x - P.dx * 10 + rnd(-4, 4), P.y - 2, 2); }
-      s.setOrigin(0.5, 0.906);
+      s.setOrigin(0.5, WALK[this.hunterId].oy);
     } else {
       if (s.texture.key !== want) s.setTexture(want);
-      s.setOrigin(hasW ? (want.endsWith('_quieto') ? 0.566 : want.endsWith('_ataque') ? 0.54 : 0.5) : 0.5, 0.92);
+      s.setOrigin(hasW ? (want.endsWith('_quieto') ? WALK[this.hunterId].q : want.endsWith('_ataque') ? WALK[this.hunterId].a : 0.5) : 0.5, 0.92);
     }
     // Animación suave: nada de brincos. mv = qué tanto va corriendo (0 quieto … 1 a tope), con arranque y frenado.
     const ka = 1 - Math.exp(-dt * 12);
