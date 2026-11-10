@@ -671,7 +671,11 @@ class Play extends Phaser.Scene {
       const attacking = (dist < e.r + 60) || e.atkT > 0 || e.state === 'wind' || e.state === 'leap' || e.state === 'charge' || e.state === 'aim';
       let key = attacking ? this.tex(e.d.tex[1], e.d.tex[0]) : this.tex(e.d.tex[0], e.d.tex[1]);
       // dos cuadros al caminar (aleteo, galope) cuando hay una segunda imagen
-      if (!attacking && key === e.d.tex[0] && this.textures.exists(key + '2') && Math.floor(e.ph * (e.d.flap || 5)) % 2) key = key + '2';
+      // Hoja de caminar/correr de 6 poses: avanza según lo que recorre (mínimo 7 poses por segundo para que no se vea lento)
+      const wk = e.d.tex[0].replace('_camina', '_w');
+      const hasW = !attacking && key === e.d.tex[0] && this.textures.exists(wk + '0');
+      if (hasW) { e.wd = (e.wd || 0) + dt * Math.max(Math.hypot(vx, vy) / (e.d.size * 0.2), Math.abs(vx) + Math.abs(vy) > 5 ? 7 : 0); key = wk + (Math.floor(e.wd) % 6); }
+      else if (!attacking && key === e.d.tex[0] && this.textures.exists(key + '2') && Math.floor(e.ph * (e.d.flap || 5)) % 2) key = key + '2';
       if (s.texture.key !== key) { s.setTexture(key); e.bs = e.d.size / (e.boss ? 336 : 205); if (e.d.static) e.bs = e.d.size / s.height; }
       const moving = Math.abs(vx) + Math.abs(vy) > 5;
       e.ph += dt * (moving ? 1 : 0.3);
@@ -679,6 +683,7 @@ class Play extends Phaser.Scene {
       if (e.d.static) { bob = 0; sq = 1 + Math.sin(this.t * 3) * 0.02; }
       else if (e.d.flyer || e.k === 'anima' || e.k === 'llorona') { bob = 10 + Math.sin(e.ph * 6) * 5; sq = 1 + Math.sin(e.ph * 12) * 0.03; }
       else { bob = (1 - Math.cos(e.ph * 18)) * (e.boss ? 1.6 : 1.2); sq = 1 + 0.03 * Math.cos(e.ph * 18); rot = Math.sin(e.ph * 9) * 0.045 + (dx > 0 ? 0.05 : -0.05); } // paso suave, inclinado hacia donde camina
+      if (hasW) { bob = 0; sq = 1; rot = dx > 0 ? 0.03 : -0.03; } // las poses ya traen el paso: sin rebote por código
       if (e.state === 'wind') { s.x = e.x + Math.sin(this.t * 70) * 3; sq = 0.84; } else s.x = e.x;
       if (e.state === 'leap') { bob = 26; rot = 0.25 * Math.sign(e.lx || 1); }
       if (e.state === 'aim') { s.x = e.x + Math.sin(this.t * 60) * 3; }
