@@ -425,7 +425,7 @@ class Play extends Phaser.Scene {
     P.mv = (P.mv || 0) + ((P.moving ? 1 : 0) - (P.mv || 0)) * ka;
     const acc = (P.moving ? 1 : 0) - P.mv;                    // >0 arrancando, <0 frenando
     if (P.fx == null || isNaN(P.fx)) P.fx = 1;
-    P.fx = P.fx + ((P.dx < -0.15 ? -1 : P.dx > 0.15 ? 1 : Math.sign(P.fx) || 1) - P.fx) * (1 - Math.exp(-dt * 18)); // voltea girando, no de golpe
+    P.fx = P.dx < -0.15 ? -1 : P.dx > 0.15 ? 1 : (P.fx < 0 ? -1 : 1); // voltea de un golpe: girando poco a poco el personaje se hacía delgadito y desaparecía
     P.lean = (P.lean || 0) + ((P.moving ? P.dx * 0.13 : 0) - (P.lean || 0)) * ka;
     const prev = Math.sin(P.ph);
     P.ph += dt * (2.2 + 9.8 * P.mv);
