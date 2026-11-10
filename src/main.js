@@ -410,11 +410,12 @@ class Play extends Phaser.Scene {
         : this.tex(`${this.hunterId}_quieto`, `${this.hunterId}_camina`, `${this.hunterId}_ataque`);
     if (s.texture.key !== want) s.setTexture(want);
     // Animación suave: nada de brincos. mv = qué tanto va corriendo (0 quieto … 1 a tope), con arranque y frenado.
-    const k = 1 - Math.exp(-dt * 12);
-    P.mv = (P.mv || 0) + ((P.moving ? 1 : 0) - (P.mv || 0)) * k;
+    const ka = 1 - Math.exp(-dt * 12);
+    P.mv = (P.mv || 0) + ((P.moving ? 1 : 0) - (P.mv || 0)) * ka;
     const acc = (P.moving ? 1 : 0) - P.mv;                    // >0 arrancando, <0 frenando
-    P.fx = (P.fx == null ? 1 : P.fx) + ((P.dx < -0.15 ? -1 : P.dx > 0.15 ? 1 : Math.sign(P.fx) || 1) - P.fx) * (1 - Math.exp(-dt * 18)); // voltea girando, no de golpe
-    P.lean = (P.lean || 0) + ((P.moving ? P.dx * 0.13 : 0) - (P.lean || 0)) * k;
+    if (P.fx == null || isNaN(P.fx)) P.fx = 1;
+    P.fx = P.fx + ((P.dx < -0.15 ? -1 : P.dx > 0.15 ? 1 : Math.sign(P.fx) || 1) - P.fx) * (1 - Math.exp(-dt * 18)); // voltea girando, no de golpe
+    P.lean = (P.lean || 0) + ((P.moving ? P.dx * 0.13 : 0) - (P.lean || 0)) * ka;
     const prev = Math.sin(P.ph);
     P.ph += dt * (2.2 + 9.8 * P.mv);
     const step = Math.sin(P.ph);
@@ -424,11 +425,12 @@ class Play extends Phaser.Scene {
     const atk = P.atkT > 0 ? Math.sin(Math.min(1, (0.2 - P.atkT) / 0.2) * Math.PI) : 0; // 0→1→0 durante el golpe
     const sy = 1 + 0.025 * breathe + 0.03 * Math.cos(P.ph * 2) * P.mv - 0.10 * Math.max(0, -acc) + 0.07 * Math.max(0, acc) + 0.05 * atk;
     const sx = (2 - sy) * (1 + 0.04 * atk);
-    const J = 1 + P.jump / 160;
+    const J = 1 + (P.jump || 0) / 160;
     s.setFlipX(false);
-    s.x = P.x + P.dx * 9 * atk; s.y = P.y - walkBob - P.jump + P.dy * 5 * atk;
+    const fdx = P.dx || 0, fdy = P.dy || 0;
+    s.x = P.x + fdx * 9 * atk; s.y = P.y - walkBob - (P.jump || 0) + fdy * 5 * atk;
     s.setScale(this.pBase * sx * J * P.fx, this.pBase * sy * J);
-    s.rotation = P.lean + step * 0.035 * P.mv + P.dx * 0.10 * atk;
+    s.rotation = P.lean + step * 0.035 * P.mv + fdx * 0.10 * atk;
     s.setDepth(P.y);
     s.setAlpha(P.inv > 0 && P.dashT <= 0 ? 0.6 + 0.4 * Math.sin(this.t * 40) : 1);
     if (P.hurtFlash > 0) { P.hurtFlash -= dt; s.setTint(0xff6a6a); } else s.clearTint();
