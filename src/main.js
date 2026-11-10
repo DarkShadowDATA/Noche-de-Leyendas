@@ -248,7 +248,7 @@ class Play extends Phaser.Scene {
     // Suelo, sombras, adornos
     const gk = this.tex(this.M.suelo, 'suelo_pueblo', 'ground');
     this.groundTS = this.add.tileSprite(0, 0, 10, 10, gk).setOrigin(0).setDepth(-100000);
-    this.groundScale = gk !== 'ground' ? 0.55 : 1; this.groundTS.setTileScale(this.groundScale);
+    this.groundScale = gk === 'ground' ? 1 : gk === 'suelo_pueblo' ? 0.55 : 0.85; this.groundTS.setTileScale(this.groundScale);
     if (gk !== this.M.suelo && this.M.tint) this.groundTS.setTint(this.M.tint); // sin arte final: el suelo del pueblo teñido
     this.setupMap();
     this.shadows = this.add.graphics().setDepth(-90000);
@@ -1544,7 +1544,7 @@ class Play extends Phaser.Scene {
     for (let k = k0; k <= k1; k++) {
       const top = C.y0 + k * C.period; if (top > v.bottom + 20 || top + C.h < v.y - 20) continue;
       let ts = this.mapPool.agua[ai]; if (!ts) { ts = this.add.tileSprite(0, 0, 10, 10, this.tex('agua_canal', 'agua')).setOrigin(0).setDepth(-96000); this.mapPool.agua[ai] = ts; }
-      ai++; const sc = ts.texture.key === 'agua_canal' ? 0.4 : 1;
+      ai++; const sc = ts.texture.key === 'agua_canal' ? 0.75 : 1;
       ts.setVisible(true).setPosition(v.x - 2, top).setSize(v.width + 4, C.h).setTileScale(sc).setTilePosition((v.x - 2) / sc + this.t * 6, top / sc);
       // orillas y puentes
       g.fillStyle(0x0a1a1c, 0.55); g.fillRect(v.x, top - 6, v.width, 8); g.fillRect(v.x, top + C.h - 2, v.width, 8);
