@@ -1872,7 +1872,7 @@ class Hud {
 let selected = 'machetero';
 let game = null;
 
-const owned = (id) => save.cazadores.includes(id);
+const owned = (id) => import.meta.env.VITE_PROTO === '1' || save.cazadores.includes(id); // VITE_PROTO=1: solo en el prototipo privado, todos los cazadores abiertos para probar
 const HUNTER_TAG = { machetero: 'Cazador de nahuales', curandera: 'Guardiana del copal', luchadora: 'Campeona de la arena', cohetero: 'Maestro de la pólvora' };
 const portrait = (id) => IMG['retrato_' + id] || IMG[id + '_quieto'] || IMG[id + '_ataque'];
 const wIco = (id) => IMG['icono_' + id] ? `<img src="${IMG['icono_' + id]}" alt="">` : (WEAPONS[id] ? WEAPONS[id].icon : '');
