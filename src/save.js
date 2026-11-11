@@ -2,7 +2,7 @@
 const KEY = 'ndl_save_v1';
 const DEF = () => ({
   flores: 0, ganadas: 0, tal: {}, cazadores: ['machetero', 'curandera'], dia: '', partidas: 0, mejor: 0, victorias: 0,
-  armas: {}, equipo: '', pin: { n: 0, pe: 0, pl: 0, dia: '' }, boletosUsados: 0, evos: [], mapa: 'pueblo', mexico: false, mapWins: {}, bendHasta: 0, inicioOk: false, inicioVisto: false,
+  armas: {}, equipo: '', pin: { n: 0, pe: 0, pl: 0, dia: '' }, boletosUsados: 0, evos: [], mapa: 'pueblo', mexico: false, mapWins: {}, bendHasta: 0, inicioOk: false, inicioVisto: false, aspectos: [], aspecto: {},
 });
 
 function read() {
@@ -42,6 +42,7 @@ export function mergeSaves(a, b) {
   out.pin.n = Math.max(out.pin.n || 0, (o.pin && o.pin.n) || 0);
   if (o.pin && (o.pin.dia || '') > (out.pin.dia || '')) out.pin.dia = o.pin.dia;
   if ((o.dia || '') > (out.dia || '')) out.dia = o.dia;
+  out.aspectos = [...new Set([...(out.aspectos || []), ...(o.aspectos || [])])]; out.aspecto = { ...(o.aspecto || {}), ...(out.aspecto || {}) };
   out.bendHasta = Math.max(out.bendHasta || 0, o.bendHasta || 0); out.inicioVisto = !!(out.inicioVisto || o.inicioVisto);
   if (out.equipo && !out.armas[out.equipo]) out.equipo = '';
   return out;

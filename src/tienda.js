@@ -2,7 +2,7 @@
 // Reglas (claude/pagos-y-mercado.md): nunca en medio de la partida, nada de poder exclusivo y no cuenta en la Noche del Pozo.
 import { save, persist } from './save.js';
 import { nube, buyItem, loginUrl, shadowUrl } from './nube.js';
-import { HUNTER_COST } from './data.js';
+import { HUNTER_COST, ASPECTOS, HUNTERS } from './data.js';
 
 const $ = (id) => document.getElementById(id);
 const DAY = 86400000;
@@ -27,11 +27,20 @@ export function aplicarCompras() {
     save.flores += fl; save.inicioOk = true; ch = true;
     msg = `¡Paquete de inicio! +${fl} 🌼, 5 boletos${fl > (it.flores || 0) ? '' : ' y la Luchadora'}`;
   }
+  for (const [k, A] of Object.entries(ASPECTOS)) { // aspectos comprados: se guardan en el celular y se ponen solos la primera vez
+    if (nube.compras && nube.compras[A.item] && !(save.aspectos || []).includes(k)) {
+      save.aspectos = [...(save.aspectos || []), k]; save.aspecto = { ...(save.aspecto || {}), [A.cazador]: k }; ch = true;
+      msg = `¡Aspecto ${A.name} listo! Ya lo trae ${HUNTERS[A.cazador].name}`;
+    }
+  }
   if (ch) persist();
   return msg;
 }
 
-let note = '';
+let note = '', imgs = {};
+export function setTiendaImgs(m) { imgs = m; }
+/** El aspecto que trae puesto un cazador (o '' si usa el normal). */
+export const aspectoDe = (id) => { const k = save.aspecto && save.aspecto[id]; return k && ASPECTOS[k] && ASPECTOS[k].cazador === id && (save.aspectos || []).includes(k) ? k : ''; };
 export function renderTienda(onChange) {
   const el = $('shopBox'); if (!el) return;
   if (!nube.on) {
@@ -48,6 +57,7 @@ export function renderTienda(onChange) {
   el.innerHTML =
     card('inicio', '🎁', 'La Luchadora, 5 boletos de la Piñata y 500 🌼. Una sola vez.', inicioComprado() ? '<span class="ok">✔ Tuyo</span>' : '') +
     card('bendicion', '🕯️', bendActiva() ? `Flores ×2 al terminar cada noche. <i>Activa: te quedan ${bendDias()} días.</i>` : 'Flores ×2 al terminar cada noche, por 30 días. No cuenta en la Noche del Pozo.', '') +
+    Object.entries(ASPECTOS).map(([k, A]) => card(A.item, `<img src="${imgs['retrato_' + k] || ''}" alt="">`, `Aspecto para ${HUNTERS[A.cazador].name}. Solo cambia cómo se ve.`, (save.aspectos || []).includes(k) ? '<span class="ok">✔ Tuyo</span>' : '')).join('') +
     `<div class="shop-bal">Tienes <b>${nube.shadow} 💠 Shadow</b> · <a href="${shadowUrl()}" target="_top">Comprar Shadow</a></div>` +
     (note ? `<div class="shop-msg">${note}</div>` : '');
   el.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => {
