@@ -672,8 +672,8 @@ class Play extends Phaser.Scene {
       let key = attacking ? this.tex(e.d.tex[1], e.d.tex[0]) : this.tex(e.d.tex[0], e.d.tex[1]);
       // dos cuadros al caminar (aleteo, galope) cuando hay una segunda imagen
       // Hoja de caminar/correr de 6 poses: avanza según lo que recorre (mínimo 7 poses por segundo para que no se vea lento)
-      const wk = e.d.tex[0].replace('_camina', '_w');
-      const hasW = !attacking && key === e.d.tex[0] && this.textures.exists(wk + '0');
+      const wk = e.d.tex[0].includes('_camina') ? e.d.tex[0].replace('_camina', '_w') : e.d.tex[0] + '_w';
+      const hasW = (!attacking || e.d.tex[1] === e.d.tex[0]) && key === e.d.tex[0] && this.textures.exists(wk + '0');
       if (hasW) { e.wd = (e.wd || 0) + dt * Math.max(Math.hypot(vx, vy) / (e.d.size * 0.2), Math.abs(vx) + Math.abs(vy) > 5 ? 7 : 0); key = wk + (Math.floor(e.wd) % 6); }
       else if (!attacking && key === e.d.tex[0] && this.textures.exists(key + '2') && Math.floor(e.ph * (e.d.flap || 5)) % 2) key = key + '2';
       if (s.texture.key !== key) { s.setTexture(key); e.bs = e.d.size / (e.boss ? 336 : 205); if (e.d.static) e.bs = e.d.size / s.height; }
