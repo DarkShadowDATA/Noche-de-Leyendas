@@ -464,6 +464,12 @@
   .asp { background:rgba(40,24,64,.8); border:none; box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:8px; padding:3px 6px 2px; cursor:pointer; color:#cdbde6; text-align:center; }
   .asp img { display:block; height:44px; margin:0 auto; } .asp i { font-style:normal; font-size:10px; } .asp.on { box-shadow:inset 0 0 0 2px #ffcf5a; color:#fff1cf; } .asp.lk img { filter:saturate(.7) brightness(.85); }
   .shop-it .ic img { height:40px; display:block; }
+  .mk-msg { color:#ffcf5a; margin-top:6px; } .mk-note { font-size:11px; opacity:.8; margin-top:4px; } #arsTop a { color:#ffcf5a; }
+  .mk-empty { font-family:system-ui,sans-serif; font-size:13px; color:#cdbde6; text-align:center; padding:18px 10px; }
+  .mk-sell { display:flex; align-items:center; gap:5px; flex-wrap:wrap; } .mk-sell input { width:64px; padding:4px 6px; border-radius:6px; border:1px solid #8a6a2a; background:#160c22; color:#fff1cf; font-size:14px; }
+  .mk-sell em { font-style:normal; color:#9ff7ea; font-size:11px; } .obtn.alt2 { filter:hue-rotate(150deg) saturate(.8); }
+  .wrow .ico img { max-height:100%; max-width:100%; }
+  #arsSeg { flex-wrap:nowrap; } #arsSeg button { padding:8px 10px; font-size:12px; white-space:nowrap; }
   #shopBox { font-family:system-ui,sans-serif; }
   .shop-it { display:flex; align-items:center; gap:8px; background:rgba(40,24,64,.8); box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:10px; padding:8px; margin:6px 0; text-align:left; }
   .shop-it .ic { font-size:26px; } .shop-it .tx { flex:1; font-size:12px; color:#cdbde6; line-height:1.35; } .shop-it .tx b { display:block; font-family:var(--serif); font-size:14px; color:#fff1cf; }
@@ -580,7 +586,7 @@
 
 <div id="arsenal" class="screen scenic tabp hidden">
   <div class="ribbon"><span>✿</span> Arsenal <span>✿</span></div>
-  <div class="seg" id="arsSeg"><button data-s="armas" class="on">⚔️ Armas</button><button data-s="evos">📖 Evoluciones</button></div>
+  <div class="seg" id="arsSeg"><button data-s="armas" class="on">⚔️ Armas</button><button data-s="evos">📖 Evoluciones</button><button data-s="bodega" data-mk class="hidden">🎒 Bodega</button><button data-s="mercado" data-mk class="hidden">🏪 Mercado</button></div>
   <div id="arsTop"></div>
   <div id="arsList"></div>
 </div>

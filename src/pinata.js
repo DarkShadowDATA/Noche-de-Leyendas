@@ -1,13 +1,14 @@
 // Piñata de armas (gacha): tiradas con flores, 1 gratis al día y boletos comprados con Shadow (cuenta DarkShadow).
 import { WEAPONS, RARITIES, PINATA, MAX_STARS, gearBonus } from './data.js';
 import { save, persist, today } from './save.js';
-import { nube, buyBoletos, loginUrl, shadowUrl } from './nube.js';
+import { nube, buyBoletos, loginUrl, shadowUrl, pinataSrv } from './nube.js';
 
 const $ = id => document.getElementById(id);
 const IDS = Object.keys(WEAPONS);
 let IMG = {}, sfx = () => {};
-export function setupPinata(images, play) {
-  IMG = images; sfx = play;
+let usarSrv = async () => null;
+export function setupPinata(images, play, usar) {
+  IMG = images; sfx = play; if (usar) usarSrv = usar;
   if (IMG.obj_pinata) $('pnBig').innerHTML = `<img src="${IMG.obj_pinata}" alt="Piñata">`;
 }
 const icon = (id) => IMG['icono_' + id] ? `<img class="icimg" src="${IMG['icono_' + id]}" alt="">` : WEAPONS[id].icon;
@@ -15,7 +16,7 @@ export const gearName = (id) => { const a = save.armas[id]; return `${WEAPONS[id
 const stars = (e) => e ? '★'.repeat(e) + '<i>' + '★'.repeat(MAX_STARS - e) + '</i>' : '';
 const bonusTxt = (id) => { const b = gearBonus(save.armas[id]); return `+${Math.round((b.dmg - 1) * 100)}% de daño${b.cd < 1 ? ` · −${Math.round((1 - b.cd) * 100)}% de espera` : ''}${b.lv > 1 ? ` · empieza en nivel ${b.lv}` : ''}`; };
 
-export const boletos = () => Math.max(0, (nube.boletos || 0) - (save.boletosUsados || 0));
+export const boletos = () => Math.max(0, (nube.boletos || 0) - Math.max(save.boletosUsados || 0, nube.usados || 0));
 const freeToday = () => save.pin.dia !== today();
 
 function roll() {
@@ -26,14 +27,19 @@ function roll() {
   else if (r < 2 && p.pe >= PINATA.pityEpica) r = 2;
   if (r >= 2) p.pe = 0;
   if (r === 3) p.pl = 0;
-  const id = IDS[Math.floor(Math.random() * IDS.length)], cur = save.armas[id];
+  const id = IDS[Math.floor(Math.random() * IDS.length)];
+  return { id, r, what: absorb(id, r) };
+}
+/** Suma un arma a la colección: nueva, mejor rareza, +1 estrella o flores si ya está al máximo. También lo usa la bodega del mercado. */
+export function absorb(id, r) {
+  const cur = save.armas[id];
   let what;
   if (!cur) { save.armas[id] = { r, e: 0 }; what = 'nueva'; }
   else if (r > cur.r) { cur.r = r; what = 'mejor'; }
   else if ((cur.e || 0) < MAX_STARS) { cur.e = (cur.e || 0) + 1; what = 'estrella'; }
   else { save.flores += RARITIES[r].refund; what = 'flores'; }
   if (!save.equipo) save.equipo = id;
-  return { id, r, what };
+  return what;
 }
 
 /** pay: 'gratis' | 'flores' | 'flores10' | 'boleto' | 'boleto10' */
@@ -96,8 +102,24 @@ function build() {
     `Épica o mejor segura cada ${PINATA.pityEpica} (te faltan ${PINATA.pityEpica - p.pe}) · Legendaria segura a las ${PINATA.pityLegend} (te faltan ${PINATA.pityLegend - p.pl})<br>Repetida: +1 ★ (+4% de daño, máx ${MAX_STARS}). Con ${MAX_STARS} ★ te devuelve flores.`;
 }
 
+let srvItems = null; // armas de la última tirada con boletos del servidor (están en la bodega)
+async function hitSrv(pay, bt) {
+  const n = pay.endsWith('10') ? 10 : 1;
+  if (boletos() < n) { bt.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], 250); return; }
+  busy = true;
+  const pn = $('pnBig'); pn.classList.remove('boom'); void pn.offsetWidth; pn.classList.add('shake'); sfx('swing');
+  let items = null;
+  try { items = await pinataSrv(n); } catch (e) { msg = (e.data && e.data.error) || 'No se pudo romper la Piñata. Revisa tu internet.'; }
+  pn.classList.remove('shake');
+  if (!items) { busy = false; build(); return; }
+  save.boletosUsados = Math.max(save.boletosUsados || 0, nube.usados || 0); persist();
+  pn.classList.add('boom'); sfx(Math.max(...items.map(x => x.rar)) >= 2 ? 'win' : 'boom');
+  srvItems = items; showResults(items.map(x => ({ id: x.ref, r: x.rar, what: 'bodega' }))); busy = false; build();
+}
+
 function hit(pay, bt) {
   if (busy) return;
+  if (pay.startsWith('boleto') && nube.on && nube.mercado) { hitSrv(pay, bt); return; }
   const res = pull(pay);
   if (!res) { bt.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], 250); return; }
   busy = true;
@@ -113,14 +135,25 @@ function hit(pay, bt) {
 
 function showResults(res) {
   const box = $('pnRes');
-  const lbl = { nueva: '¡NUEVA!', mejor: '¡MEJORÓ!', estrella: '+1 ★', flores: '' };
+  const lbl = { nueva: '¡NUEVA!', mejor: '¡MEJORÓ!', estrella: '+1 ★', flores: '', bodega: 'BODEGA' };
+  const srv = res[0] && res[0].what === 'bodega';
   box.innerHTML = res.map((x, i) => {
     const R = RARITIES[x.r];
     const tag = x.what === 'flores' ? `+${R.refund} 🌼` : lbl[x.what];
     return `<div class="pn-card r${x.r}" style="--rc:${R.color};animation-delay:${i * 70}ms"><div class="ic">${icon(x.id)}</div><div class="n">${WEAPONS[x.id].name}</div><div class="r">${R.name}</div><div class="tg">${tag}</div></div>`;
-  }).join('') + '<div class="pn-br"></div><button class="btn small" id="pnResOk">¡Bien!</button>';
+  }).join('') + '<div class="pn-br"></div>' + (srv
+    ? '<div class="pn-note">Salieron con boleto: están en tu <b>Bodega</b> (Arsenal). Puedes usarlas o venderlas en el Mercado.</div><button class="btn small" id="pnUseAll">Usar todas</button><button class="btn alt small" id="pnResOk">Dejarlas en la bodega</button>'
+    : '<button class="btn small" id="pnResOk">¡Bien!</button>');
   box.classList.remove('hidden');
   $('pnResOk').onclick = () => box.classList.add('hidden');
+  if (srv) $('pnUseAll').onclick = async (e) => {
+    e.target.disabled = true;
+    const out = [];
+    for (const it of srvItems || []) { try { out.push(await usarSrv(it.id)); } catch (err) { /* se queda en la bodega */ } }
+    srvItems = null;
+    if (out.length) showResults(out.map(x => ({ id: x.ref, r: x.rar, what: x.what }))); else box.classList.add('hidden');
+    build();
+  };
 }
 
 /** Línea del menú: qué arma llevas a la partida */

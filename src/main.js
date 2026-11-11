@@ -10,6 +10,7 @@ import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
+import { setupMercado, mercadoOn, buildBodega, buildMercado, usarArma, limpiarAviso } from './mercado.js';
 import { bendActiva, aplicarCompras, renderTienda, abrirTienda, ofrecerInicio, aspectoDe, setTiendaImgs } from './tienda.js';
 
 // Hojas de caminar: dónde queda la cabeza en la pose quieta (q) y de ataque (a), y la altura de los pies (oy), para que no brinque al cambiar de pose
@@ -1990,7 +1991,10 @@ function buildCaz() {
 }
 
 function buildArs() {
-  document.querySelectorAll('#arsSeg button').forEach(b => { b.classList.toggle('on', b.dataset.s === arsSeg); b.onclick = () => { arsSeg = b.dataset.s; Sfx.init(); Sfx.play('pick'); buildArs(); }; });
+  const mk = mercadoOn(); // Bodega y Mercado solo salen con sesión y con el mercado abierto
+  document.querySelectorAll('#arsSeg [data-mk]').forEach(b => b.classList.toggle('hidden', !mk));
+  if (!mk && (arsSeg === 'bodega' || arsSeg === 'mercado')) arsSeg = 'armas';
+  document.querySelectorAll('#arsSeg button').forEach(b => { b.classList.toggle('on', b.dataset.s === arsSeg); b.onclick = () => { arsSeg = b.dataset.s; limpiarAviso(); Sfx.init(); Sfx.play('pick'); buildArs(); }; });
   const L = $('arsList'); L.innerHTML = '';
   if (arsSeg === 'armas') {
     const have = Object.keys(save.armas || {}).length;
@@ -2009,6 +2013,8 @@ function buildArs() {
       L.appendChild(d);
     }
     const go = document.createElement('button'); go.className = 'obtn'; go.innerHTML = '<b>🪅</b>Ir a la Piñata'; go.style.alignSelf = 'center'; go.onclick = () => showTab('pinata'); L.appendChild(go);
+  } else if (arsSeg === 'bodega') { buildBodega($('arsTop'), L);
+  } else if (arsSeg === 'mercado') { buildMercado($('arsTop'), L);
   } else {
     const ev = save.evos || [];
     $('arsTop').innerHTML = `Descubriste <b>${ev.length}/${Object.keys(EVOS).length}</b> evoluciones. Sube un arma a nivel 8, junta su objeto pareja y abre un cofre.`;
@@ -2199,10 +2205,11 @@ async function boot() {
   $('prepBack').onclick = () => { $('prep').classList.add('hidden'); showTab('jugar'); };
   $('againBtn').onclick = () => startRun();
   $('menuBtn').onclick = toMenu;
-  setupPinata(IMG, (k) => { Sfx.init(); Sfx.play(k); });
+  setupPinata(IMG, (k) => { Sfx.init(); Sfx.play(k); }, usarArma);
   $('endPinataBtn').onclick = () => { Sfx.init(); toMenu(); showTab('pinata'); };
   $('endTreeBtn').onclick = () => { toMenu(); showTab('talentos'); };
   setTiendaImgs(IMG);
+  setupMercado(IMG, (k) => { Sfx.init(); Sfx.play(k); }, () => { const m = aplicarCompras(); if (m) toast(m); if (tab === 'arsenal') buildArs(); hubTop(); });
   onNube(() => { const m = aplicarCompras(); if (m) toast(m); if (!$('hub').classList.contains('hidden')) showTab(tab); });
   startNube();
   $('quitBtn').onclick = toMenu;
