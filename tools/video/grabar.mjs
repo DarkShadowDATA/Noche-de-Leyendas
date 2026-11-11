@@ -11,7 +11,7 @@ const b = await chromium.launch({ args: ['--no-sandbox'] });
 const ctx = await b.newContext({ viewport: { width: S.vw ?? 1080, height: S.vh ?? 1920 }, deviceScaleFactor: S.dpr ?? 1, locale: 'es-MX' });
 if (S.init) await ctx.addInitScript(o => { try { for (const [k, v] of Object.entries(o)) localStorage.setItem(k, v); } catch {} }, S.init);
 await ctx.addInitScript({ path: new URL('./clock.js', import.meta.url).pathname });
-for (const r of S.routes ?? []) await ctx.route(r.match, route => route.fulfill({ json: r.json }));
+for (const r of S.routes ?? []) await ctx.route(r.match, route => route.fulfill({ json: r.json, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } }));
 const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(e.message));
 await page.goto(S.url); await page.waitForTimeout(S.load ?? 2500);
 if (S.style) await page.addStyleTag({ content: S.style });

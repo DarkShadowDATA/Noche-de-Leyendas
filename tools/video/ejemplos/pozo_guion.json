@@ -1,0 +1,9 @@
+{"out": "/var/tmp/nl05/out/NL-05_sinvoz.mp4",
+ "hook": {"l1": "NOCHE DEL POZO…", "l2": "¿QUEDAS EN EL TOP 5?", "color": "#ffd25a", "y": 250, "size2": 96},
+ "music": {"theme": "gold", "seed": 9}, "music_restart": 12.03,
+ "segments": [
+  {"src": "/var/tmp/nl05/horda", "from": 0, "frames": 86, "zoom": [1.0, 1.1], "cx": 540, "cy": 860},
+  {"src": "/var/tmp/nl05/ventana", "from": 4, "frames": 175, "zoom": [1.0, 1.06], "cx": 540, "cy": 900},
+  {"src": "/var/tmp/nl05/horda", "from": 150, "frames": 100, "zoom": [1.0, 1.1], "cx": 540, "cy": 900},
+  {"src": "/var/tmp/nl05/fin", "from": 4, "frames": 82, "zoom": [1.0, 1.06], "cx": 540, "cy": 1000}],
+ "end": {"bg": "/var/tmp/nl05/horda/00000.jpg", "q1": "¿Quedas en", "q2": "EL TOP 5?", "color": "#ffd25a", "frames": 130}}
