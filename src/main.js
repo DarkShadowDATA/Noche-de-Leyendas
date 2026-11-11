@@ -4,12 +4,13 @@ import '@fontsource/lilita-one/400.css';
 import { dsTrack } from './dsev.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
-import { ASPECTOS, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES } from './data.js';
+import { ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
 import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
+import { setupLibro, bestia, ganarMedallas, medallasViejas, abrirLibro, bestiasVistas, medallasN, medallaNombre } from './libro.js';
 import { setupMercado, mercadoOn, buildBodega, buildMercado, usarArma, limpiarAviso } from './mercado.js';
 import { bendActiva, aplicarCompras, renderTienda, abrirTienda, ofrecerInicio, aspectoDe, setTiendaImgs } from './tienda.js';
 
@@ -219,6 +220,7 @@ class Play extends Phaser.Scene {
   constructor() { super('play'); }
   init(data) {
     this.hunterId = data.hunter || 'machetero'; this.resume = data.resume || null;
+    this.cuenta = !POZO && ((!GOD && START_T === 0 && !AUTO) || DEV); // ¿esta partida cuenta para flores, bestiario y medallas?
     this.skin = aspectoDe(this.hunterId) || this.hunterId; // aspecto: solo cambia las imágenes del cazador
     const r = this.resume || data;
     this.objId = OBJECTIVES[r.obj] ? r.obj : 'llorona';
@@ -539,6 +541,7 @@ class Play extends Phaser.Scene {
 
   spawn(k, x, y) {
     const d = ENEMIES[k];
+    if (this.cuenta) bestia(k, 0); // Bestiario: la ficha se abre al encontrarla
     const hpMul = d.boss ? 1 : 1 + this.t / 110 + Math.pow(this.t / 330, 2);
     const key = this.tex(d.tex[0], d.tex[1]);
     const s = this.getSprite(key);
@@ -807,6 +810,7 @@ class Play extends Phaser.Scene {
 
   killEnemy(e) {
     e.alive = false;
+    if (this.cuenta) bestia(e.k, 1);
     this.kills++; if (!e.boss) this.energy = Math.min(this.energyNeed, this.energy + 1);
     this.fxDeath.setParticleTint(e.k === 'anima' || e.k === 'llorona' ? 0x7ff7ea : e.k === 'lechuza' ? 0xff7a3a : 0xffd8a0);
     this.fxDeath.explode(e.boss ? 60 : 7, e.x, e.y - e.d.size * 0.45);
@@ -1759,6 +1763,7 @@ Play.prototype.flowerReward = function (win) {
     if (win) save.victorias++;
     if (this.regionWon) save.mexico = true;
     if (win) { save.mapWins = save.mapWins || {}; save.mapWins[this.mapId] = (save.mapWins[this.mapId] || 0) + 1; }
+    if (win) r.medallas = ganarMedallas({ caz: this.hunterId, mapa: this.mapId, obj: this.obj && this.obj.done ? this.obj.id : '', malds: this.curses ? this.curses.size : 0 });
     if (first) save.dia = today();
     persist();
   }
@@ -1873,8 +1878,9 @@ class Hud {
     if (r) {
       const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : '', r.bend ? '🕯️ Bendición ×2' : ''].filter(Boolean).join(' · ');
       // Solo en un buen momento (venció a La Llorona o hizo récord) y sin botón: la tienda está en el perfil.
+      const medLine = (r.medallas || []).map(m => `<div class="fl-med">🏅 ¡Medalla nueva! ${medallaNombre(m)} <b>+${MEDALLA_FLORES} 🌼</b></div>`).join('');
       const bendLine = !r.bend && r.counts && (nube.on || nube.can) && (win || best) ? `<div class="fl-bend">🕯️ Con la Bendición de la Ofrenda habrían sido ${r.total * 2} 🌼 <small>(Tienda, en tu perfil)</small></div>` : '';
-      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡México liberada! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div>${bendLine}<div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
+      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡México liberada! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div>${medLine}${bendLine}<div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
     }
     $('end').classList.remove('hidden');
   }
@@ -1942,6 +1948,8 @@ function buildMenu() {
   } else $('eqIn').innerHTML = `<span class="ico">🪅</span><span class="tx">Arma equipada<b>Ninguna</b>${save.pin.dia !== today() ? 'Tirada gratis en la Piñata' : 'Consíguelas en la Piñata'}</span>`;
   $('eqCard').onclick = () => showTab(eq ? 'arsenal' : 'pinata');
   $('abIn').innerHTML = `<span class="ico" style="--rc:#3ff0d8">${wIco(h.weapon)}</span><span class="tx">${WEAPONS[h.weapon].name} · ${h.hp} ❤️<b style="color:#9ff7ea">${h.ability}</b>Habilidad</span>`;
+  $('libroBtn').innerHTML = `<span>📖 Bestiario ${bestiasVistas()}/${Object.keys(BESTIARIO).length} · 🏅 Medallas ${medallasN()}/${MEDALLAS.length}</span>`;
+  $('libroBtn').onclick = () => { Sfx.init(); Sfx.play('pick'); abrirLibro(); };
   const oi = $('inicioCard'); oi.classList.toggle('hidden', !ofrecerInicio());
   oi.onclick = (e) => { if (e.target.closest('[data-x]')) { save.inicioVisto = true; persist(); oi.classList.add('hidden'); return; } $('profBtn').click(); };
   hubTop();
@@ -2209,6 +2217,8 @@ async function boot() {
   $('endPinataBtn').onclick = () => { Sfx.init(); toMenu(); showTab('pinata'); };
   $('endTreeBtn').onclick = () => { toMenu(); showTab('talentos'); };
   setTiendaImgs(IMG);
+  setupLibro(IMG);
+  { const mv = medallasViejas(); if (mv.length) setTimeout(() => toast(`🏅 ${mv.length} medalla${mv.length > 1 ? 's' : ''} por tus victorias anteriores: +${mv.length * MEDALLA_FLORES} 🌼`), 1200); }
   setupMercado(IMG, (k) => { Sfx.init(); Sfx.play(k); }, () => { const m = aplicarCompras(); if (m) toast(m); if (tab === 'arsenal') buildArs(); hubTop(); });
   onNube(() => { const m = aplicarCompras(); if (m) toast(m); if (!$('hub').classList.contains('hidden')) showTab(tab); });
   startNube();
