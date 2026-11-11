@@ -24,3 +24,19 @@ Las 10 imágenes:
 8. Tengu atacando: lanzándose en picada con las alas recogidas y el pico al frente. 1024x1024.
 9. Yūrei flotando tranquila, con los brazos colgando al frente. 1024x1024.
 10. Yūrei atacando: estirando los brazos hacia adelante con la boca abierta y las llamitas más grandes. 1024x1024.
+
+=== TANDA 2 · MINIJEFES Y JEFE (adjuntar: oni_hoja_caminar.png, cadejo_hoja_caminar.png) ===
+Te adjunto 2 hojas de animación de mi juego para que copies el estilo exacto (un enemigo y un jefe). Necesito 7 imágenes nuevas de 2 minijefes y 1 jefe de leyendas de Japón, con ese mismo estilo: caricatura chibi, contorno oscuro grueso, colores vivos, sombreado pintado, se ven grandes e imponentes, cuerpo completo, mirando a la derecha, fondo transparente, sin sombra en el piso y sin texto. Diseños propios, no copies personajes de ningún anime ni videojuego. Genéralas una tras otra en este mismo chat, sin hacerme preguntas entre una y otra, y dime el número de cada una.
+
+A) GASHADOKURO: esqueleto gigante hecho de cientos de huesos, con ojos de fuego azul, restos de una armadura samurái rota y jirones de tela morada.
+B) JORŌGUMO: mujer araña: de la cintura para arriba una mujer pálida con kimono negro y rojo y pelo recogido con palillos; de la cintura para abajo una araña negra con ocho patas largas y marcas rojas.
+C) YAMATA NO OROCHI: serpiente dragón enorme de ocho cabezas y ocho colas, escamas verde oscuro y rojo, ojos rojos brillantes, cuernos pequeños y humo saliendo de las bocas.
+
+Las 7 imágenes:
+1. Gashadokuro, hoja de animación: 6 poses de un ciclo de caminar pesado visto de lado, en una sola fila horizontal, todas del mismo tamaño y a la misma altura, con los pies sobre la misma línea. 1536x512.
+2. Gashadokuro atacando: aplastando con la mano huesuda hacia el frente. 1024x1024.
+3. Jorōgumo, hoja de animación: 6 poses de un ciclo de caminar en sus ocho patas visto de lado, en una sola fila horizontal, mismo tamaño y misma altura, patas sobre la misma línea. 1536x512.
+4. Jorōgumo atacando: lanzando telaraña desde las manos. 1024x1024.
+5. Telaraña en el piso, vista desde arriba: redonda, blanca y brillante, para un charco que frena. 512x512.
+6. Orochi, hoja de animación: 6 poses de un ciclo de avanzar arrastrándose visto de lado, con las ocho cabezas moviéndose distinto en cada pose, en una sola fila horizontal, mismo tamaño y misma altura. 1536x512.
+7. Orochi atacando: las ocho cabezas lanzándose al frente con las bocas abiertas. 1024x1024.

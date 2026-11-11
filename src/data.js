@@ -122,6 +122,12 @@ export const ENEMIES = {
   chupadorado: { tex: ['chupacabras_dorado', 'chupacabras_dorado'], hp: 380, spd: 138, dmg: 0, size: 82, flap: 3.5, r: 26, xp: 0, flee: true, tint: 0xffd84a },
   loboalfa: { tex: ['lobo_alfa', 'lobo_alfa'], hp: 1500, spd: 102, dmg: 24, size: 150, r: 42, xp: 0, mini: true, tint: 0xb07aff },
   anima: { tex: ['anima_camina', 'anima_ataque'], hp: 24, spd: 56, dmg: 8, size: 62, r: 20, xp: 2 },
+  // Fase 5 · Japón (region: 'japon'; salen solo en los mapas de Japón)
+  kappa: { tex: ['kappa_camina', 'kappa_ataque'], hp: 14, spd: 60, dmg: 8, size: 56, r: 18, xp: 1, aqua: true },
+  kitsune: { tex: ['kitsune_camina', 'kitsune_ataque'], hp: 18, spd: 150, dmg: 9, size: 70, r: 20, xp: 2 },
+  oni: { tex: ['oni_camina', 'oni_ataque'], hp: 110, spd: 42, dmg: 18, size: 92, r: 30, xp: 6 },
+  tengu: { tex: ['tengu_camina', 'tengu_ataque'], hp: 40, spd: 95, dmg: 14, size: 74, r: 22, xp: 4, flyer: true },
+  yurei: { tex: ['yurei_camina', 'yurei_ataque'], hp: 34, spd: 50, dmg: 11, size: 70, r: 20, xp: 3, float: true },
   cadejo: { tex: ['cadejo_camina', 'cadejo_ataque'], hp: 1100, spd: 78, dmg: 18, size: 150, r: 52, xp: 0, boss: 'El Cadejo', flap: 3 },
   charro: { tex: ['charro_camina', 'charro_ataque'], hp: 2300, spd: 86, dmg: 20, size: 176, r: 58, xp: 0, boss: 'El Charro Negro', flap: 3 },
   llorona: { tex: ['llorona_camina', 'llorona_ataque'], hp: 4400, spd: 56, dmg: 22, size: 200, r: 60, xp: 0, boss: 'La Llorona', flap: 1.2 },
@@ -231,6 +237,20 @@ export const BESTIARIO = {
   llorona: { name: 'La Llorona', tipo: 'Jefa', img: 'llorona_camina', pelea: 'Su grito te empuja y te lastima, deja charcos que queman y llama ánimas. En Los Canales es más fuerte.',
     historia: 'La leyenda más famosa de México: una mujer de blanco que llora por sus hijos junto al agua. Se cuenta desde la Colonia, y hay quien la une a un presagio mexica anterior a la Conquista.' },
 };
+// Japón: sus fichas se esconden del Bestiario hasta que encuentras a la primera (no se ve «???» de una región que aún no juegas).
+Object.assign(BESTIARIO, {
+  kappa: { name: 'Kappa', tipo: 'Enemigo', region: 'japon', img: 'kappa_camina', pelea: 'Se agacha y salta hacia ti con las garras abiertas. El agua no lo frena: es su casa.',
+    historia: 'Duende de los ríos de Japón, con caparazón y un plato de agua en la cabeza que es su fuerza. Si le haces una reverencia, te la regresa… y se le tira el agua.' },
+  kitsune: { name: 'Kitsune', tipo: 'Enemigo', region: 'japon', img: 'kitsune_camina', pelea: 'Muy rápida. Cada tanto crea dos copias falsas de sí misma: se deshacen de un golpe y no lastiman.',
+    historia: 'Zorra espíritu que gana una cola cada cien años y puede tomar forma humana para engañar. Las de fuego azul se ven de noche en el campo.' },
+  oni: { name: 'Oni', tipo: 'Enemigo', region: 'japon', img: 'oni_camina', pelea: 'Lento y aguanta muchísimo. Cuando lo tienes cerca levanta el garrote: aléjate antes de que lo baje.',
+    historia: 'Ogros de las montañas con cuernos y garrote de hierro. Cada febrero, en el Setsubun, se les avientan frijoles tostados gritando «¡fuera los oni, adentro la suerte!».' },
+  tengu: { name: 'Tengu', tipo: 'Enemigo', region: 'japon', img: 'tengu_camina', pelea: 'Vuela alrededor, marca una línea roja y se lanza en picada. Sal de la línea.',
+    historia: 'Guerreros cuervo que viven en lo alto de las montañas. Son orgullosos y castigan a los soberbios, pero también enseñaron el arte de la espada a los que lo merecían.' },
+  yurei: { name: 'Yūrei', tipo: 'Enemigo', region: 'japon', img: 'yurei_camina', pelea: 'Se desvanece y aparece de golpe junto a ti. Mientras se ve transparente no la puedes golpear.',
+    historia: 'Almas que no descansan por algo que dejaron pendiente. Visten de blanco, sin pies, y las acompañan llamitas azules llamadas hitodama.' },
+});
+
 /** A qué ficha cuenta cada enemigo del juego (el lobo es el nahual transformado). */
 export const BESTIA_DE = { lobo: 'nahual' };
 

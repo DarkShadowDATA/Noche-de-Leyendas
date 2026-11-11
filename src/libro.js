@@ -11,7 +11,10 @@ export function bestia(k, n) {
   const id = BESTIA_DE[k] || k; if (!BESTIARIO[id]) return;
   save.bestiario = save.bestiario || {}; save.bestiario[id] = (save.bestiario[id] || 0) + n;
 }
-export const bestiasVistas = () => Object.keys(BESTIARIO).filter(k => save.bestiario && save.bestiario[k] != null).length;
+const vista = (k) => save.bestiario && save.bestiario[k] != null;
+/** Fichas que se muestran: México siempre; otra región solo cuando ya encontraste a alguna de sus leyendas. */
+export const bestiasLista = () => Object.keys(BESTIARIO).filter(k => !BESTIARIO[k].region || Object.keys(BESTIARIO).some(j => BESTIARIO[j].region === BESTIARIO[k].region && vista(j)));
+export const bestiasVistas = () => bestiasLista().filter(vista).length;
 export const medallasN = () => MEDALLAS.filter(m => save.medallas && save.medallas[m.id]).length;
 
 export const medallaNombre = (m) => m.caz ? `Vence a La Llorona con ${HUNTERS[m.caz].name}` : m.mapa ? `Vence a La Llorona en ${MAPS[m.mapa].name}`
@@ -40,7 +43,7 @@ function build() {
   document.querySelectorAll('#libSeg button').forEach(b => { b.classList.toggle('on', b.dataset.s === seg); b.onclick = () => { seg = b.dataset.s; sel = ''; build(); }; });
   const top = $('libTop'), L = $('libList'); L.innerHTML = ''; L.className = seg;
   if (seg === 'bestias') {
-    const ks = Object.keys(BESTIARIO);
+    const ks = bestiasLista();
     top.innerHTML = `Has encontrado <b>${bestiasVistas()}/${ks.length}</b> leyendas. Cada ficha se abre la primera vez que la ves en una partida.`;
     for (const k of ks) {
       const B = BESTIARIO[k], n = save.bestiario ? save.bestiario[k] : null, ok = n != null, d = document.createElement('div');

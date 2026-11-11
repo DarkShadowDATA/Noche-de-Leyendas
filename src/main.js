@@ -10,7 +10,7 @@ import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
-import { setupLibro, bestia, ganarMedallas, medallasViejas, abrirLibro, bestiasVistas, medallasN, medallaNombre } from './libro.js';
+import { setupLibro, bestiasLista, bestia, ganarMedallas, medallasViejas, abrirLibro, bestiasVistas, medallasN, medallaNombre } from './libro.js';
 import { setupMercado, mercadoOn, buildBodega, buildMercado, usarArma, limpiarAviso } from './mercado.js';
 import { bendActiva, aplicarCompras, renderTienda, abrirTienda, ofrecerInicio, aspectoDe, setTiendaImgs } from './tienda.js';
 
@@ -226,6 +226,7 @@ class Play extends Phaser.Scene {
     this.objId = OBJECTIVES[r.obj] ? r.obj : 'llorona';
     this.curses = new Set((r.curses || []).filter(c => CURSES[c]));
     this.mapId = MAPS[r.map] ? r.map : 'pueblo'; this.M = MAPS[this.mapId];
+    this.region = this.M.region || (DEV && new URLSearchParams(location.search).has('jp') ? 'japon' : 'mexico');
   }
   cursed(c) { return this.curses.has(c); }
   bossTime(k) { return k === 'llorona' && this.cursed('impaciente') ? 420 : BOSS_TIMES[k]; }
@@ -511,18 +512,25 @@ class Play extends Phaser.Scene {
       this.spawnAcc -= 1;
       if (alive >= cap) break;
       const mp = this.mapId;
-      const w = [['calaquita', mp === 'panteon' ? 13 : 10]];
+      const w = this.region === 'japon' ? [['kappa', 10]] : [['calaquita', mp === 'panteon' ? 13 : 10]];
+      if (this.region === 'japon') { // Japón: kappa, kitsune, yūrei, oni y tengu
+        if (t > 50) w.push(['kitsune', 3 + t / 70]);
+        if (t > 140) w.push(['yurei', 2 + t / 140]);
+        if (t > 150) w.push(['oni', 1 + t / 220]);
+        if (t > 210) w.push(['tengu', 1.2 + t / 200]);
+      } else {
       if (t > 50) w.push(['chaneque', (3 + t / 60) * (mp === 'canales' ? 1.4 : 1)]);
       if (t > 140) w.push(['nahual', (2 + t / 120) * (this.moonT > 0 ? 3 : 1)]);
       if (t > 210) w.push(['chupacabras', 1 + t / 200]);
       if (t > (mp === 'panteon' ? 150 : 270)) w.push(['anima', (2 + t / 150) * (mp === 'panteon' ? 1.8 : 1)]);
+      }
       let tot = 0; for (const [, v] of w) tot += v;
       let r = Math.random() * tot, k = 'calaquita';
       for (const [kk, v] of w) { r -= v; if (r <= 0) { k = kk; break; } }
       const [x, y] = this.edgePoint();
       this.spawn(k, x, y);
     }
-    if (t > 85) { this.flockT -= dt; if (this.flockT <= 0) { this.flockT = this.mapId === 'canales' ? rnd(11, 17) : rnd(18, 28); this.spawnFlock(); } }
+    if (t > 85 && this.region !== 'japon') { this.flockT -= dt; if (this.flockT <= 0) { this.flockT = this.mapId === 'canales' ? rnd(11, 17) : rnd(18, 28); this.spawnFlock(); } }
   }
 
   edgePoint(extra = 60) {
@@ -625,7 +633,7 @@ class Play extends Phaser.Scene {
       }
       const dx = P.x - e.x, dy = P.y - e.y, dist = Math.hypot(dx, dy) || 1;
       let vx = 0, vy = 0;
-      const slow = (e.slowT > 0 ? (e.boss ? 0.8 : 0.55) : 1) * (!e.d.flyer && !e.boss && this.inWater(e.x, e.y) ? CANALES.slow : 1); // a los jefes el humo y el agua los frenan menos
+      const slow = (e.slowT > 0 ? (e.boss ? 0.8 : 0.55) : 1) * (!e.d.flyer && !e.d.aqua && !e.d.float && !e.boss && this.inWater(e.x, e.y) ? CANALES.slow : 1); // a los jefes el humo y el agua los frenan menos
       e.slowT -= dt; e.flash -= dt; e.cd -= dt; e.st -= dt;
       if (this.freezeT > 0 && !e.boss) { /* congelados por la campana */ }
       else if (e.stun > 0) { e.stun -= dt; }
@@ -635,6 +643,40 @@ class Play extends Phaser.Scene {
         else if (e.state === 'wind') { if (e.st <= 0) { e.state = 'leap'; e.st = 0.42; const a = Math.atan2(e.ty - e.y, e.tx - e.x); e.lx = Math.cos(a) * 560; e.ly = Math.sin(a) * 560; } }
         else if (e.state === 'leap') { vx = e.lx; vy = e.ly; if (e.st <= 0) { e.state = 'rest'; e.st = 0.5; } }
         else if (e.state === 'rest') { if (e.st <= 0) { e.state = 'walk'; e.cd = rnd(2, 3); } }
+      }
+      else if (e.k === 'kappa') { // salta hacia ti
+        if (e.state === 'walk') { vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow; if (dist < 230 && e.cd <= 0) { e.state = 'wind'; e.st = 0.45; e.tx = P.x; e.ty = P.y; } }
+        else if (e.state === 'wind') { if (e.st <= 0) { e.state = 'leap'; e.st = 0.36; const a = Math.atan2(e.ty - e.y, e.tx - e.x); e.lx = Math.cos(a) * 500; e.ly = Math.sin(a) * 500; } }
+        else if (e.state === 'leap') { vx = e.lx; vy = e.ly; if (e.st <= 0) { e.state = 'rest'; e.st = 0.4; } }
+        else if (e.state === 'rest') { if (e.st <= 0) { e.state = 'walk'; e.cd = rnd(2.4, 3.6); } }
+      }
+      else if (e.k === 'kitsune') { // corre y crea copias falsas
+        vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow;
+        if (e.fake) { e.life -= dt; if (e.life <= 0) { this.fxDeath.explode(5, e.x, e.y - 30); this.remove(e); continue; } }
+        else if (e.cd <= 0 && dist < 650) {
+          e.cd = rnd(6, 8);
+          for (const sg of [-1, 1]) { const c = this.spawn('kitsune', e.x + sg * 60, e.y + rnd(-30, 30)); c.fake = true; c.hp = c.max = 1; c.dmg = 0; c.life = 5; c.cd = 99; c.spd = e.spd * rnd(0.95, 1.1); }
+          this.fxSpark.emitParticleAt(e.x, e.y - 40, 8);
+        }
+      }
+      else if (e.k === 'oni') { // camina lento y azota el garrote
+        if (e.state === 'walk') { vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow; if (dist < 150 && e.cd <= 0) { e.state = 'wind'; e.st = 0.75; } }
+        else if (e.state === 'wind') { if (e.st <= 0) {
+          e.state = 'rest'; e.st = 0.5; e.atkT = 0.5; this.cameras.main.shake(120, 0.004); this.fxDeath.explode(14, e.x + (dx > 0 ? 50 : -50), e.y - 6);
+          if (dist < 140 && P.inv <= 0 && P.jump <= 0) { P.hurtCd = 0; this.hurtPlayer(e.dmg * 1.4); }
+        } }
+        else if (e.state === 'rest') { if (e.st <= 0) { e.state = 'walk'; e.cd = 2.6; } }
+      }
+      else if (e.k === 'tengu') { // vuela cerca, marca una línea y cae en picada
+        if (e.state === 'walk') { vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow; if (dist < 400 && e.cd <= 0) { e.state = 'aim'; e.st = 0.7; e.a = Math.atan2(dy, dx); this.telegraphLine(e, 0.7); } }
+        else if (e.state === 'aim') { if (e.st <= 0) { e.state = 'charge'; e.st = 0.5; } }
+        else if (e.state === 'charge') { vx = Math.cos(e.a) * 620; vy = Math.sin(e.a) * 620; if (e.st <= 0) { e.state = 'rest'; e.st = 0.6; } }
+        else if (e.state === 'rest') { vx = -dx / dist * 40; vy = -dy / dist * 40; if (e.st <= 0) { e.state = 'walk'; e.cd = rnd(3, 4.2); } }
+      }
+      else if (e.k === 'yurei') { // se desvanece y aparece junto a ti
+        if (e.state === 'walk') { vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow; e.ghost = false; if (e.cd <= 0 && dist > 120) { e.state = 'fade'; e.st = 0.5; e.ghost = true; } }
+        else if (e.state === 'fade') { if (e.st <= 0) { const a = Math.random() * 6.28, R = rnd(110, 160); e.x = P.x + Math.cos(a) * R; e.y = P.y + Math.sin(a) * R; e.state = 'appear'; e.st = 0.55; e.atkT = 0.9; this.fxSpark.emitParticleAt(e.x, e.y - 40, 10); } }
+        else if (e.state === 'appear') { if (e.st <= 0) { e.state = 'walk'; e.ghost = false; e.cd = rnd(4.5, 6.5); } }
       }
       else if (e.k === 'anima') {
         const c = (this.t + e.ph) % 4.2; const g = c > 2.8; e.ghost = g;
@@ -699,9 +741,9 @@ class Play extends Phaser.Scene {
       e.ph += dt * (moving ? 1 : 0.3);
       let bob = 0, sq = 1, rot = 0;
       if (e.d.static) { bob = 0; sq = 1 + Math.sin(this.t * 3) * 0.02; }
-      else if (e.d.flyer || e.k === 'anima' || e.k === 'llorona') { bob = 10 + Math.sin(e.ph * 6) * 5; sq = 1 + Math.sin(e.ph * 12) * 0.03; }
+      else if (e.d.flyer || e.d.float || e.k === 'anima' || e.k === 'llorona') { bob = 10 + Math.sin(e.ph * 6) * 5; sq = 1 + Math.sin(e.ph * 12) * 0.03; }
       else { bob = (1 - Math.cos(e.ph * 18)) * (e.boss ? 1.6 : 1.2); sq = 1 + 0.03 * Math.cos(e.ph * 18); rot = Math.sin(e.ph * 9) * 0.045 + (dx > 0 ? 0.05 : -0.05); } // paso suave, inclinado hacia donde camina
-      if (hasW) { bob = 0; sq = 1; rot = dx > 0 ? 0.03 : -0.03; } // las poses ya traen el paso: sin rebote por código
+      if (hasW) { bob = e.d.flyer ? 10 + Math.sin(e.ph * 6) * 5 : 0; sq = 1; rot = dx > 0 ? 0.03 : -0.03; } // las poses ya traen el paso: sin rebote por código
       if (e.state === 'wind') { s.x = e.x + Math.sin(this.t * 70) * 3; sq = 0.84; } else s.x = e.x;
       if (e.state === 'leap') { bob = 26; rot = 0.25 * Math.sign(e.lx || 1); }
       if (e.state === 'aim') { s.x = e.x + Math.sin(this.t * 60) * 3; }
@@ -717,7 +759,7 @@ class Play extends Phaser.Scene {
       else if (e.wolf) s.setTint(0xffe2c0);
       else if (e.d.tint && key !== e.d.tex[0]) s.setTint(e.d.tint); // sin su imagen todavía: la de base pintada
       else s.clearTint();
-      s.setAlpha(e.ghost ? 0.28 : 1);
+      s.setAlpha(e.ghost ? 0.28 : e.fake ? 0.7 : 1);
     }
     if (this.E.some(e => !e.alive)) this.E = this.E.filter(e => e.alive);
   }
@@ -806,7 +848,7 @@ class Play extends Phaser.Scene {
     if (e.boss) dmg *= 1 + 0.1 * tl('atk_jefes');
     if (tl('atk_crit') && Math.random() < 0.04 * tl('atk_crit')) { dmg *= 2; opt = Object.assign({}, opt, { big: true, quiet: false }); }
     e.hp -= dmg; e.flash = 0.07;
-    const kb = e.boss || e.d.mini || e.d.static ? 0.08 : (e.k === 'chupacabras' && e.state === 'leap') ? 0.2 : 1;
+    const kb = e.boss || e.d.mini || e.d.static ? 0.08 : e.k === 'oni' ? 0.3 : ((e.k === 'chupacabras' || e.k === 'kappa') && e.state === 'leap') ? 0.2 : 1;
     e.kx += kx * kb; e.ky += ky * kb;
     if (opt.stun) e.stun = Math.max(e.stun, e.boss ? opt.stun * 0.3 : opt.stun);
     if (opt.slow) e.slowT = Math.max(e.slowT, opt.slow);
@@ -821,6 +863,7 @@ class Play extends Phaser.Scene {
 
   killEnemy(e) {
     e.alive = false;
+    if (e.fake) { this.fxDeath.explode(5, e.x, e.y - 30); this.remove(e); return; } // copia falsa de la kitsune: humo y nada más
     if (this.cuenta) bestia(e.k, 1);
     this.kills++; if (!e.boss) this.energy = Math.min(this.energyNeed, this.energy + 1);
     this.fxDeath.setParticleTint(e.k === 'anima' || e.k === 'llorona' ? 0x7ff7ea : e.k === 'lechuza' ? 0xff7a3a : 0xffd8a0);
@@ -1959,7 +2002,7 @@ function buildMenu() {
   } else $('eqIn').innerHTML = `<span class="ico">🪅</span><span class="tx">Arma equipada<b>Ninguna</b>${save.pin.dia !== today() ? 'Tirada gratis en la Piñata' : 'Consíguelas en la Piñata'}</span>`;
   $('eqCard').onclick = () => showTab(eq ? 'arsenal' : 'pinata');
   $('abIn').innerHTML = `<span class="ico" style="--rc:#3ff0d8">${wIco(h.weapon)}</span><span class="tx">${WEAPONS[h.weapon].name} · ${h.hp} ❤️<b style="color:#9ff7ea">${h.ability}</b>Habilidad</span>`;
-  $('libroBtn').innerHTML = `<span>📖 Bestiario ${bestiasVistas()}/${Object.keys(BESTIARIO).length} · 🏅 Medallas ${medallasN()}/${MEDALLAS.length}</span>`;
+  $('libroBtn').innerHTML = `<span>📖 Bestiario ${bestiasVistas()}/${bestiasLista().length} · 🏅 Medallas ${medallasN()}/${MEDALLAS.length}</span>`;
   $('libroBtn').onclick = () => { Sfx.init(); Sfx.play('pick'); abrirLibro(); };
   const oi = $('inicioCard'); oi.classList.toggle('hidden', !ofrecerInicio());
   oi.onclick = (e) => { if (e.target.closest('[data-x]')) { save.inicioVisto = true; persist(); oi.classList.add('hidden'); return; } $('profBtn').click(); };
