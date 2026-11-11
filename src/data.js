@@ -203,3 +203,42 @@ export const MAPS = {
 };
 export const PANTEON = { tombEvery: [7, 11], tombN: 3, healR: 110, healPerSec: 3, ofrendaChance: 0.22 };
 export const CANALES = { period: 1100, y0: 380, h: 250, slow: 0.6, bridgeEvery: 1500, bridgeW: 170, boatW: 300, boatH: 92, lloronaHp: 1.35, lloronaDmg: 1.15, regionFlores: 150 };
+
+// ---------- Fase 4: Bestiario y Medallas ----------
+// Bestiario: una ficha por leyenda. Se abre al encontrarla en una partida (save.bestiario[id] = cuántas has vencido).
+// img = textura de la ficha · pelea = cómo ataca en el juego · historia = la leyenda real, en corto.
+export const BESTIARIO = {
+  calaquita: { name: 'Calaquita', tipo: 'Enemigo', img: 'calaquita_camina', pelea: 'Lenta y débil, pero viene en montón. Las tumbas del Panteón y el Charro Negro sacan más.',
+    historia: 'Las calaveras de azúcar y de papel acompañan el Día de Muertos. En México la muerte no se esconde: se le pone nombre, se le canta y se le invita a la mesa.' },
+  chaneque: { name: 'Chaneque', tipo: 'Enemigo', img: 'chaneque_camina', pelea: 'Chiquito y muy rápido. Si pasa sobre tus almas, se las roba; véncelo para que las suelte.',
+    historia: 'Duendes del monte en las historias de Veracruz y el sur. Cuidan ríos y selvas, esconden las cosas y hacen que la gente se pierda. Para regresar, dicen, hay que ponerse la ropa al revés.' },
+  lechuza: { name: 'Lechuza', tipo: 'Enemigo', img: 'lechuza_camina', pelea: 'Cruza la pantalla volando en línea recta, casi siempre en parvada. No te persigue: quítate de su camino.',
+    historia: 'En el norte de México se cuenta que algunas brujas se vuelven lechuzas enormes. Si de noche oyes un silbido arriba de tu casa, mejor no contestes.' },
+  nahual: { name: 'Nahual', tipo: 'Enemigo', img: 'nahual_camina', pelea: 'Aguanta mucho. Cuando le queda poca vida se convierte en lobo y se te va encima muy rápido.',
+    historia: 'Desde tiempos de los mexicas se habla de hechiceros que pueden tomar forma de animal: coyote, perro o guajolote. Sale de noche y, si lo hieren, amanece herido como persona.' },
+  chupacabras: { name: 'Chupacabras', tipo: 'Enemigo', img: 'chupacabras_camina', pelea: 'Se agacha un momento y salta hacia donde estabas. Muévete cuando lo veas prepararse.',
+    historia: 'Leyenda joven: nació en Puerto Rico en 1995 y en meses llegó a todo México. Se le culpa de animales de granja que amanecen sin sangre, con dos agujeritos en el cuello.' },
+  anima: { name: 'Ánima', tipo: 'Enemigo', img: 'anima_camina', pelea: 'Cada pocos segundos se vuelve transparente y tus golpes la atraviesan. Pégale cuando esté sólida.',
+    historia: 'Las ánimas en pena son almas que dejaron algo pendiente. Se les prenden veladoras y se les reza para que encuentren descanso; a cambio, dicen, cuidan a quien se acuerda de ellas.' },
+  loboalfa: { name: 'Lobo alfa', tipo: 'Minijefe', img: 'lobo_alfa', pelea: 'Despierta cuando abres el cofre maldito. Grande, rápido y con muchísima vida.',
+    historia: 'El lobo mexicano fue el gran cazador de las sierras del norte. En los cuentos, el más viejo de la manada guarda lo que no debe tocarse.' },
+  chupadorado: { name: 'Chupacabras dorado', tipo: 'Especial', img: 'chupacabras_dorado', pelea: 'No ataca: huye. Aparece tres veces por noche y se escapa si no lo alcanzas a tiempo.',
+    historia: 'No viene de ninguna leyenda antigua: es de este juego. Pero en todo pueblo hay alguien que jura haber visto un animal que brillaba en el monte.' },
+  cadejo: { name: 'El Cadejo', tipo: 'Jefe', img: 'cadejo_camina', pelea: 'Apunta con una línea y embiste a toda velocidad. Sal de la línea y pégale mientras descansa.',
+    historia: 'Perro enorme de ojos encendidos que arrastra cadenas, del sur de México y Centroamérica. El negro persigue a los que andan de noche; el blanco, dicen, los cuida.' },
+  charro: { name: 'El Charro Negro', tipo: 'Jefe', img: 'charro_camina', pelea: 'Te lanza su reata para jalarte y cada tanto llama calaquitas a su alrededor.',
+    historia: 'Jinete elegante, vestido de negro y plata, que se aparece en los caminos. Ofrece una bolsa de monedas o un aventón: quien acepta, se va con él para siempre.' },
+  llorona: { name: 'La Llorona', tipo: 'Jefa', img: 'llorona_camina', pelea: 'Su grito te empuja y te lastima, deja charcos que queman y llama ánimas. En Los Canales es más fuerte.',
+    historia: 'La leyenda más famosa de México: una mujer de blanco que llora por sus hijos junto al agua. Se cuenta desde la Colonia, y hay quien la une a un presagio mexica anterior a la Conquista.' },
+};
+/** A qué ficha cuenta cada enemigo del juego (el lobo es el nahual transformado). */
+export const BESTIA_DE = { lobo: 'nahual' };
+
+// Medallas de México: se ganan al vencer a La Llorona. Cada una da MEDALLA_FLORES flores, una sola vez.
+export const MEDALLA_FLORES = 100;
+export const MEDALLAS = [
+  ...['machetero', 'curandera', 'luchadora', 'cohetero'].map(h => ({ id: 'caz_' + h, grupo: 'Cazadores', icon: '🎭', caz: h })),
+  ...['pueblo', 'panteon', 'canales'].map(m => ({ id: 'mapa_' + m, grupo: 'Mapas', icon: '🗺️', mapa: m })),
+  ...['llorona', 'altares', 'carreta', 'dorado', 'ofrenda'].map(o => ({ id: 'obj_' + o, grupo: 'Objetivos', icon: '🎯', obj: o })),
+  { id: 'mald_3', grupo: 'Maldiciones', icon: '☠️', mald: 3 },
+];

@@ -470,6 +470,18 @@
   .mk-sell em { font-style:normal; color:#9ff7ea; font-size:11px; } .obtn.alt2 { filter:hue-rotate(150deg) saturate(.8); }
   .wrow .ico img { max-height:100%; max-width:100%; }
   #arsSeg { flex-wrap:nowrap; } #arsSeg button { padding:8px 10px; font-size:12px; white-space:nowrap; }
+  #libroBox .mbody { max-height:84vh; overflow-y:auto; width:min(90vw,540px); } #libTop { font-family:system-ui,sans-serif; font-size:12px; color:#cdbde6; text-align:center; margin:4px 0 8px; } #libTop b { color:#ffcf5a; }
+  #libList { display:flex; flex-direction:column; gap:6px; font-family:system-ui,sans-serif; text-align:left; margin-bottom:10px; }
+  .lb-card { background:rgba(40,24,64,.8); box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:10px; padding:6px 8px; cursor:pointer; } .lb-card.open { box-shadow:inset 0 0 0 2px #c9962e; }
+  .lb-card .hd { display:flex; align-items:center; gap:10px; } .lb-card .im { width:54px; height:54px; display:flex; align-items:center; justify-content:center; flex:none; } .lb-card .im img { max-width:100%; max-height:100%; }
+  .lb-card .tt b { display:block; font-family:var(--serif); font-size:15px; color:#fff1cf; } .lb-card .tt i { font-style:normal; font-size:11px; color:#bfaedb; }
+  .lb-card .bd p { font-size:12.5px; line-height:1.45; color:#e0d4f2; margin:6px 2px 2px; } .lb-card .bd b { color:#ffcf5a; }
+  .lb-card.unk { cursor:default; opacity:.75; } .lb-card.unk img { filter:brightness(0) opacity(.55); }
+  .lb-g { font-family:var(--serif); font-size:13px; color:#ffcf5a; margin:6px 2px 0; }
+  .lb-med { display:flex; align-items:center; gap:8px; background:rgba(40,24,64,.8); box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:10px; padding:7px 9px; font-size:12.5px; color:#cdbde6; }
+  .lb-med .md { font-size:22px; filter:grayscale(1) opacity(.6); } .lb-med .tt { flex:1; } .lb-med .st { font-size:11px; color:#bfaedb; white-space:nowrap; }
+  .lb-med.ok { box-shadow:inset 0 0 0 1.5px #c9962e; color:#fff1cf; } .lb-med.ok .md { filter:none; } .lb-med.ok .st { color:#9ff7ea; }
+  .fl-med { font-family:system-ui,sans-serif; font-size:12.5px; color:#fff1cf; margin-top:5px; } .fl-med b { color:#ffcf5a; }
   #shopBox { font-family:system-ui,sans-serif; }
   .shop-it { display:flex; align-items:center; gap:8px; background:rgba(40,24,64,.8); box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:10px; padding:8px; margin:6px 0; text-align:left; }
   .shop-it .ic { font-size:26px; } .shop-it .tx { flex:1; font-size:12px; color:#cdbde6; line-height:1.35; } .shop-it .tx b { display:block; font-family:var(--serif); font-size:14px; color:#fff1cf; }
@@ -567,6 +579,7 @@
   </div>
   <button class="obtn main" id="startBtn"><span>¡A cazar!</span></button>
   <button class="obtn" id="pozoBtn"><span>💰 Noche del Pozo</span></button>
+  <button class="obtn" id="libroBtn"></button>
   <div id="inicioCard" class="hidden">🎁 <span><b>Paquete de inicio</b> · la Luchadora, 5 boletos y 500 🌼 por 10 💠</span><span data-x>✕</span></div>
   <div id="resumeBox" class="hidden">
     <div class="rb txt">
@@ -619,6 +632,13 @@
 </div></div></div>
 
 <div id="toast" class="hidden"></div>
+<div id="libroBox" class="modal hidden"><div class="frame"><div class="in mbody">
+  <div class="htitle">Libro del cazador</div>
+  <div class="seg" id="libSeg"><button data-s="bestias" class="on">📖 Bestiario</button><button data-s="medallas">🏅 Medallas</button></div>
+  <div id="libTop"></div>
+  <div id="libList"></div>
+  <button class="obtn" data-close>Cerrar</button>
+</div></div></div>
 <div id="profBox" class="modal hidden"><div class="frame"><div class="in mbody">
   <div class="htitle">Tu cazador</div>
   <div id="profStats"></div>
