@@ -459,6 +459,15 @@
   .mbody .obtn { align-self:center; margin-top:6px; }
   #profStats { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
   #profStats div { background:rgba(40,24,64,.8); box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:8px; padding:8px; text-align:center; font-family:system-ui,sans-serif; font-size:11px; color:#cdbde6; }
+  #toast { position:fixed; left:50%; top:14%; transform:translateX(-50%); z-index:99999; background:rgba(26,12,44,.95); box-shadow:inset 0 0 0 2px #c9962e, 0 6px 20px #000a; color:#fff1cf; font-family:system-ui,sans-serif; font-size:14px; padding:10px 16px; border-radius:12px; max-width:86vw; text-align:center; }
+  #shopBox { font-family:system-ui,sans-serif; }
+  .shop-it { display:flex; align-items:center; gap:8px; background:rgba(40,24,64,.8); box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:10px; padding:8px; margin:6px 0; text-align:left; }
+  .shop-it .ic { font-size:26px; } .shop-it .tx { flex:1; font-size:12px; color:#cdbde6; line-height:1.35; } .shop-it .tx b { display:block; font-family:var(--serif); font-size:14px; color:#fff1cf; }
+  .shop-it .tx i { color:#9ff7ea; font-style:normal; } .shop-it .obtn { margin:0; white-space:nowrap; } .shop-it .ok { color:#9ff7ea; font-size:13px; white-space:nowrap; }
+  .shop-bal, .shop-note { font-size:12px; color:#cdbde6; text-align:center; margin:8px 4px 2px; } .shop-bal a { color:#ffcf5a; } .shop-msg { font-size:13px; color:#ffcf5a; text-align:center; margin:6px; }
+  .fl-bend { font-family:system-ui,sans-serif; font-size:12px; color:#cdbde6; margin-top:6px; opacity:.9; } .fl-bend small { opacity:.7; }
+  #inicioCard { position:relative; display:flex; align-items:center; gap:8px; margin:6px auto 0; max-width:330px; padding:7px 30px 7px 10px; border-radius:10px; background:rgba(40,24,64,.85); box-shadow:inset 0 0 0 1px #8a6a2a; font-family:system-ui,sans-serif; font-size:12px; color:#e8dcc0; cursor:pointer; text-align:left; }
+  #inicioCard b { color:#ffcf5a; } #inicioCard [data-x] { position:absolute; right:4px; top:2px; padding:4px 7px; opacity:.6; font-size:14px; }
   #profStats b { display:block; font-family:'Lilita One',system-ui; font-size:20px; color:var(--oro); }
   @media (orientation:landscape) and (min-width:700px) {
     .stage img { max-height:44vh; } #menu #logo { height:12vh; } .hrow { max-width:520px; }
@@ -548,6 +557,7 @@
   </div>
   <button class="obtn main" id="startBtn"><span>¡A cazar!</span></button>
   <button class="obtn" id="pozoBtn"><span>💰 Noche del Pozo</span></button>
+  <div id="inicioCard" class="hidden">🎁 <span><b>Paquete de inicio</b> · la Luchadora, 5 boletos y 500 🌼 por 10 💠</span><span data-x>✕</span></div>
   <div id="resumeBox" class="hidden">
     <div class="rb txt">
       <div class="rt">Tienes una partida a medias</div>
@@ -598,9 +608,12 @@
   <button class="obtn" data-close>Cerrar</button>
 </div></div></div>
 
+<div id="toast" class="hidden"></div>
 <div id="profBox" class="modal hidden"><div class="frame"><div class="in mbody">
   <div class="htitle">Tu cazador</div>
   <div id="profStats"></div>
+  <div class="htitle" style="margin-top:12px">Tienda</div>
+  <div id="shopBox"></div>
   <button class="obtn" data-close>Cerrar</button>
 </div></div></div>
 

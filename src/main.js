@@ -10,6 +10,7 @@ import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
+import { bendActiva, aplicarCompras, renderTienda, abrirTienda, ofrecerInicio } from './tienda.js';
 
 // Hojas de caminar: dónde queda la cabeza en la pose quieta (q) y de ataque (a), y la altura de los pies (oy), para que no brinque al cambiar de pose
 const WALK = { machetero: { q: 0.566, a: 0.54, oy: 0.906 }, curandera: { q: 0.575, a: 0.442, oy: 0.906 }, luchadora: { q: 0.391, a: 0.548, oy: 0.907 }, cohetero: { q: 0.405, a: 0.477, oy: 0.907 } };
@@ -1747,7 +1748,8 @@ Play.prototype.flowerReward = function (win) {
   base *= (1 + CURSE_BONUS * r.maldiciones) * (1 + r.mapa); base += r.region;
   const cosecha = 1 + 0.08 * tl('for_cosecha');
   const first = save.dia !== today();
-  const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1));
+  const bend = !POZO && bendActiva(); // Bendición de la Ofrenda (tienda con Shadow): flores ×2
+  const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1) * (bend ? 2 : 1));
   const counts = !POZO && ((!GOD && START_T === 0 && !AUTO) || DEV);
   if (counts) {
     save.flores += total; save.ganadas += total; save.partidas++; save.mejor = Math.max(save.mejor, Math.floor(this.t));
@@ -1757,7 +1759,7 @@ Play.prototype.flowerReward = function (win) {
     if (first) save.dia = today();
     persist();
   }
-  return { ...r, cosecha, first, total, counts };
+  return { ...r, cosecha, first, total, counts, bend };
 };
 
 // ---------- Interfaz (HTML encima del juego) ----------
@@ -1866,8 +1868,10 @@ class Hud {
       sc.W.map(w => `<span class="endw${w.evo ? ' evo' : ''}">${wIcon(w)} ${wName(w)}${w.evo ? '' : ' ' + w.lv}</span>`).join(' ');
     const r = sc.reward;
     if (r) {
-      const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : ''].filter(Boolean).join(' · ');
-      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡México liberada! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
+      const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : '', r.bend ? '🕯️ Bendición ×2' : ''].filter(Boolean).join(' · ');
+      // Solo en un buen momento (venció a La Llorona o hizo récord) y sin botón: la tienda está en el perfil.
+      const bendLine = !r.bend && r.counts && (nube.on || nube.can) && (win || best) ? `<div class="fl-bend">🕯️ Con la Bendición de la Ofrenda habrían sido ${r.total * 2} 🌼 <small>(Tienda, en tu perfil)</small></div>` : '';
+      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡México liberada! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div>${bendLine}<div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
     }
     $('end').classList.remove('hidden');
   }
@@ -1877,6 +1881,8 @@ class Hud {
 let selected = 'machetero';
 let game = null;
 
+let toastT = 0;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), 4500); }
 const owned = (id) => import.meta.env.VITE_PROTO === '1' || save.cazadores.includes(id); // VITE_PROTO=1: solo en el prototipo privado, todos los cazadores abiertos para probar
 const HUNTER_TAG = { machetero: 'Cazador de nahuales', curandera: 'Guardiana del copal', luchadora: 'Campeona de la arena', cohetero: 'Maestro de la pólvora' };
 const portrait = (id) => IMG['retrato_' + id] || IMG[id + '_quieto'] || IMG[id + '_ataque'];
@@ -1931,6 +1937,8 @@ function buildMenu() {
   } else $('eqIn').innerHTML = `<span class="ico">🪅</span><span class="tx">Arma equipada<b>Ninguna</b>${save.pin.dia !== today() ? 'Tirada gratis en la Piñata' : 'Consíguelas en la Piñata'}</span>`;
   $('eqCard').onclick = () => showTab(eq ? 'arsenal' : 'pinata');
   $('abIn').innerHTML = `<span class="ico" style="--rc:#3ff0d8">${wIco(h.weapon)}</span><span class="tx">${WEAPONS[h.weapon].name} · ${h.hp} ❤️<b style="color:#9ff7ea">${h.ability}</b>Habilidad</span>`;
+  const oi = $('inicioCard'); oi.classList.toggle('hidden', !ofrecerInicio());
+  oi.onclick = (e) => { if (e.target.closest('[data-x]')) { save.inicioVisto = true; persist(); oi.classList.add('hidden'); return; } $('profBtn').click(); };
   hubTop();
 }
 
@@ -2030,11 +2038,15 @@ function setupHub() {
   $('sndBtn').onclick = () => { Sfx.on = !Sfx.on; try { localStorage.setItem('ndl_snd', Sfx.on ? '1' : '0'); } catch (e) { /* nada */ } $('sndVal').textContent = Sfx.on ? 'Sí' : 'No'; };
   try { if (localStorage.getItem('ndl_snd') === '0') Sfx.on = false; } catch (e) { /* nada */ }
   $('howBtn').onclick = () => { $('setBox').classList.add('hidden'); open('howBox'); };
-  $('profBtn').onclick = () => {
+  const profFill = () => {
     const ev = (save.evos || []).length, ar = Object.keys(save.armas || {}).length;
     $('profStats').innerHTML = [['Mejor noche', save.mejor ? fmtT(save.mejor) : '—'], ['Partidas', save.partidas || 0], ['Victorias contra La Llorona', save.victorias || 0],
       ['Flores ganadas', save.ganadas || 0], ['Cazadores', `${save.cazadores.length}/${Object.keys(HUNTERS).length}`], ['Armas', `${ar}/${Object.keys(WEAPONS).length}`],
       ['Evoluciones', `${ev}/${Object.keys(EVOS).length}`], ['Talentos', TALENTS.reduce((n, t) => n + tl(t.id), 0)]].map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
+  };
+  $('profBtn').onclick = () => {
+    profFill();
+    abrirTienda(); renderTienda(() => { profFill(); hubTop(); showTab(tab); });
     open('profBox');
   };
   setInterval(() => { if (!$('hub').classList.contains('hidden')) hubTop(); }, 700);
@@ -2173,7 +2185,7 @@ async function boot() {
   setupPinata(IMG, (k) => { Sfx.init(); Sfx.play(k); });
   $('endPinataBtn').onclick = () => { Sfx.init(); toMenu(); showTab('pinata'); };
   $('endTreeBtn').onclick = () => { toMenu(); showTab('talentos'); };
-  onNube(() => { if (!$('hub').classList.contains('hidden')) showTab(tab); });
+  onNube(() => { const m = aplicarCompras(); if (m) toast(m); if (!$('hub').classList.contains('hidden')) showTab(tab); });
   startNube();
   $('quitBtn').onclick = toMenu;
   $('resumeBtn').onclick = () => game.scene.getScene('play').hud.resume();
