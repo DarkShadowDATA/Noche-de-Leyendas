@@ -4,7 +4,7 @@ import { save, mergeSaves, replaceSave, onPersist } from './save.js';
 export { loginUrl, shadowUrl };
 
 // on = sesión iniciada · can = se puede iniciar aquí (en el dominio del estudio y no dentro de itch)
-export const nube = { on: false, can: false, name: '', boletos: 0, shadow: 0, packs: [], rev: 0, state: '' };
+export const nube = { on: false, can: false, name: '', boletos: 0, shadow: 0, packs: [], rev: 0, state: '', tienda: [], compras: {}, bendicion: 0, dt: 0 };
 let listeners = [];
 export function onNube(fn) { listeners.push(fn); }
 const changed = () => listeners.forEach(f => { try { f(); } catch (e) { /* nada */ } });
@@ -35,6 +35,7 @@ export async function startNube() {
   try {
     const r = await api('/ndl/save');
     nube.on = true; nube.name = user.name; nube.rev = r.rev; nube.boletos = r.boletos; nube.shadow = r.shadow; nube.packs = r.packs;
+    nube.tienda = r.tienda || []; nube.compras = r.compras || {}; nube.bendicion = r.bendicion || 0; nube.dt = r.now ? r.now - Date.now() : 0;
     if (r.save) { replaceSave(mergeSaves(save, r.save)); localSave(); }
     onPersist(schedule);
     await push();
@@ -45,5 +46,13 @@ export async function startNube() {
 export async function buyBoletos(pack) {
   const r = await api('/ndl/boletos', { method: 'POST', body: JSON.stringify({ pack }) });
   nube.boletos = r.boletos; nube.shadow = r.shadow; changed();
+  return r;
+}
+
+/** Tienda con Shadow (Paquete de inicio, Bendición): el servidor cobra y dice qué quedó comprado. */
+export async function buyItem(item) {
+  const r = await api('/ndl/comprar', { method: 'POST', body: JSON.stringify({ item }) });
+  nube.boletos = r.boletos; nube.shadow = r.shadow; nube.compras = r.compras || {}; nube.bendicion = r.bendicion || 0; nube.dt = r.now ? r.now - Date.now() : nube.dt;
+  changed();
   return r;
 }

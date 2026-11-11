@@ -160,6 +160,11 @@ export const FINAL_NEEDS = 12;
 export function talentCost(t, lv) { return Math.round(t.base * Math.pow(1.7, lv - 1) / 5) * 5; } // lv = nivel que compras (1..max)
 
 // Cazadores que se abren con flores
+// Aspectos: solo cambian cómo se ve el cazador (mismas habilidades). La clave es el prefijo de sus imágenes: <clave>_quieto, _ataque, _w0…5 y retrato_<clave>.
+// `item` es el artículo de la tienda con Shadow (servidor). walk: dónde queda la cabeza en la pose quieta (q) y de ataque (a) y la altura de los pies (oy).
+export const ASPECTOS = {
+  machetero_jaguar: { cazador: 'machetero', name: 'Guerrero Jaguar', item: 'asp_machetero_jaguar', walk: { q: 0.564, a: 0.553, oy: 0.907 } },
+};
 export const HUNTER_COST = { luchadora: 400, cohetero: 900 };
 
 // Flores al terminar una partida

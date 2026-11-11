@@ -4,12 +4,13 @@ import '@fontsource/lilita-one/400.css';
 import { dsTrack } from './dsev.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
-import { HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES } from './data.js';
+import { ASPECTOS, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
 import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
+import { bendActiva, aplicarCompras, renderTienda, abrirTienda, ofrecerInicio, aspectoDe, setTiendaImgs } from './tienda.js';
 
 // Hojas de caminar: dónde queda la cabeza en la pose quieta (q) y de ataque (a), y la altura de los pies (oy), para que no brinque al cambiar de pose
 const WALK = { machetero: { q: 0.566, a: 0.54, oy: 0.906 }, curandera: { q: 0.575, a: 0.442, oy: 0.906 }, luchadora: { q: 0.391, a: 0.548, oy: 0.907 }, cohetero: { q: 0.405, a: 0.477, oy: 0.907 } };
@@ -217,6 +218,7 @@ class Play extends Phaser.Scene {
   constructor() { super('play'); }
   init(data) {
     this.hunterId = data.hunter || 'machetero'; this.resume = data.resume || null;
+    this.skin = aspectoDe(this.hunterId) || this.hunterId; // aspecto: solo cambia las imágenes del cazador
     const r = this.resume || data;
     this.objId = OBJECTIVES[r.obj] ? r.obj : 'llorona';
     this.curses = new Set((r.curses || []).filter(c => CURSES[c]));
@@ -263,7 +265,7 @@ class Play extends Phaser.Scene {
     };
     this.pGlow = this.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(0xffa040).setAlpha(0.35).setScale(2.2).setDepth(-80000);
     this.fxDust = this.add.particles(0, 0, 'glow', { speed: { min: 8, max: 26 }, angle: { min: 200, max: 340 }, lifespan: 420, scale: { start: 0.16, end: 0.34 }, alpha: { start: 0.28, end: 0 }, tint: 0xcdbfae, emitting: false }).setDepth(-70000);
-    this.pSpr = this.add.image(0, 0, this.tex(`${this.hunterId}_camina`, `${this.hunterId}_ataque`)).setOrigin(0.5, 0.92);
+    this.pSpr = this.add.image(0, 0, this.tex(`${this.skin}_camina`, `${this.skin}_ataque`)).setOrigin(0.5, 0.92);
     this.pBase = 92 / 205; this.pSpr.setScale(this.pBase);
     this.hpBar = this.add.graphics().setDepth(1e6);
     this.aura = this.add.image(0, 0, 'aura').setBlendMode(Phaser.BlendModes.ADD).setVisible(false).setDepth(-70000);
@@ -407,20 +409,21 @@ class Play extends Phaser.Scene {
 
     // Pose y animación por código
     const s = this.pSpr;
-    const want = P.atkT > 0 ? this.tex(`${this.hunterId}_ataque`)
-      : P.moving ? this.tex(`${this.hunterId}_camina`, `${this.hunterId}_ataque`)
-        : this.tex(`${this.hunterId}_quieto`, `${this.hunterId}_camina`, `${this.hunterId}_ataque`);
+    const want = P.atkT > 0 ? this.tex(`${this.skin}_ataque`)
+      : P.moving ? this.tex(`${this.skin}_camina`, `${this.skin}_ataque`)
+        : this.tex(`${this.skin}_quieto`, `${this.skin}_camina`, `${this.skin}_ataque`);
     // Caminar de verdad: 6 poses dibujadas (hoja de animación) que avanzan según lo que camina.
-    const hasW = !!WALK[this.hunterId] && this.textures.exists(`${this.hunterId}_w0`);
+    const WK = WALK[this.skin] || (ASPECTOS[this.skin] && ASPECTOS[this.skin].walk);
+    const hasW = !!WK && this.textures.exists(`${this.skin}_w0`);
     const walkF = hasW && P.moving && P.dashT <= 0;
     if (walkF) {
       P.wd = (P.wd || 0) + spd * dt;
-      const fr = Math.floor(P.wd / 15) % 6, k = `${this.hunterId}_w${fr}`;
+      const fr = Math.floor(P.wd / 15) % 6, k = `${this.skin}_w${fr}`;
       if (s.texture.key !== k) { s.setTexture(k); if ((fr === 0 || fr === 3) && !(P.jump >= 2)) this.fxDust.emitParticleAt(P.x - P.dx * 10 + rnd(-4, 4), P.y - 2, 2); }
-      s.setOrigin(0.5, WALK[this.hunterId].oy);
+      s.setOrigin(0.5, WK.oy);
     } else {
       if (s.texture.key !== want) s.setTexture(want);
-      s.setOrigin(hasW ? (want.endsWith('_quieto') ? WALK[this.hunterId].q : want.endsWith('_ataque') ? WALK[this.hunterId].a : 0.5) : 0.5, 0.92);
+      s.setOrigin(hasW ? (want.endsWith('_quieto') ? WK.q : want.endsWith('_ataque') ? WK.a : 0.5) : 0.5, 0.92);
     }
     // Animación suave: nada de brincos. mv = qué tanto va corriendo (0 quieto … 1 a tope), con arranque y frenado.
     const ka = 1 - Math.exp(-dt * 12);
@@ -1747,7 +1750,8 @@ Play.prototype.flowerReward = function (win) {
   base *= (1 + CURSE_BONUS * r.maldiciones) * (1 + r.mapa); base += r.region;
   const cosecha = 1 + 0.08 * tl('for_cosecha');
   const first = save.dia !== today();
-  const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1));
+  const bend = !POZO && bendActiva(); // Bendición de la Ofrenda (tienda con Shadow): flores ×2
+  const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1) * (bend ? 2 : 1));
   const counts = !POZO && ((!GOD && START_T === 0 && !AUTO) || DEV);
   if (counts) {
     save.flores += total; save.ganadas += total; save.partidas++; save.mejor = Math.max(save.mejor, Math.floor(this.t));
@@ -1757,7 +1761,7 @@ Play.prototype.flowerReward = function (win) {
     if (first) save.dia = today();
     persist();
   }
-  return { ...r, cosecha, first, total, counts };
+  return { ...r, cosecha, first, total, counts, bend };
 };
 
 // ---------- Interfaz (HTML encima del juego) ----------
@@ -1765,7 +1769,7 @@ class Hud {
   constructor(sc) { this.sc = sc; this.acc = 0; this.cardsOpen = false; this.bannerT = null; }
   show() {
     $('hud').classList.remove('hidden');
-    $('abilityImg').src = IMG[`${this.sc.hunterId}_ataque`];
+    $('abilityImg').src = IMG[`${this.sc.skin}_ataque`] || IMG[`${this.sc.hunterId}_ataque`];
     $('abilityLbl').textContent = HUNTERS[this.sc.hunterId].ability;
     $('hint').textContent = 'Arrastra para moverte · doble toque para esquivar';
     setTimeout(() => { $('hint').textContent = ''; }, 6000);
@@ -1866,8 +1870,10 @@ class Hud {
       sc.W.map(w => `<span class="endw${w.evo ? ' evo' : ''}">${wIcon(w)} ${wName(w)}${w.evo ? '' : ' ' + w.lv}</span>`).join(' ');
     const r = sc.reward;
     if (r) {
-      const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : ''].filter(Boolean).join(' · ');
-      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡México liberada! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div><div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
+      const extra = [r.cosecha > 1 ? `Cosecha ×${r.cosecha.toFixed(2)}` : '', r.first ? '1ª partida del día ×2' : '', r.bend ? '🕯️ Bendición ×2' : ''].filter(Boolean).join(' · ');
+      // Solo en un buen momento (venció a La Llorona o hizo récord) y sin botón: la tienda está en el perfil.
+      const bendLine = !r.bend && r.counts && (nube.on || nube.can) && (win || best) ? `<div class="fl-bend">🕯️ Con la Bendición de la Ofrenda habrían sido ${r.total * 2} 🌼 <small>(Tienda, en tu perfil)</small></div>` : '';
+      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡México liberada! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div>${bendLine}<div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
     }
     $('end').classList.remove('hidden');
   }
@@ -1877,9 +1883,13 @@ class Hud {
 let selected = 'machetero';
 let game = null;
 
+let toastT = 0;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), 4500); }
 const owned = (id) => import.meta.env.VITE_PROTO === '1' || save.cazadores.includes(id); // VITE_PROTO=1: solo en el prototipo privado, todos los cazadores abiertos para probar
 const HUNTER_TAG = { machetero: 'Cazador de nahuales', curandera: 'Guardiana del copal', luchadora: 'Campeona de la arena', cohetero: 'Maestro de la pólvora' };
-const portrait = (id) => IMG['retrato_' + id] || IMG[id + '_quieto'] || IMG[id + '_ataque'];
+const portraitOf = (k) => IMG['retrato_' + k] || IMG[k + '_quieto'] || IMG[k + '_ataque'];
+const portrait = (id) => portraitOf(aspectoDe(id) || id);
+let aspView = ''; // aspecto que se está mirando en la ficha del cazador (aunque no sea tuyo)
 const wIco = (id) => IMG['icono_' + id] ? `<img src="${IMG['icono_' + id]}" alt="">` : (WEAPONS[id] ? WEAPONS[id].icon : '');
 const starsH = (e) => '★'.repeat(e || 0) + '<i>' + '★'.repeat(MAX_STARS - (e || 0)) + '</i>';
 const fmtT = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -1931,6 +1941,8 @@ function buildMenu() {
   } else $('eqIn').innerHTML = `<span class="ico">🪅</span><span class="tx">Arma equipada<b>Ninguna</b>${save.pin.dia !== today() ? 'Tirada gratis en la Piñata' : 'Consíguelas en la Piñata'}</span>`;
   $('eqCard').onclick = () => showTab(eq ? 'arsenal' : 'pinata');
   $('abIn').innerHTML = `<span class="ico" style="--rc:#3ff0d8">${wIco(h.weapon)}</span><span class="tx">${WEAPONS[h.weapon].name} · ${h.hp} ❤️<b style="color:#9ff7ea">${h.ability}</b>Habilidad</span>`;
+  const oi = $('inicioCard'); oi.classList.toggle('hidden', !ofrecerInicio());
+  oi.onclick = (e) => { if (e.target.closest('[data-x]')) { save.inicioVisto = true; persist(); oi.classList.add('hidden'); return; } $('profBtn').click(); };
   hubTop();
 }
 
@@ -1941,13 +1953,19 @@ function buildCaz() {
     const lk = !owned(k), d = document.createElement('div');
     d.className = 'frame ccard' + (lk ? ' locked' : '') + (k === viewing ? ' view' : '');
     d.innerHTML = `<div class="in"><img src="${portrait(k)}" alt="">${lk ? `<div class="lk">🔒 ${HUNTER_COST[k]}🌼</div>` : ''}${k === selected ? '<div class="ok">✔</div>' : ''}<div class="tn">${hh.name}</div></div>`;
-    d.onclick = () => { viewing = k; Sfx.init(); Sfx.play('pick'); buildCaz(); };
+    d.onclick = () => { viewing = k; aspView = ''; Sfx.init(); Sfx.play('pick'); buildCaz(); };
     g.appendChild(d);
   }
   const id = viewing, h = HUNTERS[id], lock = !owned(id), cost = HUNTER_COST[id] || 0, W = WEAPONS[h.weapon];
   const pct = (v, lo, hi) => Math.round(100 * Math.max(0.12, Math.min(1, (v - lo) / (hi - lo))));
   const det = $('cazDet'); det.className = 'in' + (lock ? ' locked' : '');
-  det.innerHTML = `<div class="big"><img src="${portrait(id)}" alt=""></div><div class="info">
+  const asps = Object.entries(ASPECTOS).filter(([, A]) => A.cazador === id), puesto = aspectoDe(id);
+  if (aspView && !(ASPECTOS[aspView] && ASPECTOS[aspView].cazador === id)) aspView = '';
+  const ver = aspView === '-' ? '' : (aspView || puesto), mio = (k) => !k || (save.aspectos || []).includes(k);
+  const aspRow = asps.length ? `<div class="asps"><span>Aspecto</span>${[['', { name: 'Normal' }], ...asps].map(([k, A]) =>
+    `<button class="asp${k === ver ? ' on' : ''}${mio(k) ? '' : ' lk'}" data-asp="${k || '-'}"><img src="${portraitOf(k || id)}" alt=""><i>${A.name}${mio(k) ? (k === puesto ? ' ✔' : '') : ' 💠'}</i></button>`).join('')}</div>` +
+    (ver && !mio(ver) ? `<button class="obtn" id="aspBuy">Conseguir en la Tienda</button><div class="ds" style="font-size:11px">Solo cambia cómo se ve. Mismas habilidades.</div>` : '') : '';
+  det.innerHTML = `<div class="big"><img src="${portraitOf(ver || id)}" alt=""></div><div class="info">
     <div class="nm">${h.name}</div><div class="tg">${HUNTER_TAG[id] || ''}</div>
     <div class="ds">${h.blurb}</div>
     <div class="sbar"><span>❤️ Vida</span><div class="bar"><i style="width:${pct(h.hp, 70, 145)}%"></i></div><em>${h.hp}</em></div>
@@ -1956,7 +1974,14 @@ function buildCaz() {
     <div class="ds ab">✨ <b>${h.ability}:</b> ${h.abilityDesc}</div>
     ${lock ? `<button class="obtn" id="cazAct"><b>🔒</b>Abrir por ${cost} 🌼</button><div class="ds" style="font-size:11px">${save.flores >= cost ? '¡Ya te alcanza!' : `Te faltan ${cost - save.flores} 🌼`}</div>`
       : id === selected ? '<div class="tagok">✔ Es tu cazador</div>' : '<button class="obtn" id="cazAct"><b>✔</b>Elegir</button>'}
+    ${aspRow}
   </div>`;
+  det.querySelectorAll('[data-asp]').forEach(b => b.onclick = () => {
+    const k = b.dataset.asp === '-' ? '' : b.dataset.asp; aspView = k || '-';
+    if (mio(k)) { save.aspecto = { ...(save.aspecto || {}), [id]: k }; persist(); } // tuyo: se lo pone; si no, solo lo enseña
+    Sfx.init(); Sfx.play('pick'); buildCaz(); hubTop();
+  });
+  if ($('aspBuy')) $('aspBuy').onclick = () => $('profBtn').click();
   const act = $('cazAct');
   if (act) act.onclick = () => {
     if (lock && !unlockHunter(id, act)) return;
@@ -2030,11 +2055,15 @@ function setupHub() {
   $('sndBtn').onclick = () => { Sfx.on = !Sfx.on; try { localStorage.setItem('ndl_snd', Sfx.on ? '1' : '0'); } catch (e) { /* nada */ } $('sndVal').textContent = Sfx.on ? 'Sí' : 'No'; };
   try { if (localStorage.getItem('ndl_snd') === '0') Sfx.on = false; } catch (e) { /* nada */ }
   $('howBtn').onclick = () => { $('setBox').classList.add('hidden'); open('howBox'); };
-  $('profBtn').onclick = () => {
+  const profFill = () => {
     const ev = (save.evos || []).length, ar = Object.keys(save.armas || {}).length;
     $('profStats').innerHTML = [['Mejor noche', save.mejor ? fmtT(save.mejor) : '—'], ['Partidas', save.partidas || 0], ['Victorias contra La Llorona', save.victorias || 0],
       ['Flores ganadas', save.ganadas || 0], ['Cazadores', `${save.cazadores.length}/${Object.keys(HUNTERS).length}`], ['Armas', `${ar}/${Object.keys(WEAPONS).length}`],
       ['Evoluciones', `${ev}/${Object.keys(EVOS).length}`], ['Talentos', TALENTS.reduce((n, t) => n + tl(t.id), 0)]].map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
+  };
+  $('profBtn').onclick = () => {
+    profFill();
+    abrirTienda(); renderTienda(() => { profFill(); hubTop(); showTab(tab); });
     open('profBox');
   };
   setInterval(() => { if (!$('hub').classList.contains('hidden')) hubTop(); }, 700);
@@ -2173,7 +2202,8 @@ async function boot() {
   setupPinata(IMG, (k) => { Sfx.init(); Sfx.play(k); });
   $('endPinataBtn').onclick = () => { Sfx.init(); toMenu(); showTab('pinata'); };
   $('endTreeBtn').onclick = () => { toMenu(); showTab('talentos'); };
-  onNube(() => { if (!$('hub').classList.contains('hidden')) showTab(tab); });
+  setTiendaImgs(IMG);
+  onNube(() => { const m = aplicarCompras(); if (m) toast(m); if (!$('hub').classList.contains('hidden')) showTab(tab); });
   startNube();
   $('quitBtn').onclick = toMenu;
   $('resumeBtn').onclick = () => game.scene.getScene('play').hud.resume();
