@@ -27,8 +27,14 @@ export function aplicarCompras() {
     save.flores += fl; save.inicioOk = true; ch = true;
     msg = `¡Paquete de inicio! +${fl} 🌼, 5 boletos${fl > (it.flores || 0) ? '' : ' y la Luchadora'}`;
   }
-  for (const [k, A] of Object.entries(ASPECTOS)) { // aspectos comprados: se guardan en el celular y se ponen solos la primera vez
-    if (nube.compras && nube.compras[A.item] && !(save.aspectos || []).includes(k)) {
+  // Aspectos: el servidor dice cuáles tiene la cuenta (son objetos: se pueden vender en el mercado). Con un servidor viejo, se usa `compras`.
+  const tiene = (k, A) => Array.isArray(nube.aspectos) ? nube.aspectos.includes(k) : !!(nube.compras && nube.compras[A.item]);
+  if (nube.on && Array.isArray(nube.aspectos)) { // los que ya no tiene (vendidos o a la venta) se quitan
+    const keep = (save.aspectos || []).filter(k => nube.aspectos.includes(k));
+    if (keep.length !== (save.aspectos || []).length) { save.aspectos = keep; ch = true; }
+  }
+  for (const [k, A] of Object.entries(ASPECTOS)) { // aspectos nuevos: se guardan en el celular y se ponen solos la primera vez
+    if (tiene(k, A) && !(save.aspectos || []).includes(k)) {
       save.aspectos = [...(save.aspectos || []), k]; save.aspecto = { ...(save.aspecto || {}), [A.cazador]: k }; ch = true;
       msg = `¡Aspecto ${A.name} listo! Ya lo trae ${HUNTERS[A.cazador].name}`;
     }
