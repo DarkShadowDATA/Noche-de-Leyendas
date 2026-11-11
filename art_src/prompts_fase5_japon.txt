@@ -1,0 +1,26 @@
+FASE 5 · JAPÓN — prompts para ChatGPT (un solo texto por tanda; decisión de Alejandro: nada de pasos separados)
+Tandas: 1) 5 enemigos (ENTREGADA el 11 nov 2026)  2) minijefes Gashadokuro y Jorōgumo + jefe Yamata no Orochi
+        3) cazadora Onmyōji (quieto, ataque, retrato, hoja) + 3 armas, 3 objetos y 3 evoluciones (iconos)  4) mapas (suelos, props, tarjetas)
+Nombres de archivo esperados: kappa, kitsune, oni, tengu, yurei → <nombre>_hoja_caminar.png y <nombre>_ataque.png (yurei: yurei_flota.png y yurei_ataque.png)
+
+=== TANDA 1 · ENEMIGOS (adjuntar: calaquita_camina.png, calaquita_hoja_caminar.png, lobo_hoja_caminar.png) ===
+Te adjunto 3 imágenes de mi juego para que copies el estilo exacto: un enemigo (la calaquita) y dos hojas de animación (la calaquita caminando y el lobo corriendo). Necesito 10 imágenes nuevas de 5 enemigos de leyendas de Japón, con ese mismo estilo: caricatura chibi, contorno oscuro grueso, colores vivos, sombreado pintado, cuerpo completo, mirando a la derecha, fondo transparente, sin sombra en el piso y sin texto. Genéralas una tras otra en este mismo chat, sin hacerme preguntas entre una y otra, y dime el número de cada una.
+
+Los 5 enemigos (diseños propios, no copies personajes de ningún anime ni videojuego):
+A) KAPPA: duendecillo de río, verde, con caparazón de tortuga, pico corto, manos y pies palmeados y un platito con agua en la cabeza rodeado de pelo. Travieso.
+B) KITSUNE: zorra espíritu blanca en cuatro patas, con marcas rojas en la cara, tres colas con la punta encendida en fuego azul y un cascabel al cuello.
+C) ONI: ogro rojo grande y musculoso, dos cuernos, colmillos, melena negra, taparrabo de piel de tigre y un garrote de hierro con púas. Pesado y lento.
+D) TENGU: guerrero cuervo con alas negras abiertas, pico, ropa de monje de montaña blanca y roja, gorrito negro pequeño y un abanico de plumas en la mano.
+E) YŪREI: fantasma de mujer que flota, kimono blanco, pelo negro muy largo que le tapa parte de la cara, sin pies (el kimono termina en humo), con dos llamitas azules flotando a su lado.
+
+Las 10 imágenes:
+1. Kappa, hoja de animación: 6 poses de un ciclo de caminar visto de lado, en una sola fila horizontal, todas del mismo tamaño y a la misma altura, con los pies sobre la misma línea. 1536x512.
+2. Kappa atacando: saltando hacia adelante con las garras abiertas. 1024x1024.
+3. Kitsune, hoja de animación: 6 poses de un ciclo de correr en cuatro patas visto de lado, en una sola fila horizontal, mismo tamaño y misma altura, patas sobre la misma línea. 1536x512.
+4. Kitsune atacando: lanzándose a morder, con las colas encendidas. 1024x1024.
+5. Oni, hoja de animación: 6 poses de un ciclo de caminar pesado visto de lado, con el garrote al hombro, en una sola fila horizontal, mismo tamaño y misma altura, pies sobre la misma línea. 1536x512.
+6. Oni atacando: bajando el garrote con las dos manos. 1024x1024.
+7. Tengu, hoja de animación: 6 poses de un ciclo de vuelo (aleteo: alas arriba, a medias, abajo y de regreso) visto de lado, en una sola fila horizontal, mismo tamaño y misma altura. 1536x512.
+8. Tengu atacando: lanzándose en picada con las alas recogidas y el pico al frente. 1024x1024.
+9. Yūrei flotando tranquila, con los brazos colgando al frente. 1024x1024.
+10. Yūrei atacando: estirando los brazos hacia adelante con la boca abierta y las llamitas más grandes. 1024x1024.
