@@ -232,7 +232,18 @@ class Play extends Phaser.Scene {
   heal(v) { if (this.cursed('sincura')) return; this.P.hp = Math.min(this.maxHp, this.P.hp + v); }
 
   preload() {
-    for (const k in IMG) if (!this.textures.exists(k)) this.load.image(k, IMG[k]);
+    let n = 0;
+    // Solo lo que usa la partida: los retratos, íconos, fondos del menú y tarjetas de mapa son del menú (HTML),
+    // y de los cazadores solo hace falta el que se juega (los demás se bajan si se eligen después).
+    for (const k of runImages(this.hunterId)) if (!this.textures.exists(k)) { this.load.image(k, IMG[k]); n++; }
+    if (!n) return;
+    // barra de carga (solo se ve si las imágenes aún no estaban en el celular)
+    const { width: w, height: h } = this.scale, bw = Math.min(320, w * 0.7);
+    const frame = this.add.rectangle(w / 2, h / 2 + 28, bw, 12, 0x2a1a3e).setStrokeStyle(2, 0xf59b39);
+    const bar = this.add.rectangle(w / 2 - bw / 2, h / 2 + 28, 1, 8, 0xf59b39).setOrigin(0, 0.5);
+    const txt = this.add.text(w / 2, h / 2 - 8, 'Encendiendo las velas… 0 %', { fontFamily: 'Lilita One', fontSize: '22px', color: '#ffe6c4' }).setOrigin(0.5);
+    this.load.on('progress', p => { bar.width = Math.max(1, bw * p); txt.setText(`Encendiendo las velas… ${Math.round(p * 100)} %`); });
+    this.load.once('complete', () => { frame.destroy(); bar.destroy(); txt.destroy(); });
   }
 
   tex(...keys) { for (const k of keys) if (k && this.textures.exists(k)) return k; return null; }
@@ -2052,7 +2063,28 @@ function showScene(on) {
 function openTitle() {
   showScene(true); $('tLogo').src = IMG.logo; $('tVer').textContent = 'v' + VERSION;
   $('title').classList.remove('hidden');
-  $('title').onclick = () => { Sfx.init(); $('title').classList.add('hidden'); showTab('jugar'); offerResume(); };
+  // Primera vez: tocar el título ya empieza la primera noche (Machetero, Pueblo, vencer a La Llorona).
+  // El menú, los mapas y los objetivos aparecen después de esa partida.
+  const first = !(save.partidas > 0) && !readRun();
+  if (first) $('title').querySelector('.ttap').textContent = 'Toca para jugar';
+  $('title').onclick = () => {
+    Sfx.init(); $('title').classList.add('hidden');
+    if (first) { selected = 'machetero'; prep.obj = 'llorona'; startRun(); return; }
+    showTab('jugar'); offerResume();
+  };
+  warmImages();
+}
+/** Imágenes que usa una partida: sin las del menú (retratos, íconos, fondos, tarjetas de mapa) ni las de otros cazadores. */
+function runImages(hunter) {
+  const otros = Object.keys(HUNTERS).filter(h => h !== hunter);
+  return Object.keys(IMG).filter(k => !/^(retrato|icono|menu|mapa|logo)(_|$)/.test(k) && !otros.some(h => k === h || k.startsWith(h + '_')));
+}
+// Mientras está en el título o el menú, baja en segundo plano solo lo de la próxima partida (el navegador las guarda y la partida empieza sin esperar).
+let warmed = false;
+function warmImages() {
+  if (warmed) return; warmed = true;
+  const go = () => { for (const k of runImages(owned(selected) ? selected : 'machetero')) { const im = new Image(); im.decoding = 'async'; im.src = IMG[k]; } };
+  if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 300);
 }
 function setupHub() {
   document.querySelectorAll('.hubnav button').forEach(b => { b.onclick = () => { Sfx.init(); Sfx.play('pick'); if (b.dataset.t === 'jugar' && tab === 'jugar' && !$('menu').classList.contains('hidden')) { openPrep(); return; } showTab(b.dataset.t); }; });

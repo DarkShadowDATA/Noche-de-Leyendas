@@ -2,6 +2,7 @@
 // Cuenta cuándo se abre el juego (game_opened) y cuándo empieza de verdad una partida (game_started).
 // vid = número al azar de este navegador (no se crea si el navegador pide no ser rastreado); sid = la visita.
 // Pruebas: en localhost no manda nada; con ?test=1 (o los modos de prueba del juego) manda marcado como prueba.
+// El dueño: abrir el juego una vez con ?yo=1 marca ese navegador para siempre (sus visitas ya no cuentan).
 const EV_URL = 'https://darkshadow-studios.com/api/ev';
 const Q = (() => { try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(); } })();
 const NET = { tiktok: 'tt', tt: 'tt', youtube: 'yt', yt: 'yt', instagram: 'ig', ig: 'ig', facebook: 'fb', fb: 'fb', reddit: 'rd', rd: 'rd',
@@ -19,7 +20,12 @@ export const dsSrc = NET[(Q.get('src') || Q.get('utm_source') || Q.get('ref') ||
 export const dsVia = Q.get('via') === 'estudio' || /^https:\/\/darkshadow-studios\.com\/?(\?|#|$)/.test(document.referrer) ? 'estudio' : undefined;
 
 const LOCAL = /^(localhost|127\.|0\.0\.0\.0|192\.168\.|10\.)/.test(location.hostname) || !location.hostname;
-const TEST = ['test', 'capture', 'nostats', 'god', 'auto', 'dev', 't'].some(k => Q.has(k));
+const YO = (() => { try { if (Q.has('yo')) localStorage.setItem('ds_yo', '1'); return localStorage.getItem('ds_yo') === '1'; } catch (e) { return Q.has('yo'); } })();
+const TEST = YO || ['test', 'capture', 'nostats', 'god', 'auto', 'dev', 't'].some(k => Q.has(k));
+// «Desde la página» cuenta una sola vez por llegada: no al recargar ni al volver atrás, y solo en la primera apertura y la primera partida.
+const NAV = (() => { try { return (performance.getEntriesByType('navigation')[0] || {}).type || ''; } catch (e) { return ''; } })();
+const VIA = dsVia && NAV !== 'reload' && NAV !== 'back_forward' ? dsVia : undefined;
+const viaUsed = {};
 const NOTRACK = navigator.globalPrivacyControl === true || navigator.doNotTrack === '1';
 const rid = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
 
@@ -41,7 +47,8 @@ const device = () => (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 export function dsTrack(ev, game, url = EV_URL) {
   if (LOCAL) return;
   try {
-    const body = JSON.stringify({ ev, game, src: dsSrc, via: dsVia, dev: device(), path: location.pathname.slice(0, 80), vid: vid(), sid: sid(), test: TEST || undefined });
+    const via = VIA && !viaUsed[ev] ? (viaUsed[ev] = true, VIA) : undefined;
+    const body = JSON.stringify({ ev, game, src: dsSrc, via, dev: device(), path: location.pathname.slice(0, 80), vid: vid(), sid: sid(), test: TEST || undefined });
     if (!(navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))))
       fetch(url, { method: 'POST', body, keepalive: true, mode: 'no-cors', headers: { 'content-type': 'text/plain' } }).catch(() => {});
   } catch (e) { /* sin red: no pasa nada */ }

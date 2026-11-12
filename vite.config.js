@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
-import { viteSingleFile } from 'vite-plugin-singlefile';
 export default defineConfig({
-  plugins: [viteSingleFile()],
-  build: { assetsInlineLimit: 100000000, chunkSizeWarningLimit: 5000, target: 'es2020' },
+  // Antes todo iba en un solo HTML de ~10 MB (las imágenes en base64): la gente se iba mientras cargaba.
+  // Ahora el HTML y el código bajan primero (~1 MB) y cada imagen es su propio archivo (con caché larga y sin internet por sw.js).
+  build: { chunkSizeWarningLimit: 5000, target: 'es2020' },
 });
