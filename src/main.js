@@ -6,6 +6,7 @@ import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
 import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES, CASTILLO, REGION_BOSSES, BOSS_AT, REGIONS, objOf, objsDe } from './data.js';
 import { SH } from './moneda.js';
+import { GRIETA } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
 import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
@@ -282,9 +283,14 @@ class Play extends Phaser.Scene {
       x: 0, y: 0, hp: H.hp, baseHp: H.hp, speed: H.speed, face: 0, mx: 0, my: 0, moving: false,
       hurtCd: 0, inv: 0, dashT: 0, dashCd: 0, dx: 1, dy: 0, atkT: 0, slowT: 0, pushVx: 0, pushVy: 0, pushT: 0, ph: 0, jump: 0,
     };
+    if (save.brillo && save.brillo[this.hunterId]) { // premio de cerrar La Grieta: brillo morado y dorado alrededor del cazador
+      this.pAura = this.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(0xb070ff).setAlpha(0.45);
+      this.fxAura = this.add.particles(0, 0, 'glow', { speed: { min: 12, max: 34 }, angle: { min: 245, max: 295 }, lifespan: 900, scale: { start: 0.13, end: 0 }, alpha: { start: 0.75, end: 0 }, tint: [0xb070ff, 0xffd35a, 0x9ff7ff], frequency: 110, blendMode: 'ADD' });
+    }
     this.pGlow = this.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(0xffa040).setAlpha(0.35).setScale(2.2).setDepth(-80000);
     this.fxDust = this.add.particles(0, 0, 'glow', { speed: { min: 8, max: 26 }, angle: { min: 200, max: 340 }, lifespan: 420, scale: { start: 0.16, end: 0.34 }, alpha: { start: 0.28, end: 0 }, tint: 0xcdbfae, emitting: false }).setDepth(-70000);
     this.pSpr = this.add.image(0, 0, this.tex(`${this.skin}_camina`, `${this.skin}_ataque`)).setOrigin(0.5, 0.92);
+    if (this.fxAura) { this.fxAura.startFollow(this.pSpr, 0, -36); this.fxAura.setDepth(99999); }
     this.pBase = 92 / 205; this.pSpr.setScale(this.pBase);
     this.hpBar = this.add.graphics().setDepth(1e6);
     this.aura = this.add.image(0, 0, 'aura').setBlendMode(Phaser.BlendModes.ADD).setVisible(false).setDepth(-70000);
@@ -470,6 +476,7 @@ class Play extends Phaser.Scene {
     s.setAlpha(P.inv > 0 && P.dashT <= 0 ? 0.6 + 0.4 * Math.sin(this.t * 40) : 1);
     if (P.hurtFlash > 0) { P.hurtFlash -= dt; s.setTint(0xff6a6a); } else s.clearTint();
     this.pGlow.setPosition(P.x, P.y - 30);
+    if (this.pAura) this.pAura.setPosition(P.x, P.y - 42).setDepth(P.y - 1).setScale(1.45 + 0.15 * Math.sin(this.t * 4));
     this.aura.setPosition(P.x, P.y - 10);
     // Barra de vida
     const g = this.hpBar; g.clear();
@@ -517,7 +524,13 @@ class Play extends Phaser.Scene {
       if (alive >= cap) break;
       const mp = this.mapId;
       const w = this.region === 'japon' ? [['kappa', 10]] : [['calaquita', mp === 'panteon' ? 13 : 10]];
-      if (this.region === 'japon') { // Japón: kappa, kitsune, yurei, oni y tengu
+      if (this.region === 'grieta') { // La Grieta: leyendas de los dos lados, mitad y mitad
+        w[0][1] = 6; w.push(['kappa', 6]);
+        if (t > 40) w.push(['chaneque', 2 + t / 90], ['kitsune', 2 + t / 90]);
+        if (t > 120) w.push(['nahual', (1.5 + t / 160) * (this.moonT > 0 ? 3 : 1)], ['yurei', 1.5 + t / 160]);
+        if (t > 170) w.push(['oni', 1 + t / 240], ['chupacabras', 1 + t / 240]);
+        if (t > 230) w.push(['tengu', 1 + t / 220], ['anima', 1.5 + t / 200]);
+      } else if (this.region === 'japon') { // Japón: kappa, kitsune, yurei, oni y tengu
         if (t > 50) w.push(['kitsune', 3 + t / 70]);
         if (t > 140) w.push(['yurei', 2 + t / 140]);
         if (t > 150) w.push(['oni', 1 + t / 220]);
@@ -566,7 +579,7 @@ class Play extends Phaser.Scene {
     const d = ENEMIES[k];
     if (this.cuenta) bestia(k, 0); // Bestiario: la ficha se abre al encontrarla
     const hpMul = d.boss ? 1 : 1 + this.t / 110 + Math.pow(this.t / 330, 2);
-    const key = this.tex(d.tex[0], d.tex[1]);
+    const key = this.tex(d.tex[0], d.tex[1], ...(d.fb || []));
     const s = this.getSprite(key);
     const e = { k, d, x, y, hp: d.hp * hpMul, max: d.hp * hpMul, spd: d.spd * rnd(0.9, 1.1) * (this.cursed('prisa') ? 1.25 : 1), dmg: d.dmg, r: d.r, s, kx: 0, ky: 0, flash: 0, slowT: 0, stun: 0, ph: Math.random() * 6, state: 'walk', st: 0, cd: rnd(0.5, 2), alive: true, vx: 0, vy: 0 };
     e.bs = d.size / (d.boss ? 336 : 205); s.setScale(e.bs);
@@ -588,7 +601,7 @@ class Play extends Phaser.Scene {
     Sfx.play('boss');
     this.cameras.main.shake(400, 0.006);
     const sub = { cadejo: 'Embiste en línea recta: ¡esquiva!', charro: 'Su lazo te jala hacia él', llorona: 'Su grito empuja y deja charcos',
-      gashadokuro: 'Sal del círculo rojo antes de que aplaste', jorogumo: 'Sus telarañas te frenan: no te quedes en ellas', orochi: 'Ocho cabezas: esquiva las líneas rojas' }[k];
+      gashadokuro: 'Sal del círculo rojo antes de que aplaste', guardian: 'Grita, muerde en líneas y parte el piso', jorogumo: 'Sus telarañas te frenan: no te quedes en ellas', orochi: 'Ocho cabezas: esquiva las líneas rojas' }[k];
     if (e.loop > 1) this.banner(`¡Volvió ${e.d.boss}!`, `Vuelta ${e.loop} · más fuerte que nunca`, 2600);
     else this.banner(`¡Llegó ${e.d.boss}!`, sub, 2600);
   }
@@ -720,6 +733,18 @@ class Play extends Phaser.Scene {
         else if (e.state === 'wind') { if (e.st <= 0) { e.state = 'leap'; e.st = 0.42; Sfx.play('dash'); } }
         else if (e.state === 'leap') { vx = Math.cos(e.a) * 580; vy = Math.sin(e.a) * 580; if (e.st <= 0) e.state = 'walk'; }
       }
+      else if (e.k === 'guardian') { // jefe final: rota grito (Llorona), mordidas (Orochi) y piso partido; a media vida se enfurece
+        const fury = e.hp < e.max * 0.5;
+        if (fury && !e.fury) { e.fury = true; this.banner('¡El Guardián se enfurece!', 'Ataca más seguido y llama leyendas de los dos lados', 2200); this.cameras.main.shake(400, 0.01); Sfx.play('boss'); e.cd = 1.2; }
+        vx = dx / dist * e.spd * (fury ? 1.25 : 1) * slow; vy = dy / dist * e.spd * (fury ? 1.25 : 1) * slow;
+        if (e.cd <= 0 && dist < 680) {
+          e.cd = fury ? 2.3 : 3.3; e.combo = ((e.combo || 0) + 1) % 3;
+          if (e.combo === 0) { this.scream(e); e.gritoT = 1.2; }
+          else if (e.combo === 1) this.biteLines(e);
+          else { this.slamAt(e, P.x, P.y, 105, 1.0, 22); for (let i = 0; i < (fury ? 3 : 2); i++) { const a = Math.random() * 6.28, r = rnd(140, 230); this.slamAt(e, P.x + Math.cos(a) * r, P.y + Math.sin(a) * r * 0.7, 90, 1.25, 20); } }
+        }
+        if (fury) { e.cd2 -= dt; if (e.cd2 <= 0) { e.cd2 = 12; for (const k of ['oni', 'nahual', 'yurei', 'chupacabras']) { const a = Math.random() * 6.28; this.spawn(k, e.x + Math.cos(a) * 140, e.y + Math.sin(a) * 110); } } }
+      }
       else if (e.k === 'orochi') { // tres mordidas en línea, charcos de veneno y oni
         vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow;
         if (e.cd <= 0 && dist < 640) { e.cd = 4.2; this.biteLines(e); }
@@ -755,19 +780,20 @@ class Play extends Phaser.Scene {
       const s = e.s;
       e.atkT = (e.atkT || 0) - dt;
       const attacking = (dist < e.r + 60) || e.atkT > 0 || e.state === 'wind' || e.state === 'leap' || e.state === 'charge' || e.state === 'aim';
-      let key = attacking ? this.tex(e.d.tex[1], e.d.tex[0]) : this.tex(e.d.tex[0], e.d.tex[1]);
+      let key = attacking ? this.tex(e.d.tex[1], e.d.tex[0], ...(e.d.fb ? [e.d.fb[1], e.d.fb[0]] : [])) : this.tex(e.d.tex[0], e.d.tex[1], ...(e.d.fb || []));
       // dos cuadros al caminar (aleteo, galope) cuando hay una segunda imagen
       // Hoja de caminar/correr de 6 poses: avanza según lo que recorre (mínimo 7 poses por segundo para que no se vea lento)
       const wk = e.d.tex[0].includes('_camina') ? e.d.tex[0].replace('_camina', '_w') : e.d.tex[0] + '_w';
       const hasW = (!attacking || e.d.tex[1] === e.d.tex[0]) && key === e.d.tex[0] && this.textures.exists(wk + '0');
       if (hasW) { e.wd = (e.wd || 0) + dt * Math.max(Math.hypot(vx, vy) / (e.d.size * 0.2), Math.abs(vx) + Math.abs(vy) > 5 ? 7 : 0); key = wk + (Math.floor(e.wd) % 6); }
       else if (!attacking && key === e.d.tex[0] && this.textures.exists(key + '2') && Math.floor(e.ph * (e.d.flap || 5)) % 2) key = key + '2';
+      if (e.gritoT > 0) { e.gritoT -= dt; const gk = this.tex('guardian_grito'); if (gk) key = gk; } // el Guardián gritando (imagen 50)
       if (s.texture.key !== key) { s.setTexture(key); e.bs = e.d.size / (e.boss ? 336 : 205); if (e.d.static) e.bs = e.d.size / s.height; }
       const moving = Math.abs(vx) + Math.abs(vy) > 5;
       e.ph += dt * (moving ? 1 : 0.3);
       let bob = 0, sq = 1, rot = 0;
       if (e.d.static) { bob = 0; sq = 1 + Math.sin(this.t * 3) * 0.02; }
-      else if (e.d.flyer || e.d.float || e.k === 'anima' || e.k === 'llorona') { bob = 10 + Math.sin(e.ph * 6) * 5; sq = 1 + Math.sin(e.ph * 12) * 0.03; }
+      else if (e.d.flyer || e.d.float || e.k === 'anima' || e.k === 'llorona' || (e.k === 'guardian' && key !== 'guardian_camina' && key !== 'guardian_ataque' && !key.startsWith('guardian_w'))) { bob = 10 + Math.sin(e.ph * 6) * 5; sq = 1 + Math.sin(e.ph * 12) * 0.03; }
       else { bob = (1 - Math.cos(e.ph * 18)) * (e.boss ? 1.6 : 1.2); sq = 1 + 0.03 * Math.cos(e.ph * 18); rot = Math.sin(e.ph * 9) * 0.045 + (dx > 0 ? 0.05 : -0.05); } // paso suave, inclinado hacia donde camina
       if (hasW) { bob = e.d.flyer ? 10 + Math.sin(e.ph * 6) * 5 : 0; sq = 1; rot = dx > 0 ? 0.03 : -0.03; } // las poses ya traen el paso: sin rebote por código
       if (e.state === 'wind') { s.x = e.x + Math.sin(this.t * 70) * 3; sq = 0.84; } else s.x = e.x;
@@ -783,6 +809,7 @@ class Play extends Phaser.Scene {
       else if (e.state === 'wind' || e.state === 'aim') s.setTint(0xff7070);
       else if (e.stun > 0 || (this.freezeT > 0 && !e.boss)) s.setTint(0xa0d8ff);
       else if (e.wolf) s.setTint(0xffe2c0);
+      else if (e.d.fbTint && e.d.fb.includes(key)) s.setTint(e.d.fbTint); // sin su imagen todavía: otro jefe pintado
       else if (e.d.tint && key !== e.d.tex[0]) s.setTint(e.d.tint); // sin su imagen todavía: la de base pintada
       else s.clearTint();
       s.setAlpha(e.ghost ? 0.28 : e.fake ? 0.7 : 1);
@@ -946,7 +973,8 @@ class Play extends Phaser.Scene {
         this.won = true; this.nextBossT = this.t + ENDLESS.first;
         if (this.obj.id === 'llorona') this.objDone();
         Sfx.play('win');
-        if (this.mapId === 'castillo' && !save.japon) { this.regionWon = true; this.banner('¡Liberaste Japón!', `Venciste a Orochi en su castillo · +${CASTILLO.regionFlores} 🌼`, 3800); }
+        if (this.region === 'grieta' && !save.grieta && !POZO) { this.grietaWon = true; this.banner('¡Cerraste La Grieta!', 'El Guardián cayó…', 3000); this.time.delayedCall(2600, () => this.endRun(true)); }
+        else if (this.mapId === 'castillo' && !save.japon) { this.regionWon = true; this.banner('¡Liberaste Japón!', `Venciste a Orochi en su castillo · +${CASTILLO.regionFlores} 🌼`, 3800); }
         else if (this.mapId === 'canales' && !save.mexico) { this.regionWon = true; this.banner('¡Liberaste México!', `Venciste a La Llorona en su canal · +${CANALES.regionFlores} 🌼`, 3800); }
         else this.banner(`¡Venciste a ${e.d.boss}!`, 'La noche sigue… los jefes volverán más fuertes', 3200);
       } else {
@@ -1209,7 +1237,7 @@ class Play extends Phaser.Scene {
     }
     if (this.evT > 0 || this.bossAlive) return;
     this.evT = rnd(EVENTS.every[0], EVENTS.every[1]);
-    const opts = (this.region === 'japon' ? EVENTS.japon : EVENTS.list).filter(k => k !== this.lastEv && !(k === 'luna' && this.t < 140));
+    const opts = (EVENTS[this.region] || EVENTS.list).filter(k => k !== this.lastEv && !(k === 'luna' && this.t < 140));
     const k = this.__force || pick(opts); this.__force = null; this.lastEv = k;
     if (k === 'luna') { this.moonT = 30; this.banner('¡Luna llena!', 'Los nahuales salen al triple', 1800); this.cameras.main.flash(300, 120, 140, 255); }
     else if (k === 'parvada') { this.banner('¡Parvada de lechuzas!', 'Vienen de todos lados', 1600); for (let i = 0; i < 3; i++) this.time.delayedCall(i * 900, () => this.spawnFlock()); }
@@ -1678,6 +1706,7 @@ class Play extends Phaser.Scene {
     const extra = { panteon: [{ k: 'prop_cripta', h: 170, w: 2, glow: [-50, 1.6] }, { k: 'prop_angel', h: 150, w: 1 }, { k: 'prop_tumba1', h: 92, w: 5 }, { k: 'prop_tumba2', h: 92, w: 4, glow: [-20, 1.2] }, { k: 'prop_cruz', h: 88, w: 4 }, { k: 'prop_velas', h: 58, w: 3, glow: [-40, 1.8] }],
       templo: [{ k: 'prop_torii', h: 210, w: 2, flip: false }, { k: 'prop_torii2', h: 200, w: 1, flip: false }, { k: 'prop_linterna_piedra', h: 110, w: 4, glow: [-75, 1.4] }, { k: 'prop_estatua_zorro', h: 105, w: 2 }, { k: 'prop_roca_sagrada', h: 70, w: 2 }],
       castillo: [{ k: 'prop_muro_castillo', h: 130, w: 3, glow: [-70, 1.8] }, { k: 'prop_pagoda_llamas', h: 300, w: 1, glow: [-170, 2.6], flip: false }, { k: 'prop_barriles', h: 80, w: 3 }, { k: 'prop_linterna_piedra', h: 105, w: 2, glow: [-72, 1.4] }, { k: 'prop_torii', h: 200, w: 1, flip: false }, { k: 'prop_roca_sagrada', h: 70, w: 1 }],
+      grieta: [{ k: 'prop_cristal_grieta', h: 120, w: 3, glow: [-60, 1.8] }, { k: 'prop_portal_roto', h: 250, w: 1, glow: [-120, 2.2], flip: false }, { k: 'prop_torii2', h: 190, w: 1, flip: false }, { k: 'prop_cruz', h: 88, w: 2 }, { k: 'prop_tumba1', h: 92, w: 2 }, { k: 'prop_linterna_piedra', h: 105, w: 2, glow: [-72, 1.4] }, { k: 'prop_roca_sagrada', h: 70, w: 2 }, { k: 'prop_cempasuchil', h: 50, w: 2 }],
       bambu: [{ k: 'prop_bambu', h: 260, w: 6 }, { k: 'prop_roca_sagrada', h: 72, w: 2 }, { k: 'prop_linterna_piedra', h: 105, w: 2, glow: [-72, 1.4] }, { k: 'prop_estatua_zorro', h: 95, w: 1 }],
       canales: [{ k: 'prop_ahuejote', h: 260, w: 2 }, { k: 'prop_muelle', h: 90, w: 1, glow: [-60, 1.6] }, { k: 'prop_rocas', h: 52, w: 3 }, { k: 'prop_cempasuchil', h: 50, w: 3 }, { k: 'prop_farol', h: 180, w: 1, glow: [-150, 2.2], flip: false }] }[this.mapId];
     if (extra) { const L = extra.filter(q => this.textures.exists(q.k)); if (L.length >= 3) return (this._props = L); }
@@ -1790,7 +1819,7 @@ class Play extends Phaser.Scene {
     if (this.mapId === 'castillo') { this.drawCastillo(dt); return; }
     for (const im of this.mapUsed) { im.setVisible(false); this.mapPool.img.push(im); } this.mapUsed = [];
     const v = this.cameras.main.worldView, g = this.mapG; g.clear();
-    if (this.mapId === 'canales') this.drawCanales(v, g, dt); else if (this.mapId === 'castillo') this.drawCastillo(dt); else if (this.mapId === 'bambu') this.healSpots(v, g, dt, 'prop_santuario', 120, 0x9dffb8, 0xb0a); else this.drawPanteon(v, g, dt);
+    if (this.mapId === 'canales') this.drawCanales(v, g, dt); else if (this.mapId === 'castillo') this.drawCastillo(dt); else if (this.mapId === 'grieta') this.drawGrieta(g, dt); else if (this.mapId === 'bambu') this.healSpots(v, g, dt, 'prop_santuario', 120, 0x9dffb8, 0xb0a); else this.drawPanteon(v, g, dt);
   }
   /** Castillo en llamas: cada tanto caen brasas en círculos rojos cerca de ti. */
   drawCastillo(dt) {
@@ -1800,6 +1829,29 @@ class Play extends Phaser.Scene {
     this.emberT = rnd(8, 12);
     const P = this.P, n = this.t > 300 ? 4 : 3;
     for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, r = i === 0 ? rnd(0, 40) : rnd(110, 220); this.slamAt({}, P.x + Math.cos(a) * r, P.y + Math.sin(a) * r * 0.7, 72, 1.15, 10); }
+  }
+  /** La Grieta: el piso se parte cerca de ti (aviso morado) y escupe leyendas de México y de Japón. */
+  drawGrieta(g, dt) {
+    const P = this.P;
+    this.rifts = this.rifts || []; this.riftT = this.riftT ?? 25;
+    if (!this.over && !this.bossAlive) { this.riftT -= dt; if (this.riftT <= 0) { this.riftT = rnd(12, 17); const a = Math.random() * 6.28, r = rnd(170, 250); this.rifts.push({ x: P.x + Math.cos(a) * r, y: P.y + Math.sin(a) * r * 0.75, t: 0, done: false }); } }
+    for (const R of this.rifts) {
+      R.t += dt; const k = Math.min(1, R.t / 1.3), fade = R.t > 2 ? Math.max(0, 1 - (R.t - 2) / 1.2) : 1;
+      const tk = this.tex('obj_grieta_suelo');
+      if (tk) { if (!R.img) R.img = this.add.image(R.x, R.y, tk).setDepth(-50000).setBlendMode(Phaser.BlendModes.ADD); R.img.setDisplaySize(160 * (0.4 + 0.6 * k), 110 * (0.4 + 0.6 * k)).setAlpha(fade); }
+      else {
+        g.lineStyle(5, 0xb070ff, 0.85 * fade); g.fillStyle(0x7a3cff, 0.18 * fade); g.fillEllipse(R.x, R.y, 150 * k, 70 * k);
+        for (let i = 0; i < 5; i++) { const a = i * 1.26 + 0.3, l = 70 * k; g.lineBetween(R.x, R.y, R.x + Math.cos(a) * l, R.y + Math.sin(a) * l * 0.5); }
+        g.lineStyle(2, 0x9ff7ff, 0.9 * fade); g.lineBetween(R.x - 60 * k, R.y, R.x + 60 * k, R.y);
+      }
+      if (!R.done && R.t >= 1.3) {
+        R.done = true; this.fxSpark.explode(18, R.x, R.y); this.cameras.main.shake(140, 0.004);
+        const pool = ['calaquita', 'kappa', 'chaneque', 'kitsune', this.t > 150 ? 'oni' : 'nahual', this.t > 150 ? 'yurei' : 'anima'];
+        for (let i = 0; i < 4; i++) this.spawn(pick(pool), R.x + rnd(-40, 40), R.y + rnd(-25, 25));
+      }
+    }
+    for (const R of this.rifts) if (R.t > 3.2 && R.img) { R.img.destroy(); R.img = null; }
+    this.rifts = this.rifts.filter(R => R.t <= 3.2);
   }
   drawCanales(v, g, dt) {
     const C = CANALES, P = this.P;
@@ -1956,6 +2008,7 @@ class Play extends Phaser.Scene {
       POZO = null; pozoFlag.on = false;
     }
     this.time.delayedCall(win ? 200 : 700, () => {
+      if (this.grietaWon) { finalGrieta(this.hunterId, () => this.hud.end(win)); return; }
       this.hud.end(win);
       if (!pozo) return;
       $('endFlowers').innerHTML = '<div class="fl-big">💰 Noche del Pozo</div><div class="fl-rows">Revisando tu partida…</div>';
@@ -1966,6 +2019,37 @@ class Play extends Phaser.Scene {
       });
     });
   }
+}
+
+/** Final del juego (la primera vez que se cierra La Grieta): 2 escenas, créditos y el premio. Tocar avanza. */
+function finalGrieta(hid, done) {
+  const B = $('finBox'), H = HUNTERS[hid];
+  const bg = (k, alt) => IMG[k] ? `url(${IMG[k]})` : alt;
+  const slides = [
+    { bg: bg('final_1', `linear-gradient(180deg, #2a0f4a99, #120822ee 75%), url(${IMG.menu_fondo_h || IMG.menu_fondo_v})`), txt: 'Los cazadores de México y la Onmyoji de Japón juntaron su luz… y cerraron La Grieta.' },
+    { bg: bg('final_2', `linear-gradient(180deg, #ffb46a66, #3a1c4acc 75%), url(${IMG.menu_fondo_h || IMG.menu_fondo_v})`), txt: 'Amaneció en calma. Pero muy lejos, en el horizonte, otra grieta empezó a abrirse…' },
+  ];
+  let i = 0, cred = null;
+  const fin = () => { B.classList.add('hidden'); B.onclick = null; if (cred) clearTimeout(cred); done(); };
+  const premio = () => {
+    B.className = 'fin-premio'; B.style.backgroundImage = '';
+    B.innerHTML = `<div class="fp-in">${IMG.medalla_grieta ? `<img src="${IMG.medalla_grieta}" alt="">` : '<div class="fp-emo">🌀🏅</div>'}
+      <h2>¡Terminaste Noche de Leyendas!</h2><p><b>Medalla:</b> Cierra La Grieta · <b>+500 🌼</b></p>
+      <p><b>Brillo del Guardián</b> para ${H.name}: desde ahora brilla en cada noche.</p>
+      <p class="fp-sub">La Grieta sigue abierta para jugarla otra vez. Vienen más leyendas…</p><button class="btn">Continuar</button></div>`;
+    B.onclick = null; B.querySelector('button').onclick = fin;
+  };
+  const creditos = () => {
+    B.className = 'fin-cred'; B.style.backgroundImage = bg('fondo_creditos', 'radial-gradient(ellipse at 50% 30%, #3a2060, #0c0616 75%)');
+    B.innerHTML = `<div class="fc-roll">${GRIETA.creditos.map(l => l ? `<div>${l}</div>` : '<br>').join('')}</div><div class="fc-skip">Toca para seguir</div>`;
+    cred = setTimeout(premio, 22000); B.onclick = () => { clearTimeout(cred); premio(); };
+  };
+  const show = () => {
+    if (i >= slides.length) { creditos(); return; }
+    const S = slides[i++]; B.className = 'fin-esc'; B.style.backgroundImage = S.bg;
+    B.innerHTML = `<div class="fe-txt">${S.txt}</div><div class="fc-skip">Toca para seguir</div>`;
+  };
+  B.classList.remove('hidden'); B.onclick = show; show(); Sfx.play('win');
 }
 
 function flowerLines(sc, win) {
@@ -1991,6 +2075,7 @@ Play.prototype.flowerReward = function (win) {
     if (win) save.victorias++;
     if (this.regionWon) save[this.region === 'japon' ? 'japon' : 'mexico'] = true;
     if (win) { save.mapWins = save.mapWins || {}; save.mapWins[this.mapId] = (save.mapWins[this.mapId] || 0) + 1; }
+    if (this.grietaWon) { save.grieta = true; save.brillo = save.brillo || {}; save.brillo[this.hunterId] = 1; r.medallas = ganarMedallas({ grieta: true }); }
     if (win && (this.region === 'mexico' || this.region === 'japon')) r.medallas = ganarMedallas({ region: this.region, caz: this.hunterId, mapa: this.mapId, obj: this.obj && this.obj.done ? this.obj.id : '', malds: this.curses ? this.curses.size : 0 });
     if (first) save.dia = today();
     persist();
@@ -2402,7 +2487,7 @@ function openPrep() {
   buildPrep(); $('prep').classList.remove('hidden');
 }
 const regOf = (k) => MAPS[k].region || 'mexico';
-const regionOpen = (r) => !REGIONS[r].need || !!save[REGIONS[r].need] || DEV;
+const regionOpen = (r) => !REGIONS[r].need || REGIONS[r].need.every(k => !!save[k]) || DEV;
 const jpWins = () => Object.keys(MAPS).filter(k => regOf(k) === 'japon').reduce((n, k) => n + ((save.mapWins || {})[k] || 0), 0);
 const winsDe = (r) => r === 'japon' ? jpWins() : (save.victorias || 0);
 const mapOpen = (k) => DEV || (regionOpen(regOf(k)) && winsDe(regOf(k)) >= MAPS[k].win);
@@ -2413,7 +2498,7 @@ function prepObjs() { // 2 objetivos al azar de la región del mapa (en Japón, 
 }
 function buildPrep() {
   if (!MAPS[save.mapa] || !mapOpen(save.mapa)) save.mapa = 'pueblo';
-  const reg = regOf(save.mapa), fin = { mexico: 'La Llorona', japon: 'Orochi' };
+  const reg = regOf(save.mapa), fin = { mexico: 'La Llorona', japon: 'Orochi', grieta: 'el Guardián' };
   $('prepRegs').innerHTML = Object.entries(REGIONS).map(([r, R]) => `<button class="preg${r === reg ? ' on' : ''}${regionOpen(r) ? '' : ' locked'}" data-r="${r}">${IMG['region_' + r] ? `<img src="${IMG['region_' + r]}" alt="">` : ''}<span>${regionOpen(r) ? R.icon : '🔒'} ${R.name}</span></button>`).join('');
   $('prepRegs').querySelectorAll('.preg').forEach(el => { el.onclick = () => {
     const r = el.dataset.r; Sfx.play('pick');
@@ -2430,7 +2515,7 @@ function buildPrep() {
     const k = el.dataset.k; if (!mapOpen(k)) { shake(el); Sfx.play('pick'); return; } save.mapa = k; persist(); Sfx.play('pick'); buildPrep();
   }; });
   const M = MAPS[save.mapa], vic = winsDe(reg), next = Object.values(MAPS).find(m => (m.region || 'mexico') === reg && m.win > vic);
-  $('prepMapDesc').innerHTML = `${M.desc}${save.mapa === 'canales' && !save.mexico ? ' <b>Vence aquí a La Llorona para liberar México.</b>' : ''}${save.mapa === 'castillo' && !save.japon ? ' <b>Vence aquí a Orochi para liberar Japón.</b>' : ''}${next ? `<br><small>Llevas ${vic} ${vic === 1 ? 'victoria' : 'victorias'} contra ${fin[reg]} · ${next.name} se abre con ${next.win}</small>` : (reg === 'mexico' && save.mexico ? '<br><small>🏆 México liberada</small>' : '')}`;
+  $('prepMapDesc').innerHTML = `${M.desc}${save.mapa === 'canales' && !save.mexico ? ' <b>Vence aquí a La Llorona para liberar México.</b>' : ''}${save.mapa === 'castillo' && !save.japon ? ' <b>Vence aquí a Orochi para liberar Japón.</b>' : ''}${save.mapa === 'grieta' ? (save.grieta ? '<br><small>🌀 Ya cerraste La Grieta: aquí se juega la noche más difícil.</small>' : ' <b>Vence al Guardián para ver el final del juego.</b>') : ''}${next ? `<br><small>Llevas ${vic} ${vic === 1 ? 'victoria' : 'victorias'} contra ${fin[reg]} · ${next.name} se abre con ${next.win}</small>` : (reg === 'mexico' && save.mexico ? '<br><small>🏆 México liberada</small>' : '')}`;
   $('prepObjs').innerHTML = prep.opts.map(k => { const O = objOf(k, reg); return `<div class="pobj${k === prep.obj ? ' on' : ''}" data-k="${k}"><div class="pi">${O.icon}</div><div class="pn">${O.name}</div><div class="pd">${O.desc}</div><div class="pf">+${O.flores} 🌼</div></div>`; }).join('');
   $('prepObjs').querySelectorAll('.pobj').forEach(el => { el.onclick = () => { prep.obj = el.dataset.k; Sfx.play('pick'); buildPrep(); }; });
   $('prepCurses').innerHTML = Object.entries(CURSES).map(([k, C]) => `<button class="pcur${save.malds.includes(k) ? ' on' : ''}" data-k="${k}"><b>${C.icon} ${C.name}</b><span>${C.desc}</span></button>`).join('');
