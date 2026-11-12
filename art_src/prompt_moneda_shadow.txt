@@ -1,0 +1,5 @@
+Moneda Shadow (para todos los juegos de DarkShadow Studios). Archivo: moneda_shadow.png
+
+Adjunta el logo del estudio (el lobo de DarkShadow Studios) como referencia.
+
+Haz un ícono de una moneda de juego, vista de frente y un poco inclinada, sobre fondo transparente (PNG), 1024x1024, centrada y con espacio alrededor. La moneda es de metal oscuro casi negro con borde grueso brillante morado y turquesa; en el centro, en relieve plateado, la cara del lobo del logo de referencia con ojos turquesa brillantes y la gema morada en la frente. Alrededor del borde, pequeñas runas o marcas grabadas, sin letras ni números. Brillo mágico morado suave alrededor de la moneda y un destello blanco en el borde. Mismo estilo pintado de los juegos (contorno oscuro grueso, colores intensos, sombras suaves). Que se entienda como moneda aunque se vea muy chiquita (20 píxeles): formas simples y alto contraste. Sin texto.
