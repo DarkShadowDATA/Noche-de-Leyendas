@@ -2279,9 +2279,16 @@ function showScene(on) {
     p.style.transform = `scale(${0.6 + Math.random() * 0.8})`; box.appendChild(p);
   }
 })();
+/** Quita la pantalla de arranque cuando lo de atrás ya está listo (imágenes y letras), para que nada brinque. */
+function splashOff() { const sp = $('splash'); if (!sp || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 500); }
+const listo = (src) => new Promise(r => { if (!src) return r(); const im = new Image(); im.onload = im.onerror = () => (im.decode ? im.decode().catch(() => {}).then(r) : r()); im.src = src; });
+const SPLASH_IMGS = [IMG.logo, IMG.menu_fondo_v, IMG.menu_fondo_h].map(listo); // empiezan a bajar desde ya
 function openTitle() {
+  Promise.race([Promise.all([...SPLASH_IMGS, document.fonts.load('700 20px Cinzel').catch(() => {}), document.fonts.ready]), new Promise(r => setTimeout(r, 4000))]).then(() => { openTitle2(); requestAnimationFrame(splashOff); });
+}
+function openTitle2() {
   showScene(true); $('tLogo').src = IMG.logo; $('tVer').textContent = 'v' + VERSION;
-  $('title').classList.remove('hidden');
+  $('title').classList.remove('hidden'); $('title').classList.add('fadein');
   // Primera vez: tocar el título ya empieza la primera noche (Machetero, Pueblo, vencer a La Llorona).
   // El menú, los mapas y los objetivos aparecen después de esa partida.
   const first = !(save.partidas > 0) && !readRun();
@@ -2499,6 +2506,7 @@ async function boot() {
   document.addEventListener('visibilitychange', () => { if (document.hidden) leave(); });
   window.addEventListener('pagehide', leave);
   window.addEventListener('blur', () => { const s = game.scene.getScene('play'); if (s && s.sys.isActive() && !s.over) s.saveRun(); });
+  if (Q.has('go') || Q.has('menu')) Promise.race([Promise.all(SPLASH_IMGS), new Promise(r => setTimeout(r, 3000))]).then(splashOff);
   if (Q.has('go')) { if (HUNTERS[Q.get('go')]) { selected = Q.get('go'); if (!owned(selected) && (DEV || AUTO)) save.cazadores.push(selected); } startRun(); }
   else if (Q.has('menu')) { showTab(Q.get('menu') || 'jugar'); offerResume(); }
   else openTitle();
