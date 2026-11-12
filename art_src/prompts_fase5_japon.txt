@@ -40,3 +40,28 @@ Las 7 imágenes:
 5. Telaraña en el piso, vista desde arriba: redonda, blanca y brillante, para un charco que frena. 512x512.
 6. Orochi, hoja de animación: 6 poses de un ciclo de avanzar arrastrándose visto de lado, con las ocho cabezas moviéndose distinto en cada pose, en una sola fila horizontal, mismo tamaño y misma altura. 1536x512.
 7. Orochi atacando: las ocho cabezas lanzándose al frente con las bocas abiertas. 1024x1024.
+
+=== TANDA 3 · CAZADORA ONMYŌJI, ARMAS Y OBJETOS (adjuntar: machetero_quieto.png, machetero_hoja_caminar.png, icono_lazo.png, icono_evo_lazo.png) ===
+(Las armas ya están programadas con dibujos de código; estas imágenes los reemplazan. Nombres: onmyoji_quieto, onmyoji_ataque, retrato_onmyoji, onmyoji_hoja_caminar, icono_ofuda, icono_abanico, icono_farol, icono_juzu, icono_pluma, icono_vela, icono_evo_ofuda, icono_evo_abanico, icono_evo_farol, obj_ofuda, obj_farol)
+Te adjunto imágenes de mi juego para que copies el estilo exacto: un cazador quieto, su hoja de animación caminando y dos iconos (un arma y su evolución). Necesito 15 imágenes nuevas con ese mismo estilo: caricatura chibi, contorno oscuro grueso, colores vivos, sombreado pintado, fondo transparente, sin sombra en el piso y sin texto. Diseños propios, no copies personajes de ningún anime ni videojuego. Genéralas una tras otra en este mismo chat, sin hacerme preguntas entre una y otra, y dime el número de cada una.
+
+LA ONMYŌJI: joven hechicera japonesa, kimono blanco con hakama rojo, sombrero negro alto de sacerdote (eboshi), pelo negro largo atado, talismanes de papel flotando a su alrededor, mirada valiente.
+1. Onmyōji quieta, cuerpo completo, mirando a la derecha. 1024x1024.
+2. Onmyōji atacando: lanzando talismanes con una mano al frente. 1024x1024.
+3. Retrato de la Onmyōji de la cintura para arriba, con el mismo encuadre que tendría un retrato de personaje de juego. 1024x1536.
+4. Onmyōji, hoja de animación: 6 poses de un ciclo de caminar visto de lado, en una sola fila horizontal, todas del mismo tamaño y a la misma altura, con los pies sobre la misma línea. 1536x512.
+
+ICONOS (cada uno un objeto solo, centrado, 512x512):
+5. Ofuda: talismán de papel con letras rojas, brillando.
+6. Abanico de guerra: abanico de hierro negro y rojo, abierto.
+7. Farol de papel: farolito japonés rojo encendido.
+8. Rosario de cuentas: rosario budista de cuentas de madera con una borla.
+9. Pluma de tengu: pluma negra grande con brillo dorado.
+10. Vela de cera: vela blanca de templo encendida, con cera escurrida.
+11. Evolución "Cien sellos": muchos talismanes en círculo formando un sello rojo brillante.
+12. Evolución "Viento divino": abanico dorado soltando un remolino de viento turquesa.
+13. Evolución "Desfile de linternas": varios faroles encendidos en fila, con fuego dorado.
+
+PARA EL JUEGO (pequeños, 256x256):
+14. Un talismán de papel suelto, de pie, visto de frente, con letras rojas (es el proyectil que vuela).
+15. Un farolito rojo encendido visto de frente (gira alrededor del cazador).

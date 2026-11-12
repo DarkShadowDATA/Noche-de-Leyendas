@@ -4,7 +4,8 @@ import { save, persist, today } from './save.js';
 import { nube, buyBoletos, loginUrl, shadowUrl, pinataSrv } from './nube.js';
 
 const $ = id => document.getElementById(id);
-const IDS = Object.keys(WEAPONS);
+// Las armas de Japón entran a la Piñata después de ganar Japón
+const ids = () => Object.keys(WEAPONS).filter(k => !WEAPONS[k].region || save.japon);
 let IMG = {}, sfx = () => {};
 let usarSrv = async () => null;
 export function setupPinata(images, play, usar) {
@@ -27,7 +28,7 @@ function roll() {
   else if (r < 2 && p.pe >= PINATA.pityEpica) r = 2;
   if (r >= 2) p.pe = 0;
   if (r === 3) p.pl = 0;
-  const id = IDS[Math.floor(Math.random() * IDS.length)];
+  const I = ids(), id = I[Math.floor(Math.random() * I.length)];
   return { id, r, what: absorb(id, r) };
 }
 /** Suma un arma a la colección: nueva, mejor rareza, +1 estrella o flores si ya está al máximo. También lo usa la bodega del mercado. */
@@ -88,7 +89,7 @@ function build() {
 
   // Colección: toca un arma para equiparla
   const col = $('pnCol'); col.innerHTML = '';
-  for (const id of IDS) {
+  for (const id of ids()) {
     const a = save.armas[id], el = document.createElement('div');
     el.className = 'pn-w' + (a ? '' : ' none') + (save.equipo === id ? ' eq' : '');
     if (a) el.style.setProperty('--rc', RARITIES[a.r].color);

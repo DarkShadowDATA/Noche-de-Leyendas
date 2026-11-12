@@ -55,6 +55,13 @@ export const WEAPONS = {
     lv: ['3 cartas', '+20% de daño', '+1 carta', 'Atraviesan a 1 más', '+25% de daño', '+1 carta', 'Más rápidas', '+35% de daño'] },
   lazo: { name: 'Lazo', icon: '🪢', desc: 'Lanza la reata en línea: jala y aturde a toda la fila.',
     lv: ['Lazo al frente', '+25% de daño', '+20% de largo', 'Aturde más tiempo', '+25% de daño', '−15% de espera', 'También lazo hacia atrás', '+35% de daño'] },
+  // Japón (region: 'japon'): salen en los mapas de Japón; en México, después de ganar Japón (save.japon)
+  ofuda: { name: 'Ofuda', icon: '📜', region: 'japon', desc: 'Talismanes de papel que persiguen al enemigo más cercano.',
+    lv: ['2 talismanes', '+20% de daño', '+1 talismán', 'Persiguen más rápido', '+25% de daño', '+1 talismán', 'Atraviesan a 1 más', '+35% de daño'] },
+  abanico: { name: 'Abanico de guerra', icon: '🪭', region: 'japon', desc: 'Ráfaga en cono que daña y empuja lejos.',
+    lv: ['Ráfaga al frente', '+25% de daño', 'Cono más ancho', 'Empuja más', '+25% de daño', '−15% de espera', 'También hacia atrás', '+35% de daño'] },
+  farol: { name: 'Farol de papel', icon: '🏮', region: 'japon', desc: 'Faroles que giran a tu alrededor y queman al tocar.',
+    lv: ['1 farol', '+20% de daño', '+1 farol', 'Giran más lejos', '+25% de daño', '+1 farol', 'Giran más rápido', '+35% de daño'] },
 };
 
 // Evoluciones: arma en nivel 8 + su objeto pareja (cualquier nivel) → al abrir un cofre, el arma cambia.
@@ -68,6 +75,9 @@ export const EVOS = {
   loteria: { pas: 'ofrenda', name: 'Gran Lotería', desc: 'Cada carta tiene su propio efecto.' },
   lazo: { pas: 'espuelas', name: 'Lazo de fuego', desc: 'Quema a todo lo que atrapa.' },
   agua: { pas: 'maguey', name: 'Diluvio', desc: 'Los charcos te siguen a donde vayas.' },
+  ofuda: { pas: 'juzu', name: 'Cien sellos', desc: 'Cada talismán estalla en un sello que aturde.' },
+  abanico: { pas: 'pluma', name: 'Viento divino', desc: 'Cada ráfaga deja un remolino que jala y daña.' },
+  farol: { pas: 'vela', name: 'Desfile de linternas', desc: '+2 faroles más grandes que queman.' },
 };
 // ---------- Fase 2: ninguna partida igual ----------
 // Objetivos: antes de jugar el juego ofrece 2 al azar y eliges uno. Cumplirlo da flores extra (después del tope).
@@ -90,7 +100,9 @@ export const CURSES = {
 };
 export const CURSE_BONUS = 0.2;
 // Eventos al azar durante la partida (el primero en el minuto 2, luego cada 70–95 s)
-export const EVENTS = { first: 120, every: [70, 95], list: ['luna', 'parvada', 'cofre', 'almas'] };
+export const EVENTS = { first: 120, every: [70, 95], list: ['luna', 'parvada', 'cofre', 'almas'], japon: ['tifon', 'linternas', 'cofre', 'almas'] };
+/** ¿Se puede ofrecer en esta partida? Lo de Japón sale en Japón, y en México después de ganar Japón. */
+export const enRegion = (o, region, japonGanado) => !o || !o.region || o.region === region || !!japonGanado;
 
 // Cofres que aparecen en el mapa (además de los que sueltan los jefes), en segundos de partida
 export const MAP_CHESTS = [90, 270, 450];
@@ -107,6 +119,10 @@ export const PASSIVES = {
   veladora: { name: 'Veladora', icon: '🕯️', desc: '−7% de espera de las armas por nivel.' },
   ofrenda: { name: 'Ofrenda', icon: '🌼', desc: '+35% de distancia para juntar almas por nivel.' },
   espuelas: { name: 'Espuelas', icon: '✴️', desc: '+5% de velocidad y la esquiva recarga 10% más rápido por nivel.' },
+  // Japón
+  juzu: { name: 'Rosario de cuentas', icon: '📿', region: 'japon', desc: 'Recibes 6% menos daño por nivel.' },
+  pluma: { name: 'Pluma de tengu', icon: '🪶', region: 'japon', desc: '+3% de golpe crítico (doble daño) por nivel.' },
+  vela: { name: 'Vela de cera', icon: '🕯', region: 'japon', desc: 'Cura 1 de vida cada pocos enemigos vencidos (más seguido por nivel).' },
 };
 
 // Enemigos: tex = [camina, ataque]; size = alto en pantalla (px de mundo)

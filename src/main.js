@@ -4,7 +4,7 @@ import '@fontsource/lilita-one/400.css';
 import { dsTrack } from './dsev.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
-import { ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES } from './data.js';
+import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
 import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
@@ -123,6 +123,9 @@ function makeTextures(s) {
     g.addColorStop(0, 'rgba(120,255,240,.75)'); g.addColorStop(0.7, 'rgba(40,190,200,.55)'); g.addColorStop(1, 'rgba(40,190,200,0)');
     c.save(); c.scale(1, 36 / 62); c.fillStyle = g; c.beginPath(); c.arc(64, 62, 62, 0, 7); c.fill(); c.restore();
   });
+  // Japón: talismán y farol con código (los reemplazan obj_ofuda y obj_farol cuando lleguen las imágenes)
+  canvasTex(s, 'ofuda', 22, 36, (c) => { c.fillStyle = '#2a1200'; c.fillRect(0, 0, 22, 36); c.fillStyle = '#f4ead2'; c.fillRect(2, 2, 18, 32); c.fillStyle = '#d0242a'; c.fillRect(6, 6, 10, 3); c.fillRect(9, 11, 4, 18); c.fillRect(5, 17, 12, 3); c.fillRect(6, 27, 10, 3); });
+  canvasTex(s, 'farol', 36, 44, (c) => { c.fillStyle = '#2a1200'; c.fillRect(10, 0, 16, 6); c.fillRect(10, 38, 16, 6); c.beginPath(); c.ellipse(18, 22, 17, 17, 0, 0, 7); c.fill(); const g = c.createRadialGradient(18, 22, 2, 18, 22, 15); g.addColorStop(0, '#fff2a0'); g.addColorStop(0.5, '#ff7a2a'); g.addColorStop(1, '#c0201a'); c.fillStyle = g; c.beginPath(); c.ellipse(18, 22, 15, 15, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(80,10,0,.5)'; c.lineWidth = 1.5; for (const y of [14, 22, 30]) { c.beginPath(); c.moveTo(4, y); c.lineTo(32, y); c.stroke(); } });
   // Ayudas del mapa dibujadas con código (las reemplazan obj_iman / obj_tamal / obj_campana cuando lleguen las imágenes)
   canvasTex(s, 'help_iman', 64, 64, (c) => {
     c.lineCap = 'butt'; c.lineWidth = 16; c.strokeStyle = '#2a1200'; c.beginPath(); c.arc(32, 28, 19, Math.PI, 0); c.lineTo(51, 52); c.moveTo(13, 28); c.lineTo(13, 52); c.stroke();
@@ -826,7 +829,7 @@ class Play extends Phaser.Scene {
     if (!ignoreCd && P.hurtCd > 0) return;
     this.dmgTaken = (this.dmgTaken || 0) + dmg;
     if (GOD) { P.hurtCd = 0.5; return; }
-    P.hp -= dmg * (1 - 0.04 * tl('sup_coraza')); P.hurtCd = 0.5; P.hurtFlash = 0.15;
+    P.hp -= dmg * (1 - 0.04 * tl('sup_coraza')) * (1 - 0.06 * this.pl('juzu')); P.hurtCd = 0.5; P.hurtFlash = 0.15;
     Sfx.play('hurt');
     this.cameras.main.shake(90, 0.003);
     if (P.hp <= 0 && tl('sup_revivir') && !this.revived) { this.revive(); return; }
@@ -846,7 +849,7 @@ class Play extends Phaser.Scene {
     if (!opt.raw) dmg *= this.dmgMul;
     if (opt.dot) { e.dotD = Math.max(e.dotT > 0 ? e.dotD : 0, dmg * opt.dot); if (!(e.dotT > 0)) e.dotTick = 0.5; e.dotT = 3; }
     if (e.boss) dmg *= 1 + 0.1 * tl('atk_jefes');
-    if (tl('atk_crit') && Math.random() < 0.04 * tl('atk_crit')) { dmg *= 2; opt = Object.assign({}, opt, { big: true, quiet: false }); }
+    if ((tl('atk_crit') || this.pl('pluma')) && Math.random() < 0.04 * tl('atk_crit') + 0.03 * this.pl('pluma')) { dmg *= 2; opt = Object.assign({}, opt, { big: true, quiet: false }); }
     e.hp -= dmg; e.flash = 0.07;
     const kb = e.boss || e.d.mini || e.d.static ? 0.08 : e.k === 'oni' ? 0.3 : ((e.k === 'chupacabras' || e.k === 'kappa') && e.state === 'leap') ? 0.2 : 1;
     e.kx += kx * kb; e.ky += ky * kb;
@@ -865,6 +868,7 @@ class Play extends Phaser.Scene {
     e.alive = false;
     if (e.fake) { this.fxDeath.explode(5, e.x, e.y - 30); this.remove(e); return; } // copia falsa de la kitsune: humo y nada más
     if (this.cuenta) bestia(e.k, 1);
+    if (this.pl('vela')) { this.velaN = (this.velaN || 0) + 1; if (this.velaN >= 26 - 4 * this.pl('vela')) { this.velaN = 0; this.heal(1); } }
     this.kills++; if (!e.boss) this.energy = Math.min(this.energyNeed, this.energy + 1);
     this.fxDeath.setParticleTint(e.k === 'anima' || e.k === 'llorona' ? 0x7ff7ea : e.k === 'lechuza' ? 0xff7a3a : 0xffd8a0);
     this.fxDeath.explode(e.boss ? 60 : 7, e.x, e.y - e.d.size * 0.45);
@@ -899,6 +903,7 @@ class Play extends Phaser.Scene {
 
   // ---------- Almas ----------
   dropSoul(x, y, v) {
+    if (this.lanternT > 0) v *= 2;
     if (this.S.length > 420) { const o = this.S.find(s => !s.pull); if (o) { o.v += v; return; } }
     const img = this.textures.exists('obj_alma');
     const sp = this.soulPool.pop() || this.add.image(0, 0, 'soul');
@@ -1133,13 +1138,22 @@ class Play extends Phaser.Scene {
       this.soulRainT -= dt; this.soulAcc = (this.soulAcc || 0) + dt;
       while (this.soulAcc > 0.06) { this.soulAcc -= 0.06; const a = rnd(0, 6.28), d = rnd(60, 380); this.dropSoul(this.P.x + Math.cos(a) * d, this.P.y + Math.sin(a) * d * 0.8, Math.random() < 0.2 ? 3 : 1); }
     }
+    if (this.lanternT > 0) { this.lanternT -= dt; if (Math.random() < dt * 6) { const v = this.cameras.main.worldView; this.fxSpark.emitParticleAt(v.x + Math.random() * v.width, v.bottom - 10, 1); } }
+    if (this.windT > 0) { // Tifón: el viento empuja al cazador y (más fuerte) a los enemigos
+      this.windT -= dt; const wx = Math.cos(this.windA), wy = Math.sin(this.windA);
+      this.P.x += wx * 45 * dt; this.P.y += wy * 45 * dt;
+      for (const e of this.E) if (e.alive && !e.boss && !e.d.static) { e.x += wx * 95 * dt; e.y += wy * 95 * dt; }
+      if (Math.random() < dt * 30) { const v = this.cameras.main.worldView; this.fxSpark.emitParticleAt(v.x + Math.random() * v.width, v.y + Math.random() * v.height, 1); }
+    }
     if (this.evT > 0 || this.bossAlive) return;
     this.evT = rnd(EVENTS.every[0], EVENTS.every[1]);
-    const opts = EVENTS.list.filter(k => k !== this.lastEv && !(k === 'luna' && this.t < 140));
+    const opts = (this.region === 'japon' ? EVENTS.japon : EVENTS.list).filter(k => k !== this.lastEv && !(k === 'luna' && this.t < 140));
     const k = this.__force || pick(opts); this.__force = null; this.lastEv = k;
     if (k === 'luna') { this.moonT = 30; this.banner('¡Luna llena!', 'Los nahuales salen al triple', 1800); this.cameras.main.flash(300, 120, 140, 255); }
     else if (k === 'parvada') { this.banner('¡Parvada de lechuzas!', 'Vienen de todos lados', 1600); for (let i = 0; i < 3; i++) this.time.delayedCall(i * 900, () => this.spawnFlock()); }
     else if (k === 'cofre') { const a = rnd(0, 6.28), d = rnd(300, 400); this.spawnChest(this.P.x + Math.cos(a) * d, this.P.y + Math.sin(a) * d * 0.8, true); this.banner('¡Cofre maldito!', 'Gran premio… pero algo lo cuida', 1800); }
+    else if (k === 'tifon') { this.windT = 10; this.windA = rnd(0, 6.28); this.banner('¡Tifón!', 'El viento empuja a todos', 1700); this.cameras.main.shake(400, 0.003); }
+    else if (k === 'linternas') { this.lanternT = 20; this.banner('¡Noche de linternas!', 'Las almas valen el doble', 1800); Sfx.play('lvl'); }
     else if (k === 'almas') { this.soulRainT = 10; this.banner('¡Lluvia de almas!', '¡Junta todas las que puedas!', 1600); Sfx.play('lvl'); }
   }
   spawnMini() {
@@ -1168,8 +1182,10 @@ class Play extends Phaser.Scene {
   wl(id) { const w = this.W.find(w => w.id === id); return w ? w.lv : 0; }
 
   updateWeapons(dt) {
+    if (this.whirls && this.whirls.length) this.updateWhirls(dt);
     for (const w of this.W) {
       if (w.id === 'copal') { this.copal(w, dt); continue; }
+      if (w.id === 'farol') { this.farol(w, dt); continue; }
       if (w.evo && w.id === 'agua') { // Diluvio: charcos que te siguen
         w.t2 = (w.t2 || 0) - dt;
         if (w.t2 <= 0) { w.t2 = 0.7; this.makePuddle(this.P.x + rnd(-20, 20), this.P.y + rnd(-10, 10), 70 * this.areaMul, 2.2, 7 * (this.gear.agua ? this.gear.agua.dmg : 1)); }
@@ -1268,6 +1284,25 @@ class Play extends Phaser.Scene {
         this.attackPose(); Sfx.play('swing');
         return 1.45;
       }
+      case 'ofuda': { // talismanes que persiguen
+        const dmg = 11 * gm * (1 + 0.2 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8));
+        const cnt = 2 + (L >= 3) + (L >= 6) + n, sp = L >= 4 ? 470 : 380;
+        for (let i = 0; i < cnt; i++) {
+          const a = P.face + (i - (cnt - 1) / 2) * 0.5, k = this.tex('obj_ofuda', 'ofuda');
+          const s = this.add.image(P.x, P.y - 40, k).setDepth(900000); s.setScale(k.startsWith('obj_') ? 34 / s.height : 1);
+          this.B.push({ kind: 'ofuda', x: P.x, y: P.y - 40, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, sp, life: 1.8, dmg, r: 14, pierce: (L >= 7) ? 1 : 0, hit: new Set(), s, evo: w.evo });
+        }
+        this.attackPose(); Sfx.play('swing');
+        return 1.3;
+      }
+      case 'abanico': { // ráfaga en cono
+        const dmg = 16 * gm * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8));
+        const R = 175 * A, half = L >= 3 ? 0.78 : 0.58, push = 380 * (L >= 4 ? 1.45 : 1);
+        this.gust(P.face, R, half, dmg, push, w.evo);
+        if (L >= 7) this.time.delayedCall(160, () => this.gust(P.face + Math.PI, R, half, dmg, push, w.evo));
+        this.attackPose(); Sfx.play('swing');
+        return 1.4 * (L >= 6 ? 0.85 : 1);
+      }
       case 'lazo': {
         const ev = w.evo;
         const dmg = 14 * gm * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8)) * (ev ? 1.25 : 1);
@@ -1281,6 +1316,49 @@ class Play extends Phaser.Scene {
       }
     }
     return 1;
+  }
+
+  // Abanico: cono que daña y empuja; con Viento divino deja un remolino
+  gust(a, R, half, dmg, push, evo) {
+    const P = this.P, cx = P.x, cy = P.y - 30;
+    this.near(cx, cy, R, (e) => {
+      let d = Math.atan2(e.y - e.d.size * 0.3 - cy, e.x - cx) - a; d = Math.atan2(Math.sin(d), Math.cos(d));
+      if (Math.abs(d) <= half) this.hurt(e, dmg, Math.cos(a) * push, Math.sin(a) * push);
+    });
+    const g = this.add.graphics().setDepth(900001), o = { t: 0 };
+    const draw = () => { g.clear(); const r = R * (0.45 + 0.55 * o.t), al = 0.45 * (1 - o.t);
+      g.fillStyle(0xd8fff6, al); g.slice(cx, cy, r, a - half, a + half, false); g.fillPath();
+      g.lineStyle(3, 0xffffff, al * 1.6); for (let i = -1; i <= 1; i++) { g.beginPath(); g.arc(cx, cy, r * (0.6 + 0.15 * (i + 1)), a - half * 0.8, a + half * 0.8); g.strokePath(); } };
+    draw(); this.tweens.add({ targets: o, t: 1, duration: 260, onUpdate: draw, onComplete: () => g.destroy() });
+    if (evo) { this.whirls = this.whirls || []; this.whirls.push({ x: cx + Math.cos(a) * R * 0.65, y: P.y + Math.sin(a) * R * 0.65, t: 2, tick: 0, dmg: dmg * 0.3 }); }
+  }
+  updateWhirls(dt) {
+    for (const w of this.whirls) {
+      w.t -= dt; w.tick -= dt;
+      if (w.tick <= 0) { w.tick = 0.25; this.near(w.x, w.y, 95 * this.areaMul, (e) => { const a = Math.atan2(w.y - e.y, w.x - e.x); this.hurt(e, w.dmg, Math.cos(a) * 160, Math.sin(a) * 160, { quiet: true }); }); }
+      if (Math.random() < 0.6) this.fxSpark.emitParticleAt(w.x + rnd(-40, 40), w.y - rnd(0, 60), 1);
+    }
+    this.whirls = this.whirls.filter(w => w.t > 0);
+  }
+  // Farol de papel: faroles que giran a tu alrededor; con Desfile de linternas son más, más grandes y queman
+  farol(w, dt) {
+    const P = this.P, L = w.lv, gm = this.gear.farol ? this.gear.farol.dmg : 1;
+    const cnt = 1 + (L >= 3) + (L >= 6) + this.amount + (w.evo ? 2 : 0);
+    const R = 95 * (L >= 4 ? 1.25 : 1) * this.areaMul, spd = 2.3 * (L >= 7 ? 1.4 : 1);
+    const dmg = 9 * gm * (1 + 0.2 * (L >= 2) + 0.25 * (L >= 5) + 0.35 * (L >= 8)) * this.dmgMul * (w.evo ? 1.25 : 1);
+    w.sp = w.sp || [];
+    while (w.sp.length < cnt) { const k = this.tex('obj_farol', 'farol'); const s = this.add.image(P.x, P.y, k).setDepth(900000); s.setScale((k.startsWith('obj_') ? 40 / s.height : 1) * (w.evo ? 1.3 : 1)); w.sp.push(s); }
+    while (w.sp.length > cnt) w.sp.pop().destroy();
+    w.ang = (w.ang || 0) + spd * dt; w.hits = w.hits || new Map();
+    for (let i = 0; i < cnt; i++) {
+      const a = w.ang + i / cnt * Math.PI * 2, x = P.x + Math.cos(a) * R, y = P.y - 30 + Math.sin(a) * R * 0.8, s = w.sp[i];
+      s.setPosition(x, y + Math.sin(this.t * 6 + i) * 3);
+      this.near(x, y + 30, 26 * (w.evo ? 1.3 : 1), (e) => {
+        const last = w.hits.get(e) || -9; if (this.t - last < 0.5) return; w.hits.set(e, this.t);
+        this.hurt(e, dmg, (e.x - P.x) * 0.6, (e.y - P.y) * 0.6, w.evo ? { dot: 0.3 } : {});
+      });
+    }
+    if (w.hits.size > 400) w.hits.clear();
   }
 
   // Lazo: reata en línea recta; a la fila que toca la jala hacia ti y la aturde (el Lazo de fuego además quema)
@@ -1416,6 +1494,11 @@ class Play extends Phaser.Scene {
         continue;
       }
       b.s.setPosition(b.x, b.y);
+      if (b.kind === 'ofuda') { // gira hacia el enemigo más cercano
+        if (!b.tg || !b.tg.alive) b.tg = this.nearest(b.x, b.y + 30, 520, b.hit);
+        if (b.tg) { const want = Math.atan2(b.tg.y - b.tg.d.size * 0.3 - b.y, b.tg.x - b.x), cur = Math.atan2(b.vy, b.vx); let d = want - cur; d = Math.atan2(Math.sin(d), Math.cos(d)); const na = cur + Math.max(-6 * dt, Math.min(6 * dt, d)); b.vx = Math.cos(na) * b.sp; b.vy = Math.sin(na) * b.sp; }
+        b.s.rotation = Math.atan2(b.vy, b.vx) + Math.PI / 2;
+      }
       if (b.kind === 'card') b.s.rotation += dt * 14;
       if (b.kind === 'stone') b.s.rotation = Math.atan2(b.vy, b.vx);
       if (b.kind === 'rocket') { b.s.rotation = Math.atan2(b.vy, b.vx); if (Math.random() < 0.7) { this.fxSpark.emitParticleAt(b.x - b.vx * 0.03, b.y - b.vy * 0.03, 1); } }
@@ -1428,6 +1511,10 @@ class Play extends Phaser.Scene {
           this.hurt(e, b.dmg, b.vx * 0.25, b.vy * 0.25); b.hit.add(e);
           if (b.bounces-- > 0) { const n = this.nearest(e.x, e.y, 280, b.hit); if (n) { const a = Math.atan2(n.y - e.y, n.x - e.x); b.vx = Math.cos(a) * 560; b.vy = Math.sin(a) * 560; b.life = 0.8; } else b.dead = true; }
           else b.dead = true;
+        } else if (b.kind === 'ofuda') {
+          this.hurt(e, b.dmg, b.vx * 0.15, b.vy * 0.15); b.hit.add(e); b.tg = null;
+          if (b.evo) { this.near(e.x, e.y, 70 * this.areaMul, (o) => this.hurt(o, b.dmg * 0.5, 0, 0, { quiet: true, stun: 0.7 })); this.ring(e.x, e.y - 20, 70 * this.areaMul, 0xff4a4a, 260, false); }
+          if (b.pierce-- <= 0) b.dead = true;
         } else if (b.kind === 'card') {
           this.hurt(e, b.dmg, b.vx * 0.2, b.vy * 0.2, b.fx === 1 ? { stun: 0.8 } : {}); b.hit.add(e);
           if (b.fx === 2) this.heal(1);
@@ -1456,6 +1543,13 @@ class Play extends Phaser.Scene {
         this.near(P.x, P.y - 20, R, (e) => { const a = Math.atan2(e.y - P.y, e.x - P.x); this.hurt(e, 95, Math.cos(a) * 420, Math.sin(a) * 420, { big: true, stun: 0.5 }); });
         this.ring(P.x, P.y - 20, R, 0xff9d1f, 380, true);
         this.banner('¡Remolino!', '', 700);
+        break;
+      }
+      case 'onmyoji': { // Círculo de sellos: congela a los enemigos cercanos
+        const R = 230 * A;
+        this.near(P.x, P.y - 20, R, (e) => this.hurt(e, 40, 0, 0, { stun: e.boss ? 1.2 : 3 }));
+        this.ring(P.x, P.y - 20, R, 0xff4a4a, 500, true); this.ring(P.x, P.y - 20, R * 0.6, 0xffffff, 400, false);
+        this.banner('¡Círculo de sellos!', '', 700);
         break;
       }
       case 'curandera': {
@@ -1563,9 +1657,9 @@ class Play extends Phaser.Scene {
   cardOptions() {
     const opts = [];
     for (const w of this.W) if (w.lv < 8) opts.push({ type: 'w', id: w.id, lv: w.lv + 1, weight: 3 });
-    if (this.W.length < (this.cursed('mochila') ? 3 : 6)) for (const id in WEAPONS) if (!this.wl(id)) opts.push({ type: 'w', id, lv: 1, weight: 1.6 });
+    if (this.W.length < (this.cursed('mochila') ? 3 : 6)) for (const id in WEAPONS) if (!this.wl(id) && enRegion(WEAPONS[id], this.region, save.japon)) opts.push({ type: 'w', id, lv: 1, weight: 1.6 });
     const pc = Object.keys(this.Pass).length;
-    for (const id in PASSIVES) { const l = this.pl(id); if (l > 0 && l < 5) opts.push({ type: 'p', id, lv: l + 1, weight: 1.6 }); else if (l === 0 && pc < 6) opts.push({ type: 'p', id, lv: 1, weight: 1 }); }
+    for (const id in PASSIVES) { if (!enRegion(PASSIVES[id], this.region, save.japon)) continue; const l = this.pl(id); if (l > 0 && l < 5) opts.push({ type: 'p', id, lv: l + 1, weight: 1.6 }); else if (l === 0 && pc < 6) opts.push({ type: 'p', id, lv: 1, weight: 1 }); }
     const out = [];
     const n = 3 + tl('for_cuatro');
     while (out.length < n && opts.length) {
@@ -1951,6 +2045,8 @@ const HUNTER_TAG = { machetero: 'Cazador de nahuales', curandera: 'Guardiana del
 const portraitOf = (k) => IMG['retrato_' + k] || IMG[k + '_quieto'] || IMG[k + '_ataque'];
 const portrait = (id) => portraitOf(aspectoDe(id) || id);
 let aspView = ''; // aspecto que se está mirando en la ficha del cazador (aunque no sea tuyo)
+/** Evoluciones que se muestran: las de Japón, cuando ya juegas Japón o descubriste alguna. */
+const evosVis = () => Object.keys(EVOS).filter(k => !WEAPONS[k].region || save.japon || (save.evos || []).includes(k) || Object.keys(save.bestiario || {}).some(b => b === 'kappa'));
 const wIco = (id) => IMG['icono_' + id] ? `<img src="${IMG['icono_' + id]}" alt="">` : (WEAPONS[id] ? WEAPONS[id].icon : '');
 const starsH = (e) => '★'.repeat(e || 0) + '<i>' + '★'.repeat(MAX_STARS - (e || 0)) + '</i>';
 const fmtT = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -2060,8 +2156,8 @@ function buildArs() {
   const L = $('arsList'); L.innerHTML = '';
   if (arsSeg === 'armas') {
     const have = Object.keys(save.armas || {}).length;
-    $('arsTop').innerHTML = `Tienes <b>${have}/${Object.keys(WEAPONS).length}</b> armas de la Piñata. La que equipes entra contigo a la partida con su bono.`;
-    const order = Object.keys(WEAPONS).sort((x, y) => (y === save.equipo) - (x === save.equipo) || ((save.armas[y] ? save.armas[y].r + 1 : 0) - (save.armas[x] ? save.armas[x].r + 1 : 0)));
+    $('arsTop').innerHTML = `Tienes <b>${have}/${Object.keys(WEAPONS).filter(k => !WEAPONS[k].region || save.japon).length}</b> armas de la Piñata. La que equipes entra contigo a la partida con su bono.`;
+    const order = Object.keys(WEAPONS).filter(k => !WEAPONS[k].region || save.japon).sort((x, y) => (y === save.equipo) - (x === save.equipo) || ((save.armas[y] ? save.armas[y].r + 1 : 0) - (save.armas[x] ? save.armas[x].r + 1 : 0)));
     for (const id of order) {
       const a = save.armas[id], W = WEAPONS[id], R = a && RARITIES[a.r], on = save.equipo === id;
       const d = document.createElement('div'); d.className = 'frame wrow' + (a ? '' : ' none') + (on ? ' eq' : '');
@@ -2079,9 +2175,9 @@ function buildArs() {
   } else if (arsSeg === 'mercado') { buildMercado($('arsTop'), L);
   } else {
     const ev = save.evos || [];
-    $('arsTop').innerHTML = `Descubriste <b>${ev.length}/${Object.keys(EVOS).length}</b> evoluciones. Sube un arma a nivel 8, junta su objeto pareja y abre un cofre.`;
+    $('arsTop').innerHTML = `Descubriste <b>${ev.length}/${evosVis().length}</b> evoluciones. Sube un arma a nivel 8, junta su objeto pareja y abre un cofre.`;
     const g = document.createElement('div'); g.className = 'egrid';
-    for (const [w, E] of Object.entries(EVOS)) {
+    for (const [w, E] of Object.entries(EVOS).filter(([k]) => evosVis().includes(k))) {
       const k = ev.includes(w), im = IMG['icono_evo_' + w] || IMG['icono_' + w];
       const d = document.createElement('div'); d.className = 'frame ecard' + (k ? '' : ' unk');
       d.innerHTML = `<div class="in"><span class="ico">${im ? `<img src="${im}" alt="">` : '❔'}</span><span class="tx">${k ? `<b>${E.name}</b>${WEAPONS[w].name} + ${PASSIVES[E.pas].name}<br>${E.desc}` : `<b>???</b>Sube <b style="display:inline;color:#cdbde6">${WEAPONS[w].name}</b> a nivel 8 y descubre su pareja.`}</span></div>`;
@@ -2147,8 +2243,8 @@ function setupHub() {
   const profFill = () => {
     const ev = (save.evos || []).length, ar = Object.keys(save.armas || {}).length;
     $('profStats').innerHTML = [['Mejor noche', save.mejor ? fmtT(save.mejor) : '—'], ['Partidas', save.partidas || 0], ['Victorias contra La Llorona', save.victorias || 0],
-      ['Flores ganadas', save.ganadas || 0], ['Cazadores', `${save.cazadores.length}/${Object.keys(HUNTERS).length}`], ['Armas', `${ar}/${Object.keys(WEAPONS).length}`],
-      ['Evoluciones', `${ev}/${Object.keys(EVOS).length}`], ['Talentos', TALENTS.reduce((n, t) => n + tl(t.id), 0)]].map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
+      ['Flores ganadas', save.ganadas || 0], ['Cazadores', `${save.cazadores.length}/${Object.keys(HUNTERS).length}`], ['Armas', `${ar}/${Object.keys(WEAPONS).filter(k => !WEAPONS[k].region || save.japon).length}`],
+      ['Evoluciones', `${ev}/${evosVis().length}`], ['Talentos', TALENTS.reduce((n, t) => n + tl(t.id), 0)]].map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
   };
   $('profBtn').onclick = () => {
     profFill();
