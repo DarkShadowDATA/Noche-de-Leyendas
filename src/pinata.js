@@ -1,5 +1,6 @@
 // Piñata de armas (gacha): tiradas con flores, 1 gratis al día y boletos comprados con Shadow (cuenta DarkShadow).
 import { WEAPONS, RARITIES, PINATA, MAX_STARS, gearBonus } from './data.js';
+import { SH, SH_QUE } from './moneda.js';
 import { save, persist, today } from './save.js';
 import { nube, buyBoletos, loginUrl, shadowUrl, pinataSrv } from './nube.js';
 
@@ -76,8 +77,8 @@ function build() {
   let shop;
   if (!nube.on) shop = nube.can ? `<div class="pn-note">¿Quieres más tiradas? Compra boletos con Shadow (opcional).</div><a class="btn alt small" href="${loginUrl()}" target="_top">Iniciar sesión DarkShadow</a>`
     : `<div class="pn-note">Los boletos con Shadow se compran en <b>leyendas.darkshadow-studios.com</b> con tu cuenta DarkShadow.</div>`;
-  else shop = `<div class="pn-note">Boletos con Shadow (opcional) · tienes <b>${nube.shadow} 💠</b></div>` +
-    (nube.packs || []).map(p => `<button class="btn alt small" data-b="${p.id}">🎟️ ${p.boletos} ${p.boletos === 1 ? 'boleto' : 'boletos'} · ${p.shadow} 💠</button>`).join('') +
+  else shop = `<div class="pn-note">Boletos con Shadow (opcional) · tienes <b>${nube.shadow}${SH}</b></div>` + SH_QUE +
+    (nube.packs || []).map(p => `<button class="btn alt small" data-b="${p.id}">🎟️ ${p.boletos} ${p.boletos === 1 ? 'boleto' : 'boletos'} · ${p.shadow}${SH}</button>`).join('') +
     `<a class="btn alt small" href="${shadowUrl()}" target="_top">Comprar Shadow</a>`;
   $('pnShop').innerHTML = shop + (msg ? `<div class="pn-msg">${msg}</div>` : '');
   $('pnShop').querySelectorAll('button[data-b]').forEach(bt => { bt.onclick = async () => {

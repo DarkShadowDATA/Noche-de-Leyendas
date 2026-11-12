@@ -1,6 +1,7 @@
 // Bodega y Mercado de Noche de Leyendas (venta de jugador a jugador con Shadow). Diseño: claude/pagos-y-mercado.md.
 // Solo se vende lo que nació en el servidor: armas sacadas con boletos y aspectos de la tienda. El servidor manda; aquí solo se dibuja.
 // El mercado está apagado hasta que el dueño lo prenda (nube.mercado). El vendedor recibe el 90 % en fragmentos (10 = 1 Shadow).
+import { SH, SH_QUE } from './moneda.js';
 import { save, persist } from './save.js';
 import { nube, api, sync, shadowUrl } from './nube.js';
 import { WEAPONS, RARITIES, ASPECTOS, HUNTERS } from './data.js';
@@ -16,7 +17,7 @@ const sub = (i) => i.kind === 'arma' ? `<span class="rr" style="color:${RARITIES
 const ico = (i) => { const k = i.kind === 'arma' ? 'icono_' + i.ref : 'retrato_' + i.ref; return IMG[k] ? `<img src="${IMG[k]}" alt="">` : (i.kind === 'arma' && WEAPONS[i.ref] ? WEAPONS[i.ref].icon : '🎭'); };
 const color = (i) => i.kind === 'arma' ? RARITIES[i.rar].color : '#9ff7ea';
 /** Lo que recibe el vendedor: precio menos 10 %, en Shadow y fragmentos. */
-export const recibe = (p) => { const f = p * 9, s = Math.floor(f / 10), r = f % 10; return (s ? `${s} 💠` : '') + (s && r ? ' y ' : '') + (r ? `${r} fragmento${r > 1 ? 's' : ''}` : '') || '0'; };
+export const recibe = (p) => { const f = p * 9, s = Math.floor(f / 10), r = f % 10; return (s ? `${s}${SH}` : '') + (s && r ? ' y ' : '') + (r ? `${r} fragmento${r > 1 ? 's' : ''}` : '') || '0'; };
 const horas = (ms) => Math.max(1, Math.ceil(ms / 3600000));
 
 export async function cargarMercado() {
@@ -53,9 +54,9 @@ export function buildBodega(top, L) {
     let d;
     if (i.status === 'venta') {
       const l = data.listings.find(x => x.mine && x.kind === i.kind && x.ref === i.ref && x.rar === i.rar) || {};
-      d = fila(i, { tx: `<span>A la venta${l.price ? ` por <b style="display:inline;color:#ffcf5a">${l.price} 💠</b>` : ''}</span>`, btn: l.id ? `<button class="obtn" data-quitar="${l.id}">Quitar</button>` : '' });
+      d = fila(i, { tx: `<span>A la venta${l.price ? ` por <b style="display:inline;color:#ffcf5a">${l.price}${SH}</b>` : ''}</span>`, btn: l.id ? `<button class="obtn" data-quitar="${l.id}">Quitar</button>` : '' });
     } else if (sell === i.id) {
-      d = fila(i, { tx: `<span class="mk-sell">Precio: <input type="number" min="${R.min}" step="1" value="${Math.max(R.min, 5)}" inputmode="numeric"> 💠 <em></em></span>`, btn: `<button class="obtn" data-pub="${i.id}">Publicar</button>` });
+      d = fila(i, { tx: `<span class="mk-sell">Precio: <input type="number" min="${R.min}" step="1" value="${Math.max(R.min, 5)}" inputmode="numeric">${SH} <em></em></span>`, btn: `<button class="obtn" data-pub="${i.id}">Publicar</button>` });
     } else {
       d = fila(i, { tx: i.espera > 0 ? `<span>Recién comprada: se puede revender en ${horas(i.espera)} h</span>` : (i.kind === 'aspecto' ? '<span>Se elige en Cazadores</span>' : ''),
         btn: (i.kind === 'arma' ? `<button class="obtn" data-usar="${i.id}">Usar</button>` : '') + (i.espera > 0 ? '' : `<button class="obtn alt2" data-vender="${i.id}">Vender</button>`) });
@@ -67,21 +68,21 @@ export function buildBodega(top, L) {
   L.querySelectorAll('[data-quitar]').forEach(b => b.onclick = () => { b.disabled = true; hacer(() => api(`/ndl/mercado/${b.dataset.quitar}/cancelar`, { method: 'POST' }), 'Regresó a tu bodega.'); });
   const inp = L.querySelector('.mk-sell input');
   if (inp) {
-    const em = L.querySelector('.mk-sell em'), upd = () => { const p = Math.floor(+inp.value || 0); em.textContent = p >= R.min ? `Recibes ${recibe(p)}` : `Mínimo ${R.min}`; };
+    const em = L.querySelector('.mk-sell em'), upd = () => { const p = Math.floor(+inp.value || 0); em.innerHTML = p >= R.min ? `Recibes ${recibe(p)}` : `Mínimo ${R.min}`; };
     inp.oninput = upd; upd();
     L.querySelector('[data-pub]').onclick = (e) => { const p = Math.floor(+inp.value || 0); if (p < R.min) return; e.target.disabled = true;
-      hacer(() => api('/ndl/mercado/vender', { method: 'POST', body: JSON.stringify({ item: sell, price: p }) }), `Publicado por ${p} 💠. Dura ${R.dias} días.`); };
+      hacer(() => api('/ndl/mercado/vender', { method: 'POST', body: JSON.stringify({ item: sell, price: p }) }), `Publicado por ${p} Shadow. Dura ${R.dias} días.`); };
   }
 }
 
 export function buildMercado(top, L) {
   if (!data) { top.innerHTML = 'Abriendo el mercado…'; cargarMercado().then(onChange); return; }
   const R = data.reglas, ls = data.listings.filter(l => !l.mine);
-  top.innerHTML = `Compra a otros cazadores con Shadow. Tienes <b>${data.shadow} 💠</b>${data.frags ? ` y <b>${data.frags}/10</b> fragmentos` : ''} · <a href="${shadowUrl()}" target="_top">Comprar Shadow</a>` +
+  top.innerHTML = `Compra a otros cazadores con Shadow. Tienes <b>${data.shadow}${SH}</b>${data.frags ? ` y <b>${data.frags}/10</b> fragmentos` : ''} · <a href="${shadowUrl()}" target="_top">Comprar Shadow</a>` +
     `<div class="mk-note">Al vender recibes el 90 %. Lo que no completa 1 Shadow se guarda en fragmentos (10 = 1 Shadow). Para vender algo, ve a tu Bodega.</div>` + (msg ? `<div class="mk-msg">${msg}</div>` : '');
   if (!ls.length) { const e = document.createElement('div'); e.className = 'mk-empty'; e.textContent = 'Todavía no hay nada a la venta. ¡Sé el primero en publicar desde tu Bodega!'; L.appendChild(e); return; }
   for (const l of ls.sort((a, b) => a.price - b.price)) {
-    const d = fila(l, { btn: `<button class="obtn" data-comprar="${l.id}">${sure === l.id ? `¿Pagar ${l.price} 💠?` : `${l.price} 💠`}</button>` });
+    const d = fila(l, { btn: `<button class="obtn" data-comprar="${l.id}">${sure === l.id ? `¿Pagar ${l.price}${SH}?` : `${l.price}${SH}`}</button>` });
     L.appendChild(d);
   }
   L.querySelectorAll('[data-comprar]').forEach(b => b.onclick = () => {

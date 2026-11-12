@@ -1,5 +1,6 @@
 // Tienda de Noche de Leyendas con Shadow (cuenta DarkShadow): Paquete de inicio y Bendición de la Ofrenda.
 // Reglas (claude/pagos-y-mercado.md): nunca en medio de la partida, nada de poder exclusivo y no cuenta en la Noche del Pozo.
+import { SH, SH_QUE } from './moneda.js';
 import { save, persist } from './save.js';
 import { nube, buyItem, loginUrl, shadowUrl } from './nube.js';
 import { HUNTER_COST, ASPECTOS, HUNTERS } from './data.js';
@@ -58,17 +59,17 @@ export function renderTienda(onChange) {
   const T = nube.tienda || [], card = (id, ico, desc, state) => {
     const it = T.find(t => t.id === id); if (!it) return '';
     return `<div class="shop-it"><span class="ic">${ico}</span><span class="tx"><b>${it.nombre}</b>${desc}</span>` +
-      (state || `<button class="obtn" data-buy="${id}">${it.shadow} 💠</button>`) + `</div>`;
+      (state || `<button class="obtn" data-buy="${id}">${it.shadow}${SH}</button>`) + `</div>`;
   };
   el.innerHTML =
     card('inicio', '🎁', 'La Luchadora, 5 boletos de la Piñata y 500 🌼. Una sola vez.', inicioComprado() ? '<span class="ok">✔ Tuyo</span>' : '') +
     card('bendicion', '🕯️', bendActiva() ? `Flores ×2 al terminar cada noche. <i>Activa: te quedan ${bendDias()} días.</i>` : 'Flores ×2 al terminar cada noche, por 30 días. No cuenta en la Noche del Pozo.', '') +
     Object.entries(ASPECTOS).map(([k, A]) => card(A.item, `<img src="${imgs['retrato_' + k] || ''}" alt="">`, `Aspecto para ${HUNTERS[A.cazador].name}. Solo cambia cómo se ve.`, (save.aspectos || []).includes(k) ? '<span class="ok">✔ Tuyo</span>' : '')).join('') +
-    `<div class="shop-bal">Tienes <b>${nube.shadow} 💠 Shadow</b> · <a href="${shadowUrl()}" target="_top">Comprar Shadow</a></div>` +
+    `<div class="shop-bal">Tienes <b>${nube.shadow} ${SH} Shadow</b> · <a href="${shadowUrl()}" target="_top">Comprar Shadow</a></div>` + SH_QUE +
     (note ? `<div class="shop-msg">${note}</div>` : '');
   el.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => {
     const it = T.find(t => t.id === b.dataset.buy);
-    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.innerHTML = `¿Pagar ${it.shadow} 💠?`; setTimeout(() => { if (b.isConnected) { b.dataset.sure = ''; b.innerHTML = `${it.shadow} 💠`; } }, 3500); return; }
+    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.innerHTML = `¿Pagar ${it.shadow}${SH}?`; setTimeout(() => { if (b.isConnected) { b.dataset.sure = ''; b.innerHTML = `${it.shadow}${SH}`; } }, 3500); return; }
     b.disabled = true;
     try { await buyItem(it.id); note = aplicarCompras() || (it.id === 'bendicion' ? `¡Bendición activa! Flores ×2 por ${bendDias()} días 🕯️` : '¡Listo!'); }
     catch (e) { note = e.status === 402 ? 'No te alcanza la Shadow. Toca «Comprar Shadow».' : (e.data && e.data.error) || 'No se pudo comprar. Revisa tu internet.'; }

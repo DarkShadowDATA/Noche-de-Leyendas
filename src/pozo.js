@@ -2,6 +2,7 @@
 // Igual para todos: Machetero sin talentos ni arma de la Piñata, sin maldiciones, hasta 15 minutos. El servidor revisa el registro
 // de la partida (tiempo real, cazas por minuto, jefes) en server/src/pozo/leyendas.ts.
 import { api } from './cuenta.js';
+import { SH } from './moneda.js';
 import { nube, loginUrl } from './nube.js';
 
 export const POZO_NDL = { maxT: 900, cpEvery: 60, pts: { kill: 1, sec: 5, boss: 300 } };
@@ -33,7 +34,7 @@ export async function openPozo(onPlay) {
   try { d = await api('/pozo/leyendas'); } catch (e) { inn.innerHTML = head + `<p>${esc(e.message)}</p>`; return; }
   const hrs = Math.max(0, Math.round((new Date(d.endsAt).getTime() - Date.now()) / 3600e3));
   inn.innerHTML = head +
-    `<div class="pzprizes">${['🥇', '🥈', '🥉', '4º', '5º'].map((m, i) => `<div><b>${m}</b><span>${d.prizes[i] || 0} 💠</span><small>${usd(d.prizes[i] || 0)} USD</small></div>`).join('')}</div>` +
+    `<div class="pzprizes">${['🥇', '🥈', '🥉', '4º', '5º'].map((m, i) => `<div><b>${m}</b><span>${d.prizes[i] || 0}${SH}</span><small>${usd(d.prizes[i] || 0)} USD</small></div>`).join('')}</div>` +
     `<p>Termina en ${hrs >= 24 ? `${Math.floor(hrs / 24)} d ${hrs % 24} h` : `${hrs} h`} · tu mejor: <b>${d.best}</b>${d.rank ? ` (#${d.rank})` : ''}</p>` +
     (d.top.length ? `<ol class="pztop">${d.top.map((t) => `<li class="${t.me ? 'me' : ''}"><span>${t.rank}. ${esc(t.name)}${t.me ? ' (tú)' : ''}</span><b>${t.score}</b></li>`).join('')}</ol>` : '<p>¡Nadie ha jugado esta semana! Sé el primero.</p>') +
     `<button class="obtn main" id="pzGo" ${d.attemptsLeft ? '' : 'disabled'}><span>${d.attemptsLeft ? `¡A cazar! (${d.attemptsLeft} hoy)` : 'Sin intentos: vuelve mañana'}</span></button><p class="pzmsg" id="pzMsg"></p>` + rules;

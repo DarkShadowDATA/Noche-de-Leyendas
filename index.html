@@ -509,6 +509,27 @@
     clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%); text-shadow:0 2px 0 #3a1a00; }
   .tnode .buy:disabled { filter:grayscale(.8) brightness(.6); }
 
+  /* Moneda Shadow */
+  .shc { height:1.25em; width:1.25em; vertical-align:-0.28em; margin:0 1px 0 3px; filter:drop-shadow(0 0 3px #a070ff88); }
+  .sh-que { display:flex; gap:8px; align-items:flex-start; text-align:left; font-size:12px; line-height:1.35; color:#d9c8ff; background:#1c1233cc; border:1px solid #5b3f8f; border-radius:10px; padding:7px 10px; margin:6px auto; max-width:420px; }
+  .sh-que .shc { height:30px; width:30px; flex:none; margin:0; vertical-align:0; }
+  /* Pantalla de carga al empezar la noche */
+  #loadScr { position:fixed; inset:0; z-index:40; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px; background:#140c20 center/cover no-repeat; color:#ffe6c4; text-align:center; transition:opacity .25s; }
+  #loadScr.hidden { display:none; }
+  #ldLogo { width:min(78vw,340px); filter:drop-shadow(0 6px 14px #000c); animation:ldIn .6s ease-out; }
+  .ld-hero { position:relative; height:min(34vh,260px); aspect-ratio:2/3; animation:ldIn .8s ease-out; }
+  .ld-hero img { position:relative; height:100%; width:100%; object-fit:cover; border-radius:16px; box-shadow:0 0 0 3px #c9962e, 0 0 0 6px #2a1840, 0 12px 30px #000c; }
+  .ld-glow { position:absolute; inset:-30%; background:radial-gradient(circle, #ffb24a55 0%, #ff7a1a22 40%, transparent 70%); animation:ldPulse 2.2s ease-in-out infinite; }
+  .ld-title { font-family:'Lilita One',sans-serif; font-size:22px; text-shadow:0 3px 0 #1a0b2b; margin-top:6px; }
+  .ld-bar { position:relative; margin-top:12px; width:min(78vw,320px); height:14px; border-radius:8px; background:#2a1a3e; box-shadow:inset 0 0 0 2px #c9962e, 0 4px 12px #000a; }
+  .ld-bar i { position:absolute; left:2px; top:2px; bottom:2px; width:0; max-width:calc(100% - 4px); border-radius:6px; background:linear-gradient(90deg,#f5a03a,#ffd35a); transition:width .15s; }
+  .ld-flame { position:absolute; top:-20px; left:0; width:16px; height:24px; margin-left:-8px; border-radius:50% 50% 45% 45% / 65% 65% 35% 35%; background:radial-gradient(ellipse at 50% 75%, #fff6c8 0%, #ffd35a 35%, #ff8a1a 70%, transparent 72%); filter:drop-shadow(0 0 8px #ffb24a); animation:ldFlick .18s infinite alternate; transition:left .15s; }
+  .ld-pct { font-family:'Lilita One',sans-serif; font-size:15px; color:#ffcf5a; }
+  .ld-tip { max-width:min(86vw,380px); font-size:13px; line-height:1.4; color:#e9dcff; background:#1a0f2ccc; border:1px solid #4a3470; border-radius:12px; padding:8px 12px; margin-top:4px; }
+  .ld-tip b { display:block; font-family:var(--serif); color:#ffcf5a; font-size:12px; letter-spacing:.06em; margin-bottom:2px; }
+  @keyframes ldIn { from { opacity:0; transform:translateY(12px) scale(.96); } to { opacity:1; transform:none; } }
+  @keyframes ldPulse { 50% { transform:scale(1.08); opacity:.75; } }
+  @keyframes ldFlick { to { transform:scaleY(1.12) scaleX(.92) translateY(-1px); } }
   /* Selector de región (Fase 5) */
   #prepRegs { display:flex; gap:6px; justify-content:center; margin:0 0 6px; }
   .preg { font-family:var(--serif); font-weight:900; font-size:13px; color:#e9dcff; background:#1a0f2c; border:2px solid #4a3470; padding:5px 14px; cursor:pointer; clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%); }
@@ -566,6 +587,15 @@
   <button class="obtn main" id="prepGo"><span>¡Empezar!</span></button><button class="obtn" id="prepBack"><b>↩</b>Volver</button>
 </div>
 
+<div id="loadScr" class="hidden">
+  <img id="ldLogo" alt="Noche de Leyendas">
+  <div class="ld-hero"><div class="ld-glow"></div><img id="ldHero" alt=""></div>
+  <div class="ld-title">Encendiendo las velas…</div>
+  <div class="ld-bar"><i id="ldFill"></i><span class="ld-flame" id="ldFlame"></span></div>
+  <div class="ld-pct" id="ldPct">0 %</div>
+  <div class="ld-tip"><b>CONSEJO</b><span id="ldTip"></span></div>
+</div>
+
 <div id="title" class="screen scenic hidden">
   <img id="tLogo" alt="Noche de Leyendas">
   <div class="tsub">Sobrevive a las leyendas de México</div>
@@ -586,7 +616,7 @@
   <button class="obtn main" id="startBtn"><span>¡A cazar!</span></button>
   <button class="obtn" id="pozoBtn"><span>💰 Noche del Pozo</span></button>
   <button class="obtn" id="libroBtn"></button>
-  <div id="inicioCard" class="hidden">🎁 <span><b>Paquete de inicio</b> · la Luchadora, 5 boletos y 500 🌼 por 10 💠</span><span data-x>✕</span></div>
+  <div id="inicioCard" class="hidden">🎁 <span><b>Paquete de inicio</b> · la Luchadora, 5 boletos y 500 🌼 por 10 <span class="shtx">Shadow</span></span><span data-x>✕</span></div>
   <div id="resumeBox" class="hidden">
     <div class="rb txt">
       <div class="rt">Tienes una partida a medias</div>

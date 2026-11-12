@@ -5,6 +5,7 @@ import { dsTrack } from './dsev.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
 import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES, REGION_BOSSES, BOSS_AT, REGIONS, objOf, objsDe } from './data.js';
+import { SH } from './moneda.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
 import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
@@ -244,13 +245,10 @@ class Play extends Phaser.Scene {
     // y de los cazadores solo hace falta el que se juega (los demás se bajan si se eligen después).
     for (const k of runImages(this.hunterId)) if (!this.textures.exists(k)) { this.load.image(k, IMG[k]); n++; }
     if (!n) return;
-    // barra de carga (solo se ve si las imágenes aún no estaban en el celular)
-    const { width: w, height: h } = this.scale, bw = Math.min(320, w * 0.7);
-    const frame = this.add.rectangle(w / 2, h / 2 + 28, bw, 12, 0x2a1a3e).setStrokeStyle(2, 0xf59b39);
-    const bar = this.add.rectangle(w / 2 - bw / 2, h / 2 + 28, 1, 8, 0xf59b39).setOrigin(0, 0.5);
-    const txt = this.add.text(w / 2, h / 2 - 8, 'Encendiendo las velas… 0 %', { fontFamily: 'Lilita One', fontSize: '22px', color: '#ffe6c4' }).setOrigin(0.5);
-    this.load.on('progress', p => { bar.width = Math.max(1, bw * p); txt.setText(`Encendiendo las velas… ${Math.round(p * 100)} %`); });
-    this.load.once('complete', () => { frame.destroy(); bar.destroy(); txt.destroy(); });
+    // pantalla de carga (solo se ve si las imágenes aún no estaban en el celular)
+    loadShow(this.hunterId, this.region);
+    this.load.on('progress', loadProg);
+    this.load.once('complete', loadHide);
   }
 
   tex(...keys) { for (const k of keys) if (k && this.textures.exists(k)) return k; return null; }
@@ -2111,6 +2109,19 @@ let toastT = 0;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), 4500); }
 const owned = (id) => import.meta.env.VITE_PROTO === '1' || save.cazadores.includes(id); // VITE_PROTO=1: solo en el prototipo privado, todos los cazadores abiertos para probar
 const HUNTER_TAG = { machetero: 'Cazador de nahuales', curandera: 'Guardiana del copal', luchadora: 'Campeona de la arena', cohetero: 'Maestro de la pólvora', onmyoji: 'Hechicera de los sellos' };
+const TIPS = {
+  mexico: ['Doble toque para esquivar: no te pegan mientras ruedas.', 'El Cadejo embiste en línea recta: hazte a un lado.', 'Los jefes llegan a los 3, 6 y 9 minutos.', 'Junta almas para subir de nivel y elegir cartas.', 'Un arma al nivel 8 evoluciona si tienes su objeto pareja.', 'La habilidad se carga matando enemigos: úsala cuando te rodeen.', 'Las flores 🌼 se gastan en el árbol de talentos y en la Piñata.', 'El charco de La Llorona te frena y te quita vida: sal rápido.'],
+  japon: ['Gashadokuro marca un círculo rojo: sal antes de que aplaste.', 'Las telarañas de Jorogumo te frenan mucho: no te quedes en ellas.', 'Orochi marca tres líneas rojas: ponte entre ellas.', 'Las kitsune hacen copias falsas que se deshacen en humo.', 'El tengu marca una línea y cae en picada: muévete de lado.', 'Los santuarios del bosque de bambú te curan.'],
+};
+function loadShow(hid, reg) {
+  const L = $('loadScr');
+  L.style.backgroundImage = `linear-gradient(180deg, rgba(20,12,32,.55), rgba(20,12,32,.92)), url(${IMG.menu_fondo_v})`;
+  $('ldLogo').src = IMG.logo; $('ldHero').src = portraitOf(hid) || '';
+  $('ldTip').textContent = pick(Math.random() < 0.6 ? TIPS[reg] || TIPS.mexico : TIPS.mexico);
+  loadProg(0); L.classList.remove('hidden');
+}
+function loadProg(p) { const v = Math.round(p * 100); $('ldFill').style.width = v + '%'; $('ldFlame').style.left = v + '%'; $('ldPct').textContent = v + ' %'; }
+function loadHide() { loadProg(1); setTimeout(() => $('loadScr').classList.add('hidden'), 300); }
 const portraitOf = (k) => IMG['retrato_' + k] || IMG[k + '_quieto'] || IMG[k + '_ataque'];
 const portrait = (id) => portraitOf(aspectoDe(id) || id);
 let aspView = ''; // aspecto que se está mirando en la ficha del cazador (aunque no sea tuyo)
@@ -2191,7 +2202,7 @@ function buildCaz() {
   if (aspView && !(ASPECTOS[aspView] && ASPECTOS[aspView].cazador === id)) aspView = '';
   const ver = aspView === '-' ? '' : (aspView || puesto), mio = (k) => !k || (save.aspectos || []).includes(k);
   const aspRow = asps.length ? `<div class="asps"><span>Aspecto</span>${[['', { name: 'Normal' }], ...asps].map(([k, A]) =>
-    `<button class="asp${k === ver ? ' on' : ''}${mio(k) ? '' : ' lk'}" data-asp="${k || '-'}"><img src="${portraitOf(k || id)}" alt=""><i>${A.name}${mio(k) ? (k === puesto ? ' ✔' : '') : ' 💠'}</i></button>`).join('')}</div>` +
+    `<button class="asp${k === ver ? ' on' : ''}${mio(k) ? '' : ' lk'}" data-asp="${k || '-'}"><img src="${portraitOf(k || id)}" alt=""><i>${A.name}${mio(k) ? (k === puesto ? ' ✔' : '') : ' ' + SH}</i></button>`).join('')}</div>` +
     (ver && !mio(ver) ? `<button class="obtn" id="aspBuy">Conseguir en la Tienda</button><div class="ds" style="font-size:11px">Solo cambia cómo se ve. Mismas habilidades.</div>` : '') : '';
   det.innerHTML = `<div class="big"><img src="${portraitOf(ver || id)}" alt=""></div><div class="info">
     <div class="nm">${h.name}</div><div class="tg">${HUNTER_TAG[id] || ''}</div>
@@ -2472,6 +2483,7 @@ async function boot() {
   $('endPinataBtn').onclick = () => { Sfx.init(); toMenu(); showTab('pinata'); };
   $('endTreeBtn').onclick = () => { toMenu(); showTab('talentos'); };
   setTiendaImgs(IMG);
+  { const t = document.querySelector('#inicioCard .shtx'); if (t) t.outerHTML = SH + ' Shadow'; }
   setupLibro(IMG);
   { const mv = medallasViejas(); if (mv.length) setTimeout(() => toast(`🏅 ${mv.length} medalla${mv.length > 1 ? 's' : ''} por tus victorias anteriores: +${mv.length * MEDALLA_FLORES} 🌼`), 1200); }
   setupMercado(IMG, (k) => { Sfx.init(); Sfx.play(k); }, () => { const m = aplicarCompras(); if (m) toast(m); if (tab === 'arsenal') buildArs(); hubTop(); });
