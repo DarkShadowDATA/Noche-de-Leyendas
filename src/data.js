@@ -92,9 +92,12 @@ export const EVOS = {
 export const OBJECTIVES = {
   llorona: { icon: '👻', name: 'Vence a La Llorona', desc: 'Sobrevive y vence a La Llorona.', flores: 40, jp: { icon: '🐉', name: 'Vence a Orochi', desc: 'Sobrevive y vence a Yamata no Orochi.' } },
   altares: { icon: '🪦', name: 'Altares malditos', desc: 'Rompe los 5 altares antes de que llegue La Llorona. Sigue las flechas moradas.', flores: 80 },
-  carreta: { icon: '🛒', name: 'Escolta la carreta', desc: 'La carreta solo avanza si estás junto a ella. Llévala hasta la cruz antes de las 9:00 sin que la destruyan.', flores: 80 },
-  dorado: { icon: '✨', name: 'Chupacabras dorado', desc: 'Aparece 3 veces y huye de ti. Cázalo antes de que se escape las 3.', flores: 70 },
-  ofrenda: { icon: '🕯️', name: 'Protege la ofrenda', desc: 'Los enemigos que la tocan le quitan vida; tú la curas si estás cerca. Que siga en pie a las 9:00.', flores: 80 },
+  carreta: { icon: '🛒', name: 'Escolta la carreta', desc: 'La carreta solo avanza si estás junto a ella. Llévala hasta la cruz antes de las 9:00 sin que la destruyan.', flores: 80,
+    jp: { icon: '🏮', name: 'Escolta el palanquín', desc: 'El palanquín solo avanza si estás junto a él. Llévalo hasta el torii antes de las 9:00 sin que lo destruyan.' } },
+  dorado: { icon: '✨', name: 'Chupacabras dorado', desc: 'Aparece 3 veces y huye de ti. Cázalo antes de que se escape las 3.', flores: 70,
+    jp: { icon: '🦊', name: 'Kitsune dorada', desc: 'Aparece 3 veces y huye de ti. Atrápala antes de que se escape las 3.' } },
+  ofrenda: { icon: '🕯️', name: 'Protege la ofrenda', desc: 'Los enemigos que la tocan le quitan vida; tú la curas si estás cerca. Que siga en pie a las 9:00.', flores: 80,
+    jp: { icon: '🔔', name: 'Protege la campana', desc: 'Los enemigos que la tocan le quitan vida; tú la curas si estás cerca. Que siga en pie a las 9:00.' } },
 };
 /** El objetivo como se ve en esa región (en Japón solo salen los que tienen versión `jp`). */
 export const objOf = (id, region) => { const O = OBJECTIVES[id]; return region === 'japon' && O.jp ? { ...O, ...O.jp } : O; };
@@ -147,6 +150,7 @@ export const ENEMIES = {
   // Fase 2 (objetivos y eventos)
   altar: { tex: ['obj_altar', 'obj_altar'], hp: 300, spd: 0, dmg: 0, size: 92, r: 34, xp: 0, static: true },
   chupadorado: { tex: ['chupacabras_dorado', 'chupacabras_dorado'], hp: 380, spd: 138, dmg: 0, size: 82, flap: 3.5, r: 26, xp: 0, flee: true, tint: 0xffd84a },
+  kitsunedorada: { tex: ['kitsune_dorada_camina', 'kitsune_dorada_camina'], hp: 380, spd: 145, dmg: 0, size: 78, r: 24, xp: 0, flee: true },
   loboalfa: { tex: ['lobo_alfa', 'lobo_alfa'], hp: 1500, spd: 102, dmg: 24, size: 150, r: 42, xp: 0, mini: true, tint: 0xb07aff },
   anima: { tex: ['anima_camina', 'anima_ataque'], hp: 24, spd: 56, dmg: 8, size: 62, r: 20, xp: 2 },
   // Fase 5 · Japón (region: 'japon'; salen solo en los mapas de Japón)
@@ -287,6 +291,8 @@ Object.assign(BESTIARIO, {
     historia: 'Guerreros cuervo que viven en lo alto de las montañas. Son orgullosos y castigan a los soberbios, pero también enseñaron el arte de la espada a los que lo merecían.' },
   yurei: { name: 'Yurei', tipo: 'Enemigo', region: 'japon', img: 'yurei_camina', pelea: 'Se desvanece y aparece de golpe junto a ti. Mientras se ve transparente no la puedes golpear.',
     historia: 'Almas que no descansan por algo que dejaron pendiente. Visten de blanco, sin pies, y las acompañan llamitas azules llamadas hitodama.' },
+  kitsunedorada: { name: 'Kitsune dorada', tipo: 'Especial', region: 'japon', img: 'kitsune_dorada_camina', pelea: 'No ataca: huye. Aparece tres veces por noche con el objetivo «Kitsune dorada» y se escapa si no la alcanzas.',
+    historia: 'Las kitsune más viejas y sabias tienen el pelaje dorado y hasta nueve colas. Son mensajeras de Inari, la diosa del arroz, y traen buena fortuna a quien las ve.' },
   gashadokuro: { name: 'Gashadokuro', tipo: 'Jefe', region: 'japon', img: 'gashadokuro_camina', pelea: 'Marca un círculo rojo donde estás y lo aplasta con la mano. Cada tanto levanta yurei a su alrededor.',
     historia: 'Esqueleto gigante hecho con los huesos de los que murieron de hambre o en batalla sin entierro. Dicen que se oye un zumbido en los oídos justo antes de que te atrape.' },
   jorogumo: { name: 'Jorogumo', tipo: 'Jefa', region: 'japon', img: 'jorogumo_camina', pelea: 'Lanza telarañas al piso que te frenan mucho y salta hacia ti. No te quedes en la telaraña.',

@@ -1,6 +1,6 @@
 // Noche de Leyendas: guarda el juego en el celular para jugar sin internet.
 // Con internet siempre baja la versión nueva; sin internet usa la guardada.
-const CACHE = 'ndl-v14';   // v14: Japón (2 mapas, 3 jefes, la Onmyoji)
+const CACHE = 'ndl-v15';   // v15: objetivos de Japón (palanquín, campana, kitsune dorada)
 const FILES = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {

@@ -955,7 +955,7 @@ class Play extends Phaser.Scene {
       }
       return;
     }
-    if (e.k === 'altar' || e.k === 'chupadorado' || e.k === 'loboalfa') { this.specialKill(e); return; }
+    if (e.k === 'altar' || e.d.flee || e.k === 'loboalfa') { this.specialKill(e); return; }
     const v = e.d.xp + (e.stolen || 0);
     if (v > 0) this.dropSoul(e.x, e.y, v);
   }
@@ -1104,11 +1104,12 @@ class Play extends Phaser.Scene {
   buildObjectiveProps() {
     const o = this.obj;
     if (o.cart) {
-      o.cartS = this.add.image(o.cart.x, o.cart.y, this.tex('prop_carreta', 'chest')).setOrigin(0.5, 0.9); o.cartS.setScale(120 / o.cartS.height);
-      o.goalS = this.add.image(o.cart.tx, o.cart.ty, this.tex('prop_cruz', 'chest')).setOrigin(0.5, 0.9).setDepth(o.cart.ty); o.goalS.setScale(110 / o.goalS.height);
+      const jp = this.region === 'japon';
+      o.cartS = this.add.image(o.cart.x, o.cart.y, this.tex(jp ? 'prop_palanquin' : 'prop_carreta', 'prop_carreta', 'chest')).setOrigin(0.5, 0.9); o.cartS.setScale((jp ? 92 : 120) / o.cartS.height);
+      o.goalS = this.add.image(o.cart.tx, o.cart.ty, this.tex(jp ? 'prop_torii' : 'prop_cruz', 'prop_cruz', 'chest')).setOrigin(0.5, 0.9).setDepth(o.cart.ty); o.goalS.setScale((jp ? 170 : 110) / o.goalS.height);
       o.goalG = this.add.image(o.cart.tx, o.cart.ty - 40, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(0x7dff8a).setScale(2.4).setAlpha(0.5).setDepth(o.cart.ty - 1);
     }
-    if (o.ofr) { o.ofrS = this.add.image(o.ofr.x, o.ofr.y, this.tex('prop_ofrenda', 'chest')).setOrigin(0.5, 0.9).setDepth(o.ofr.y); o.ofrS.setScale(120 / o.ofrS.height); }
+    if (o.ofr) { o.ofrS = this.add.image(o.ofr.x, o.ofr.y, this.tex(this.region === 'japon' ? 'prop_campana_templo' : 'prop_ofrenda', 'prop_ofrenda', 'chest')).setOrigin(0.5, 0.9).setDepth(o.ofr.y); o.ofrS.setScale(120 / o.ofrS.height); }
     o.bar = this.add.graphics().setDepth(1e6);
   }
   objDone() {
@@ -1135,28 +1136,28 @@ class Play extends Phaser.Scene {
       o.cartS.setPosition(c.x, c.y).setDepth(c.y); o.cartS.rotation = near ? Math.sin(t * 12) * 0.03 : 0;
       bar(c.x, c.y + 10, c.hp / c.max, 0xffcf5a);
       if (Math.hypot(c.tx - c.x, c.ty - c.y) < 40) { this.objDone(); o.cartS.setAlpha(0.6); }
-      else if (c.hp <= 0) { this.objFail('Destruyeron la carreta'); this.fxDeath.explode(30, c.x, c.y - 40); o.cartS.setAlpha(0.35); }
-      else if (t >= dl) this.objFail('La carreta no llegó a tiempo');
+      else if (c.hp <= 0) { this.objFail(this.region === 'japon' ? 'Destruyeron el palanquín' : 'Destruyeron la carreta'); this.fxDeath.explode(30, c.x, c.y - 40); o.cartS.setAlpha(0.35); }
+      else if (t >= dl) this.objFail(this.region === 'japon' ? 'El palanquín no llegó a tiempo' : 'La carreta no llegó a tiempo');
     } else if (o.id === 'ofrenda') {
       const f = o.ofr;
       o.tick = (o.tick || 0) - dt;
       if (o.tick <= 0) { o.tick = 0.5; this.near(f.x, f.y, 75, (e) => { if (!e.d.static && !e.d.flee) f.hp -= e.dmg * 0.5; }); }
       if (Math.hypot(P.x - f.x, P.y - f.y) < 130) f.hp = Math.min(f.max, f.hp + 6 * dt);
       bar(f.x, f.y + 10, f.hp / f.max, 0x7dff8a);
-      if (f.hp <= 0) { this.objFail('Los enemigos destruyeron la ofrenda'); o.ofrS.setAlpha(0.35); this.fxDeath.explode(30, f.x, f.y - 40); }
+      if (f.hp <= 0) { this.objFail(this.region === 'japon' ? 'Los enemigos destruyeron la campana' : 'Los enemigos destruyeron la ofrenda'); o.ofrS.setAlpha(0.35); this.fxDeath.explode(30, f.x, f.y - 40); }
       else if (t >= dl) this.objDone();
     } else if (o.id === 'dorado') {
       if (o.di < DORADO_TIMES.length && t >= DORADO_TIMES[o.di]) {
         o.di++; const [x, y] = this.edgePoint(-80);
-        const e = this.spawn('chupadorado', x, y); e.hp = e.max = 380 * (1 + t / 240); e.life = DORADO_LIFE;
-        Sfx.play('boss'); this.banner('¡El Chupacabras dorado!', `Cázalo antes de que huya (${o.di}/3)`, 1800);
+        const jp = this.region === 'japon', e = this.spawn(jp ? 'kitsunedorada' : 'chupadorado', x, y); e.hp = e.max = 380 * (1 + t / 240); e.life = DORADO_LIFE;
+        Sfx.play('boss'); this.banner(jp ? '¡La kitsune dorada!' : '¡El Chupacabras dorado!', `${jp ? 'Atrápala' : 'Cázalo'} antes de que huya (${o.di}/3)`, 1800);
       }
     }
   }
   doradoEscaped() {
     const o = this.obj; if (o.id !== 'dorado' || o.done) return;
     o.esc++; this.banner('Se escapó…', o.esc >= 3 ? '' : `Volverá (${o.esc}/3)`, 1500);
-    if (o.esc >= 3) this.objFail('El Chupacabras dorado se escapó 3 veces');
+    if (o.esc >= 3) this.objFail(this.region === 'japon' ? 'La kitsune dorada se escapó 3 veces' : 'El Chupacabras dorado se escapó 3 veces');
   }
   specialKill(e) {
     if (e.k === 'altar') {
@@ -1164,7 +1165,7 @@ class Play extends Phaser.Scene {
       for (let i = 0; i < 18; i++) this.dropSoul(e.x + rnd(-50, 50), e.y + rnd(-40, 40), 2);
       this.fxDeath.setParticleTint(0xb050ff); this.fxDeath.explode(40, e.x, e.y - 40); this.cameras.main.shake(200, 0.005); Sfx.play('boom');
       if (o.n >= 5) this.objDone(); else this.banner('¡Altar roto!', `${o.n}/5`, 1200);
-    } else if (e.k === 'chupadorado') {
+    } else if (e.d.flee) {
       for (let i = 0; i < 40; i++) this.dropSoul(e.x + rnd(-80, 80), e.y + rnd(-60, 60), 3);
       this.spawnChest(e.x, e.y); this.objDone();
     } else if (e.k === 'loboalfa') {
@@ -1177,9 +1178,9 @@ class Play extends Phaser.Scene {
     if (o.done) return `✅ ${O.name}`;
     if (o.failed) return `❌ ${O.name}`;
     if (o.id === 'altares') return `${O.icon} Altares ${o.n}/5`;
-    if (o.id === 'carreta') { const c = o.cart; const d0 = Math.hypot(c.tx, c.ty - 160), d = Math.hypot(c.tx - c.x, c.ty - c.y); return `${O.icon} Carreta ${Math.round(100 * (1 - d / d0))}%`; }
-    if (o.id === 'ofrenda') return `${O.icon} Ofrenda ${Math.max(0, Math.round(o.ofr.hp / o.ofr.max * 100))}% · hasta ${fmt(Math.min(OBJ_DEADLINE, this.bossTime(this.finalBoss)))}`;
-    if (o.id === 'dorado') return `${O.icon} Dorado · escapes ${o.esc}/3`;
+    if (o.id === 'carreta') { const c = o.cart; const d0 = Math.hypot(c.tx, c.ty - 160), d = Math.hypot(c.tx - c.x, c.ty - c.y); return `${O.icon} ${this.region === 'japon' ? 'Palanquín' : 'Carreta'} ${Math.round(100 * (1 - d / d0))}%`; }
+    if (o.id === 'ofrenda') return `${O.icon} ${this.region === 'japon' ? 'Campana' : 'Ofrenda'} ${Math.max(0, Math.round(o.ofr.hp / o.ofr.max * 100))}% · hasta ${fmt(Math.min(OBJ_DEADLINE, this.bossTime(this.finalBoss)))}`;
+    if (o.id === 'dorado') return `${O.icon} ${this.region === 'japon' ? 'Kitsune' : 'Dorado'} · escapes ${o.esc}/3`;
     return `${O.icon} ${O.name}`;
   }
   objTargets() { // para las flechas del borde
@@ -1188,7 +1189,7 @@ class Play extends Phaser.Scene {
     if (o.id === 'altares') for (const e of this.E) if (e.alive && e.k === 'altar') out.push({ x: e.x, y: e.y, col: 0xb050ff });
     if (o.id === 'carreta') { out.push({ x: o.cart.x, y: o.cart.y, col: 0xffcf5a }); out.push({ x: o.cart.tx, y: o.cart.ty, col: 0x7dff8a }); }
     if (o.id === 'ofrenda') out.push({ x: o.ofr.x, y: o.ofr.y, col: 0x7dff8a });
-    if (o.id === 'dorado') for (const e of this.E) if (e.alive && e.k === 'chupadorado') out.push({ x: e.x, y: e.y, col: 0xffd84a });
+    if (o.id === 'dorado') for (const e of this.E) if (e.alive && e.d.flee) out.push({ x: e.x, y: e.y, col: 0xffd84a });
     return out;
   }
 
