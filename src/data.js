@@ -2,6 +2,9 @@
 
 export const RUN_SECONDS = 600; // partida de prueba: 10 min
 export const BOSS_TIMES = { cadejo: 180, charro: 360, llorona: 540 };
+// Jefes de cada región (mismo ritmo: 3:00, 6:00 y 9:00; el último es el jefe final que gana la noche)
+export const REGION_BOSSES = { mexico: ['cadejo', 'charro', 'llorona'], japon: ['gashadokuro', 'jorogumo', 'orochi'] };
+export const BOSS_AT = [180, 360, 540];
 // Noche sin fin: al vencer a La Llorona la partida sigue y los jefes vuelven en ciclo, cada vuelta más fuertes.
 // Jefe número n (0 = 1er Cadejo): desde el 4º, vida = vida de La Llorona × grow^(n−2).
 export const ENDLESS = { order: ['cadejo', 'charro', 'llorona'], first: 45, gap: 70, hpGrow: 1.6, dmgPerLoop: 0.3, spdPerLoop: 0.06 };
@@ -34,6 +37,11 @@ export const HUNTERS = {
     name: 'El Cohetero', weapon: 'cohetes', hp: 92, speed: 146,
     ability: 'Castillo', abilityDesc: 'Lluvia de 16 cohetes que explotan alrededor.',
     blurb: 'Explosiones en área. Frágil pero potente.',
+  },
+  onmyoji: {
+    name: 'La Onmyoji', weapon: 'ofuda', hp: 98, speed: 150,
+    ability: 'Círculo de sellos', abilityDesc: 'Sellos rojos a tu alrededor: dañan y dejan quietos a los enemigos cercanos.',
+    blurb: 'Talismanes que persiguen solos. Viene de Japón.',
   },
 };
 
@@ -82,12 +90,15 @@ export const EVOS = {
 // ---------- Fase 2: ninguna partida igual ----------
 // Objetivos: antes de jugar el juego ofrece 2 al azar y eliges uno. Cumplirlo da flores extra (después del tope).
 export const OBJECTIVES = {
-  llorona: { icon: '👻', name: 'Vence a La Llorona', desc: 'Sobrevive y vence a La Llorona.', flores: 40 },
+  llorona: { icon: '👻', name: 'Vence a La Llorona', desc: 'Sobrevive y vence a La Llorona.', flores: 40, jp: { icon: '🐉', name: 'Vence a Orochi', desc: 'Sobrevive y vence a Yamata no Orochi.' } },
   altares: { icon: '🪦', name: 'Altares malditos', desc: 'Rompe los 5 altares antes de que llegue La Llorona. Sigue las flechas moradas.', flores: 80 },
   carreta: { icon: '🛒', name: 'Escolta la carreta', desc: 'La carreta solo avanza si estás junto a ella. Llévala hasta la cruz antes de las 9:00 sin que la destruyan.', flores: 80 },
   dorado: { icon: '✨', name: 'Chupacabras dorado', desc: 'Aparece 3 veces y huye de ti. Cázalo antes de que se escape las 3.', flores: 70 },
   ofrenda: { icon: '🕯️', name: 'Protege la ofrenda', desc: 'Los enemigos que la tocan le quitan vida; tú la curas si estás cerca. Que siga en pie a las 9:00.', flores: 80 },
 };
+/** El objetivo como se ve en esa región (en Japón solo salen los que tienen versión `jp`). */
+export const objOf = (id, region) => { const O = OBJECTIVES[id]; return region === 'japon' && O.jp ? { ...O, ...O.jp } : O; };
+export const objsDe = (region) => Object.keys(OBJECTIVES).filter(k => region !== 'japon' || OBJECTIVES[k].jp);
 export const OBJ_DEADLINE = 540; // 9:00
 export const DORADO_TIMES = [110, 290, 450], DORADO_LIFE = 18;
 // Maldiciones opcionales: se acumulan y cada una da +20 % de flores
@@ -96,7 +107,7 @@ export const CURSES = {
   sincura: { icon: '🩸', name: 'Sin curación', desc: 'Nada te cura.' },
   mochila: { icon: '🎒', name: 'Mochila chica', desc: 'Máximo 3 armas.' },
   niebla: { icon: '🌫️', name: 'Niebla', desc: 'Ves menos lejos.' },
-  impaciente: { icon: '⏰', name: 'Jefe impaciente', desc: 'La Llorona llega en el minuto 7.' },
+  impaciente: { icon: '⏰', name: 'Jefe impaciente', desc: 'El jefe final llega en el minuto 7.' },
 };
 export const CURSE_BONUS = 0.2;
 // Eventos al azar durante la partida (el primero en el minuto 2, luego cada 70–95 s)
@@ -147,6 +158,10 @@ export const ENEMIES = {
   cadejo: { tex: ['cadejo_camina', 'cadejo_ataque'], hp: 1100, spd: 78, dmg: 18, size: 150, r: 52, xp: 0, boss: 'El Cadejo', flap: 3 },
   charro: { tex: ['charro_camina', 'charro_ataque'], hp: 2300, spd: 86, dmg: 20, size: 176, r: 58, xp: 0, boss: 'El Charro Negro', flap: 3 },
   llorona: { tex: ['llorona_camina', 'llorona_ataque'], hp: 4400, spd: 56, dmg: 22, size: 200, r: 60, xp: 0, boss: 'La Llorona', flap: 1.2 },
+  // Jefes de Japón
+  gashadokuro: { tex: ['gashadokuro_camina', 'gashadokuro_ataque'], hp: 1250, spd: 64, dmg: 20, size: 190, r: 56, xp: 0, boss: 'Gashadokuro' },
+  jorogumo: { tex: ['jorogumo_camina', 'jorogumo_ataque'], hp: 2400, spd: 80, dmg: 20, size: 175, r: 58, xp: 0, boss: 'Jorogumo' },
+  orochi: { tex: ['orochi_camina', 'orochi_ataque'], hp: 4600, spd: 50, dmg: 23, size: 215, r: 70, xp: 0, boss: 'Yamata no Orochi' },
 };
 
 // ---------- Árbol de talentos (se compra con flores de cempasúchil) ----------
@@ -187,13 +202,13 @@ export function talentCost(t, lv) { return Math.round(t.base * Math.pow(1.7, lv 
 export const ASPECTOS = {
   machetero_jaguar: { cazador: 'machetero', name: 'Guerrero Jaguar', item: 'asp_machetero_jaguar', walk: { q: 0.564, a: 0.553, oy: 0.907 } },
 };
-export const HUNTER_COST = { luchadora: 400, cohetero: 900 };
+export const HUNTER_COST = { luchadora: 400, cohetero: 900, onmyoji: 1500 };
 
 // Flores al terminar una partida
 // En la noche sin fin cada jefe da sus flores × la vuelta (vuelta 2 = ×2…).
 // Noche sin fin (7 nov 2026): después del minuto 10 el tiempo y los enemigos dan la mitad, los jefes de las vueltas
 // dan sus flores normales (sin ×vuelta) y cada partida tiene un tope de flores antes de los bonos (1ª del día, Cosecha).
-export const FLOWERS = { perSeconds: 10, perKills: 20, boss: { cadejo: 15, charro: 25, llorona: 60 }, firstOfDay: 2, afterT: 600, afterMul: 0.5, cap: 450 };
+export const FLOWERS = { perSeconds: 10, perKills: 20, boss: { cadejo: 15, charro: 25, llorona: 60, gashadokuro: 15, jorogumo: 25, orochi: 60 }, firstOfDay: 2, afterT: 600, afterMul: 0.5, cap: 450 };
 
 // ---------- Piñata de armas (gacha) ----------
 // Cada tirada da una de las 7 armas con una rareza. Se equipa UNA antes de la partida: empiezas con ella y con su bono.
@@ -222,6 +237,13 @@ export const MAPS = {
   pueblo: { name: 'Pueblo abandonado', icon: '🏚️', win: 0, bonus: 0, desc: 'La plaza del pueblo. Donde empieza todo.', suelo: 'suelo_pueblo', card: 'menu_fondo_v' },
   panteon: { name: 'El Panteón', icon: '🪦', win: 1, bonus: 0.15, desc: 'Las tumbas se abren y sacan calaquitas. Las ofrendas encendidas te curan.', suelo: 'suelo_panteon', card: 'mapa_panteon', tint: 0xa79cc8 },
   canales: { name: 'Los Canales', icon: '🛶', win: 3, bonus: 0.3, desc: 'El agua te frena y las trajineras tapan el paso. Aquí vive La Llorona, y es más fuerte.', suelo: 'suelo_canales', card: 'mapa_canales', tint: 0x8fc4b8 },
+  // Japón (se abre al liberar México; win = victorias contra Orochi en Japón)
+  templo: { region: 'japon', name: 'Templo en ruinas', icon: '⛩️', win: 0, bonus: 0.35, desc: 'Torii rojos y linternas de piedra. Aquí empieza Japón: kappa, kitsune, oni, tengu y yurei.', suelo: 'suelo_templo', card: 'mapa_templo', tint: 0xb8a8d8 },
+  bambu: { region: 'japon', name: 'Bosque de bambú', icon: '🎋', win: 1, bonus: 0.45, desc: 'Cañas altísimas que tapan la vista. Los santuarios encendidos te curan.', suelo: 'suelo_bambu', card: 'mapa_bambu', tint: 0x9cc8a0 },
+};
+export const REGIONS = {
+  mexico: { name: 'México', icon: '🌼' },
+  japon: { name: 'Japón', icon: '⛩️', need: 'mexico', lock: 'Libera México: vence a La Llorona en Los Canales' },
 };
 export const PANTEON = { tombEvery: [7, 11], tombN: 3, healR: 110, healPerSec: 3, ofrendaChance: 0.22 };
 export const CANALES = { period: 1100, y0: 380, h: 250, slow: 0.6, bridgeEvery: 1500, bridgeW: 170, boatW: 300, boatH: 92, lloronaHp: 1.35, lloronaDmg: 1.15, regionFlores: 150 };
@@ -263,8 +285,14 @@ Object.assign(BESTIARIO, {
     historia: 'Ogros de las montañas con cuernos y garrote de hierro. Cada febrero, en el Setsubun, se les avientan frijoles tostados gritando «¡fuera los oni, adentro la suerte!».' },
   tengu: { name: 'Tengu', tipo: 'Enemigo', region: 'japon', img: 'tengu_camina', pelea: 'Vuela alrededor, marca una línea roja y se lanza en picada. Sal de la línea.',
     historia: 'Guerreros cuervo que viven en lo alto de las montañas. Son orgullosos y castigan a los soberbios, pero también enseñaron el arte de la espada a los que lo merecían.' },
-  yurei: { name: 'Yūrei', tipo: 'Enemigo', region: 'japon', img: 'yurei_camina', pelea: 'Se desvanece y aparece de golpe junto a ti. Mientras se ve transparente no la puedes golpear.',
+  yurei: { name: 'Yurei', tipo: 'Enemigo', region: 'japon', img: 'yurei_camina', pelea: 'Se desvanece y aparece de golpe junto a ti. Mientras se ve transparente no la puedes golpear.',
     historia: 'Almas que no descansan por algo que dejaron pendiente. Visten de blanco, sin pies, y las acompañan llamitas azules llamadas hitodama.' },
+  gashadokuro: { name: 'Gashadokuro', tipo: 'Jefe', region: 'japon', img: 'gashadokuro_camina', pelea: 'Marca un círculo rojo donde estás y lo aplasta con la mano. Cada tanto levanta yurei a su alrededor.',
+    historia: 'Esqueleto gigante hecho con los huesos de los que murieron de hambre o en batalla sin entierro. Dicen que se oye un zumbido en los oídos justo antes de que te atrape.' },
+  jorogumo: { name: 'Jorogumo', tipo: 'Jefa', region: 'japon', img: 'jorogumo_camina', pelea: 'Lanza telarañas al piso que te frenan mucho y salta hacia ti. No te quedes en la telaraña.',
+    historia: 'Araña que al cumplir 400 años toma forma de mujer hermosa. Atrae a los viajeros con música de biwa y los envuelve en hilos que no se ven.' },
+  orochi: { name: 'Yamata no Orochi', tipo: 'Jefe', region: 'japon', img: 'orochi_camina', pelea: 'Sus cabezas marcan tres líneas y muerden a lo largo de ellas; deja charcos de veneno y llama oni.',
+    historia: 'Serpiente de ocho cabezas y ocho colas tan larga como ocho valles. El dios Susanoo la venció dándole ocho barriles de sake y cortándola mientras dormía; en su cola encontró una espada sagrada.' },
 });
 
 /** A qué ficha cuenta cada enemigo del juego (el lobo es el nahual transformado). */

@@ -4,7 +4,7 @@ import '@fontsource/lilita-one/400.css';
 import { dsTrack } from './dsev.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
-import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES } from './data.js';
+import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES, REGION_BOSSES, BOSS_AT, REGIONS, objOf, objsDe } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
 import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
@@ -15,7 +15,7 @@ import { setupMercado, mercadoOn, buildBodega, buildMercado, usarArma, limpiarAv
 import { bendActiva, aplicarCompras, renderTienda, abrirTienda, ofrecerInicio, aspectoDe, setTiendaImgs } from './tienda.js';
 
 // Hojas de caminar: dónde queda la cabeza en la pose quieta (q) y de ataque (a), y la altura de los pies (oy), para que no brinque al cambiar de pose
-const WALK = { machetero: { q: 0.566, a: 0.54, oy: 0.906 }, curandera: { q: 0.575, a: 0.442, oy: 0.906 }, luchadora: { q: 0.391, a: 0.548, oy: 0.907 }, cohetero: { q: 0.405, a: 0.477, oy: 0.907 } };
+const WALK = { machetero: { q: 0.566, a: 0.54, oy: 0.906 }, curandera: { q: 0.575, a: 0.442, oy: 0.906 }, luchadora: { q: 0.391, a: 0.548, oy: 0.907 }, cohetero: { q: 0.405, a: 0.477, oy: 0.907 }, onmyoji: { q: 0.556, a: 0.523, oy: 0.91 } };
 const IMGS = import.meta.glob('./img/*.webp', { eager: true, query: '?url', import: 'default' });
 import PKG from '../package.json';
 const VERSION = PKG.version.replace(/\.0$/, '');
@@ -230,9 +230,12 @@ class Play extends Phaser.Scene {
     this.curses = new Set((r.curses || []).filter(c => CURSES[c]));
     this.mapId = MAPS[r.map] ? r.map : 'pueblo'; this.M = MAPS[this.mapId];
     this.region = this.M.region || (DEV && new URLSearchParams(location.search).has('jp') ? 'japon' : 'mexico');
+    if (!objsDe(this.region).includes(this.objId)) this.objId = 'llorona';
+    this.bossList = REGION_BOSSES[this.region]; this.finalBoss = this.bossList[2];
   }
+  objO(id) { return objOf(id || this.obj.id, this.region); }
   cursed(c) { return this.curses.has(c); }
-  bossTime(k) { return k === 'llorona' && this.cursed('impaciente') ? 420 : BOSS_TIMES[k]; }
+  bossTime(k) { return k === this.finalBoss && this.cursed('impaciente') ? 420 : BOSS_AT[this.bossList.indexOf(k)] ?? BOSS_TIMES[k]; }
   heal(v) { if (this.cursed('sincura')) return; this.P.hp = Math.min(this.maxHp, this.P.hp + v); }
 
   preload() {
@@ -263,7 +266,7 @@ class Play extends Phaser.Scene {
     this.obj = { id: this.objId, done: false, failed: false, n: 0, esc: 0, di: 0 }; this.evT = EVENTS.first; this.lastEv = ''; this.soulRainT = 0;
     this.pool = []; this.soulPool = []; this.numPool = [];
     this.spawnAcc = 0; this.flockT = 95; this.bossDone = {};
-    for (const k of Object.keys(BOSS_TIMES)) if (this.bossTime(k) < START_T - 5) this.bossDone[k] = true;
+    for (const k of this.bossList) if (this.bossTime(k) < START_T - 5) this.bossDone[k] = true;
     this.bossAlive = null; this.shakeT = 0;
     this.won = false; this.loop = 1; this.bossN = Object.keys(this.bossDone).length; this.nextBossT = 0; this.helpers = []; this.helpT = rnd(HELPER_EVERY[0], HELPER_EVERY[1]) + 10; this.freezeT = 0;
 
@@ -491,8 +494,8 @@ class Play extends Phaser.Scene {
   // ---------- Director: qué sale y cuándo ----------
   updateDirector(dt) {
     const t = this.t;
-    if (!this.won) { for (const k of Object.keys(BOSS_TIMES)) if (t >= this.bossTime(k) && !this.bossDone[k]) { this.bossDone[k] = true; this.spawnBoss(k); } }
-    else if (!this.bossAlive && t >= this.nextBossT) { this.nextBossT = Infinity; this.spawnBoss(ENDLESS.order[this.bossN % 3]); }
+    if (!this.won) { for (const k of this.bossList) if (t >= this.bossTime(k) && !this.bossDone[k]) { this.bossDone[k] = true; this.spawnBoss(k); } }
+    else if (!this.bossAlive && t >= this.nextBossT) { this.nextBossT = Infinity; this.spawnBoss(this.bossList[this.bossN % 3]); }
     this.updateHelpers(dt);
     this.updateObjective(dt);
     this.updateEvents(dt);
@@ -516,7 +519,7 @@ class Play extends Phaser.Scene {
       if (alive >= cap) break;
       const mp = this.mapId;
       const w = this.region === 'japon' ? [['kappa', 10]] : [['calaquita', mp === 'panteon' ? 13 : 10]];
-      if (this.region === 'japon') { // Japón: kappa, kitsune, yūrei, oni y tengu
+      if (this.region === 'japon') { // Japón: kappa, kitsune, yurei, oni y tengu
         if (t > 50) w.push(['kitsune', 3 + t / 70]);
         if (t > 140) w.push(['yurei', 2 + t / 140]);
         if (t > 150) w.push(['oni', 1 + t / 220]);
@@ -578,14 +581,15 @@ class Play extends Phaser.Scene {
     const e = this.spawn(k, x, y);
     e.boss = true; e.cd = 2.5; e.cd2 = 6; e.cd3 = 9; e.n = this.bossN++; e.loop = Math.floor(e.n / 3) + 1;
     if (e.n >= 3) { // vuelve más fuerte que el jefe anterior
-      e.hp = e.max = ENEMIES.llorona.hp * Math.pow(ENDLESS.hpGrow, e.n - 2);
+      e.hp = e.max = ENEMIES[this.finalBoss].hp * Math.pow(ENDLESS.hpGrow, e.n - 2);
       e.dmg = e.d.dmg * (1 + ENDLESS.dmgPerLoop * (e.loop - 1)); e.spd *= 1 + ENDLESS.spdPerLoop * (e.loop - 1);
     }
     if (this.mapId === 'canales' && k === 'llorona') { e.hp = e.max = e.max * CANALES.lloronaHp; e.dmg *= CANALES.lloronaDmg; }
     this.bossAlive = e;
     Sfx.play('boss');
     this.cameras.main.shake(400, 0.006);
-    const sub = { cadejo: 'Embiste en línea recta: ¡esquiva!', charro: 'Su lazo te jala hacia él', llorona: 'Su grito empuja y deja charcos' }[k];
+    const sub = { cadejo: 'Embiste en línea recta: ¡esquiva!', charro: 'Su lazo te jala hacia él', llorona: 'Su grito empuja y deja charcos',
+      gashadokuro: 'Sal del círculo rojo antes de que aplaste', jorogumo: 'Sus telarañas te frenan: no te quedes en ellas', orochi: 'Ocho cabezas: esquiva las líneas rojas' }[k];
     if (e.loop > 1) this.banner(`¡Volvió ${e.d.boss}!`, `Vuelta ${e.loop} · más fuerte que nunca`, 2600);
     else this.banner(`¡Llegó ${e.d.boss}!`, sub, 2600);
   }
@@ -703,6 +707,26 @@ class Play extends Phaser.Scene {
         e.cd2 -= dt; if (e.cd2 <= 0) { e.cd2 = 6.5; for (let i = 0; i < 3; i++) this.hazardPuddle(P.x + rnd(-160, 160), P.y + rnd(-130, 130)); }
         e.cd3 -= dt; if (e.cd3 <= 0) { e.cd3 = 11; for (let i = 0; i < 4; i++) { const a = i / 4 * 6.28 + 0.4; this.spawn('anima', e.x + Math.cos(a) * 110, e.y + Math.sin(a) * 110); } }
       }
+      else if (e.k === 'gashadokuro') { // aplasta donde estás (círculo rojo) y levanta yurei
+        vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow;
+        if (e.cd <= 0 && dist < 560) { e.cd = 3.4; this.slamAt(e, P.x, P.y, 110, 1.0, 22); }
+        e.cd2 -= dt; if (e.cd2 <= 0) { e.cd2 = 10; for (let i = 0; i < 3; i++) { const a = i / 3 * 6.28 + 0.5; this.spawn('yurei', e.x + Math.cos(a) * 100, e.y + Math.sin(a) * 100); } this.fxSpark.explode(14, e.x, e.y - 60); }
+      }
+      else if (e.k === 'jorogumo') { // telarañas que frenan y un salto hacia ti
+        if (e.state === 'walk') {
+          vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow;
+          if (e.cd <= 0 && dist < 520) { e.cd = 3.3; e.atkT = 0.7; for (let i = 0; i < 3; i++) this.hazardPuddle(P.x + rnd(-130, 130), P.y + rnd(-95, 95), 'web'); Sfx.play('swing'); }
+          e.cd2 -= dt; if (e.cd2 <= 0 && dist < 430) { e.cd2 = 7; e.state = 'wind'; e.st = 0.6; e.a = Math.atan2(dy, dx); e.lx = dx; }
+        }
+        else if (e.state === 'wind') { if (e.st <= 0) { e.state = 'leap'; e.st = 0.42; Sfx.play('dash'); } }
+        else if (e.state === 'leap') { vx = Math.cos(e.a) * 580; vy = Math.sin(e.a) * 580; if (e.st <= 0) e.state = 'walk'; }
+      }
+      else if (e.k === 'orochi') { // tres mordidas en línea, charcos de veneno y oni
+        vx = dx / dist * e.spd * slow; vy = dy / dist * e.spd * slow;
+        if (e.cd <= 0 && dist < 640) { e.cd = 4.2; this.biteLines(e); }
+        e.cd2 -= dt; if (e.cd2 <= 0) { e.cd2 = 7; for (let i = 0; i < 3; i++) this.hazardPuddle(P.x + rnd(-160, 160), P.y + rnd(-130, 130), 'veneno'); }
+        e.cd3 -= dt; if (e.cd3 <= 0) { e.cd3 = 13; for (let i = 0; i < 2; i++) { const a = i * 3.14 + 1.2; this.spawn('oni', e.x + Math.cos(a) * 130, e.y + Math.sin(a) * 130); } }
+      }
       else if (e.d.static) { e.kx = 0; e.ky = 0; }
       else if (e.d.flee) { // Chupacabras dorado: huye de ti y se escapa si no lo cazas a tiempo
         vx = -dx / dist * e.spd * slow; vy = -dy / dist * e.spd * slow;
@@ -803,9 +827,40 @@ class Play extends Phaser.Scene {
     this.cameras.main.shake(250, 0.004);
   }
 
-  hazardPuddle(x, y) {
+  /** Golpe en área marcado: círculo rojo que se llena y luego pega (Gashadokuro). */
+  slamAt(e, x, y, R, warn, dmg) {
+    e.atkT = warn + 0.4;
+    const g = this.add.graphics().setDepth(-50000), o = { f: 0 };
+    this.tweens.add({ targets: o, f: 1, duration: warn * 1000, onUpdate: () => {
+      g.clear(); g.fillStyle(0xff2a4a, 0.12 + 0.12 * o.f); g.fillEllipse(x, y, R * 2, R * 1.2);
+      g.fillStyle(0xff2a4a, 0.25); g.fillEllipse(x, y, R * 2 * o.f, R * 1.2 * o.f); g.lineStyle(3, 0xff6a7a, 0.8); g.strokeEllipse(x, y, R * 2, R * 1.2);
+    }, onComplete: () => {
+      g.destroy(); if (this.over) return;
+      const P = this.P, ddx = (P.x - x) / R, ddy = (P.y - y) / (R * 0.6);
+      if (ddx * ddx + ddy * ddy < 1 && P.inv <= 0 && P.jump <= 0) this.hurtPlayer(dmg, true);
+      this.cameras.main.shake(260, 0.008); Sfx.play('boom'); this.fxDust.explode(18, x, y); this.fxDeath.explode(10, x, y - 10);
+    } });
+  }
+
+  /** Orochi: tres cabezas marcan una línea cada una y muerden a lo largo. */
+  biteLines(e) {
+    e.atkT = 1.3; Sfx.play('boss');
+    const a0 = Math.atan2(this.P.y - e.y, this.P.x - e.x), ox = e.x, oy = e.y - 30, len = 640, w = 70;
+    const angs = [a0 - 0.42, a0, a0 + 0.42], g = this.add.graphics().setDepth(-50000), o = { a: 0.08 };
+    const draw = (al, col) => { g.clear(); for (const a of angs) { g.save(); g.translateCanvas(ox, oy); g.rotateCanvas(a); g.fillStyle(col, al); g.fillRect(0, -w / 2, len, w); g.lineStyle(3, 0xff6a7a, Math.min(1, al * 2)); g.strokeRect(0, -w / 2, len, w); g.restore(); } };
+    this.tweens.add({ targets: o, a: 0.3, duration: 900, onUpdate: () => draw(o.a, 0xff2a4a), onComplete: () => {
+      if (this.over) { g.destroy(); return; }
+      const P = this.P;
+      for (const a of angs) { const rx = P.x - ox, ry = P.y - oy, along = rx * Math.cos(a) + ry * Math.sin(a), side = Math.abs(-rx * Math.sin(a) + ry * Math.cos(a));
+        if (along > 0 && along < len && side < w / 2 + 16 && P.inv <= 0 && P.jump <= 0) { this.hurtPlayer(e.dmg, true); break; } }
+      draw(0.55, 0x9dff5a); this.cameras.main.shake(200, 0.006);
+      this.tweens.add({ targets: g, alpha: 0, duration: 260, onComplete: () => g.destroy() });
+    } });
+  }
+
+  hazardPuddle(x, y, kind) {
     const g = this.add.graphics().setDepth(-50000);
-    const h = { x, y, r: 62, t: 0, warn: 0.9, dur: 4.5, tick: 0, g, img: null };
+    const h = { x, y, r: kind === 'web' ? 78 : 62, t: 0, warn: kind === 'web' ? 0.5 : 0.9, dur: kind === 'web' ? 6.5 : 4.5, tick: 0, g, img: null, kind };
     this.hazards.push(h);
   }
 
@@ -813,11 +868,17 @@ class Play extends Phaser.Scene {
     const P = this.P;
     for (const h of this.hazards) {
       h.t += dt;
-      if (h.t < h.warn) { h.g.clear(); h.g.lineStyle(3, 0x7ff7ea, 0.4 + 0.4 * Math.sin(h.t * 20)); h.g.strokeEllipse(h.x, h.y, h.r * 2, h.r * 1.2); continue; }
-      if (!h.img) { h.g.clear(); h.img = this.add.image(h.x, h.y, 'puddle').setDisplaySize(h.r * 2.2, h.r * 1.3).setTint(0x60c8ff).setDepth(-50000).setAlpha(0.9); }
+      const col = h.kind === 'web' ? 0xffffff : h.kind === 'veneno' ? 0x9dff5a : 0x7ff7ea;
+      if (h.t < h.warn) { h.g.clear(); h.g.lineStyle(3, col, 0.4 + 0.4 * Math.sin(h.t * 20)); h.g.strokeEllipse(h.x, h.y, h.r * 2, h.r * 1.2); continue; }
+      if (!h.img) {
+        h.g.clear();
+        if (h.kind === 'web') { const k = this.tex('obj_telarana', 'puddle'); h.img = this.add.image(h.x, h.y, k).setDisplaySize(h.r * 2.2, h.r * 1.4).setDepth(-50000).setAlpha(0.85); if (k === 'puddle') h.img.setTint(0xeeeeff); }
+        else h.img = this.add.image(h.x, h.y, 'puddle').setDisplaySize(h.r * 2.2, h.r * 1.3).setTint(h.kind === 'veneno' ? 0x6ad04a : 0x60c8ff).setDepth(-50000).setAlpha(0.9);
+      }
       h.tick -= dt;
       const dx = (P.x - h.x) / h.r, dy = (P.y - h.y) / (h.r * 0.6);
-      if (dx * dx + dy * dy < 1 && h.tick <= 0 && P.inv <= 0) { h.tick = 0.5; this.hurtPlayer(6, true); P.slowT = 0.6; }
+      if (h.kind === 'web') { if (dx * dx + dy * dy < 1) P.slowT = Math.max(P.slowT, 0.25); }
+      else if (dx * dx + dy * dy < 1 && h.tick <= 0 && P.inv <= 0) { h.tick = 0.5; this.hurtPlayer(6, true); P.slowT = 0.6; }
       if (h.t > h.warn + h.dur) { h.img.destroy(); h.g.destroy(); h.dead = true; }
       else if (h.t > h.warn + h.dur - 0.6) h.img.setAlpha((h.warn + h.dur - h.t) / 0.6);
     }
@@ -882,12 +943,12 @@ class Play extends Phaser.Scene {
       if (this.bossAlive === e) this.bossAlive = this.E.find(o => o.alive && o.boss) || null;
       this.spawnChest(e.x, e.y);
       this.spawnHelper('iman', e.x + 70, e.y + 10);
-      if (e.k === 'llorona' && !this.won) {
+      if (e.k === this.finalBoss && !this.won) {
         this.won = true; this.nextBossT = this.t + ENDLESS.first;
         if (this.obj.id === 'llorona') this.objDone();
         Sfx.play('win');
         if (this.mapId === 'canales' && !save.mexico) { this.regionWon = true; this.banner('¡Liberaste México!', `Venciste a La Llorona en su canal · +${CANALES.regionFlores} 🌼`, 3800); }
-        else this.banner('¡Venciste a La Llorona!', 'La noche sigue… los jefes volverán más fuertes', 3200);
+        else this.banner(`¡Venciste a ${e.d.boss}!`, 'La noche sigue… los jefes volverán más fuertes', 3200);
       } else {
         if (this.won) this.nextBossT = this.t + ENDLESS.gap;
         this.banner(`¡Venciste a ${this.bossLabel(e)}!`, 'Soltó un cofre y un imán', 2000);
@@ -1053,7 +1114,7 @@ class Play extends Phaser.Scene {
   objDone() {
     const o = this.obj; if (o.done || o.failed) return;
     o.done = true; Sfx.play('win');
-    this.banner('¡Objetivo cumplido!', `${OBJECTIVES[o.id].name} · +${OBJECTIVES[o.id].flores} 🌼`, 2400);
+    this.banner('¡Objetivo cumplido!', `${this.objO(o.id).name} · +${OBJECTIVES[o.id].flores} 🌼`, 2400);
   }
   objFail(why) {
     const o = this.obj; if (o.done || o.failed) return;
@@ -1062,7 +1123,7 @@ class Play extends Phaser.Scene {
   updateObjective(dt) {
     const o = this.obj, P = this.P, t = this.t;
     if (o.done || o.failed) { if (o.bar) o.bar.clear(); return; }
-    const dl = Math.min(OBJ_DEADLINE, this.bossTime('llorona'));
+    const dl = Math.min(OBJ_DEADLINE, this.bossTime(this.finalBoss));
     const bar = (x, y, f, col) => { o.bar.fillStyle(0x0c0614, 1).fillRoundedRect(x - 42, y, 84, 10, 4); o.bar.fillStyle(col, 1).fillRoundedRect(x - 40, y + 2, 80 * clamp(f, 0, 1), 6, 3); };
     if (o.bar) o.bar.clear();
     if (o.id === 'altares') { if (t >= dl) this.objFail('La Llorona llegó antes de romper los 5 altares'); }
@@ -1112,12 +1173,12 @@ class Play extends Phaser.Scene {
     }
   }
   objText() {
-    const o = this.obj, O = OBJECTIVES[o.id];
+    const o = this.obj, O = this.objO(o.id);
     if (o.done) return `✅ ${O.name}`;
     if (o.failed) return `❌ ${O.name}`;
     if (o.id === 'altares') return `${O.icon} Altares ${o.n}/5`;
     if (o.id === 'carreta') { const c = o.cart; const d0 = Math.hypot(c.tx, c.ty - 160), d = Math.hypot(c.tx - c.x, c.ty - c.y); return `${O.icon} Carreta ${Math.round(100 * (1 - d / d0))}%`; }
-    if (o.id === 'ofrenda') return `${O.icon} Ofrenda ${Math.max(0, Math.round(o.ofr.hp / o.ofr.max * 100))}% · hasta ${fmt(Math.min(OBJ_DEADLINE, this.bossTime('llorona')))}`;
+    if (o.id === 'ofrenda') return `${O.icon} Ofrenda ${Math.max(0, Math.round(o.ofr.hp / o.ofr.max * 100))}% · hasta ${fmt(Math.min(OBJ_DEADLINE, this.bossTime(this.finalBoss)))}`;
     if (o.id === 'dorado') return `${O.icon} Dorado · escapes ${o.esc}/3`;
     return `${O.icon} ${O.name}`;
   }
@@ -1614,6 +1675,8 @@ class Play extends Phaser.Scene {
   propList() {
     if (this._props) return this._props;
     const extra = { panteon: [{ k: 'prop_cripta', h: 170, w: 2, glow: [-50, 1.6] }, { k: 'prop_angel', h: 150, w: 1 }, { k: 'prop_tumba1', h: 92, w: 5 }, { k: 'prop_tumba2', h: 92, w: 4, glow: [-20, 1.2] }, { k: 'prop_cruz', h: 88, w: 4 }, { k: 'prop_velas', h: 58, w: 3, glow: [-40, 1.8] }],
+      templo: [{ k: 'prop_torii', h: 210, w: 2, flip: false }, { k: 'prop_torii2', h: 200, w: 1, flip: false }, { k: 'prop_linterna_piedra', h: 110, w: 4, glow: [-75, 1.4] }, { k: 'prop_estatua_zorro', h: 105, w: 2 }, { k: 'prop_roca_sagrada', h: 70, w: 2 }],
+      bambu: [{ k: 'prop_bambu', h: 260, w: 6 }, { k: 'prop_roca_sagrada', h: 72, w: 2 }, { k: 'prop_linterna_piedra', h: 105, w: 2, glow: [-72, 1.4] }, { k: 'prop_estatua_zorro', h: 95, w: 1 }],
       canales: [{ k: 'prop_ahuejote', h: 260, w: 2 }, { k: 'prop_muelle', h: 90, w: 1, glow: [-60, 1.6] }, { k: 'prop_rocas', h: 52, w: 3 }, { k: 'prop_cempasuchil', h: 50, w: 3 }, { k: 'prop_farol', h: 180, w: 1, glow: [-150, 2.2], flip: false }] }[this.mapId];
     if (extra) { const L = extra.filter(q => this.textures.exists(q.k)); if (L.length >= 3) return (this._props = L); }
     const L = [
@@ -1721,10 +1784,10 @@ class Play extends Phaser.Scene {
     this.mapUsed.push(im); return im;
   }
   updateMap(dt) {
-    if (this.mapId === 'pueblo') return;
+    if (this.mapId === 'pueblo' || this.mapId === 'templo') return;
     for (const im of this.mapUsed) { im.setVisible(false); this.mapPool.img.push(im); } this.mapUsed = [];
     const v = this.cameras.main.worldView, g = this.mapG; g.clear();
-    if (this.mapId === 'canales') this.drawCanales(v, g, dt); else this.drawPanteon(v, g, dt);
+    if (this.mapId === 'canales') this.drawCanales(v, g, dt); else if (this.mapId === 'bambu') this.healSpots(v, g, dt, 'prop_santuario', 120, 0x9dffb8, 0xb0a); else this.drawPanteon(v, g, dt);
   }
   drawCanales(v, g, dt) {
     const C = CANALES, P = this.P;
@@ -1773,12 +1836,13 @@ class Play extends Phaser.Scene {
     push(this.P, true);
     for (const e of this.E) if (e.alive && !e.d.flyer && !e.boss && Math.abs(e.x - bx) < hw + 30) push(e, false);
   }
-  drawPanteon(v, g, dt) {
+  /** Lugares que curan (ofrendas del Panteón, santuarios del bambú): un aro verde; si estás dentro te curas. */
+  healSpots(v, g, dt, prop, ph, tint, seed) {
     const P = this.P, CELL = 700, c0 = Math.floor(v.x / CELL) - 1, c1 = Math.floor(v.right / CELL) + 1, r0 = Math.floor(v.y / CELL) - 1, r1 = Math.floor(v.bottom / CELL) + 1;
     let healing = false;
     for (let cx = c0; cx <= c1; cx++) for (let cy = r0; cy <= r1; cy++) {
       if (cx === 0 && cy === 0) continue;
-      const r = seeded((cx * 92837111) ^ (cy * 689287499) ^ 0x5eed);
+      const r = seeded((cx * 92837111) ^ (cy * 689287499) ^ seed);
       if (r() > PANTEON.ofrendaChance) continue;
       const x = cx * CELL + 150 + r() * (CELL - 300), y = cy * CELL + 150 + r() * (CELL - 300);
       if (x < v.x - 200 || x > v.right + 200 || y < v.y - 200 || y > v.bottom + 260) continue;
@@ -1786,14 +1850,18 @@ class Play extends Phaser.Scene {
       const pul = 0.5 + 0.5 * Math.sin(this.t * 3);
       g.lineStyle(3, 0x7dffb0, near ? 0.8 : 0.35 + pul * 0.2); g.strokeEllipse(x, y, PANTEON.healR * 2, PANTEON.healR * 1.1);
       g.fillStyle(0x7dffb0, near ? 0.16 : 0.07); g.fillEllipse(x, y, PANTEON.healR * 2, PANTEON.healR * 1.1);
-      const im = this.mapImg(this.tex('prop_ofrenda', 'chest'), x, y, y); im.setScale(110 / im.height);
-      const gl = this.mapImg('glow', x, y - 60, -85000); gl.setOrigin(0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(0x9dffb8).setScale(2 + pul * 0.4).setAlpha(0.5);
+      const im = this.mapImg(this.tex(prop, 'chest'), x, y, y); im.setScale(ph / im.height);
+      const gl = this.mapImg('glow', x, y - 60, -85000); gl.setOrigin(0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setScale(2 + pul * 0.4).setAlpha(0.5);
       if (near) healing = true;
     }
     if (healing && !this.cursed('sincura') && P.hp < this.maxHp) {
       this.heal(PANTEON.healPerSec * dt); this.healTick -= dt;
       if (this.healTick <= 0) { this.healTick = 1; this.dmgText(P.x, P.y - 70, '+' + PANTEON.healPerSec, '#7dffb0', 18); }
     }
+  }
+  drawPanteon(v, g, dt) {
+    const P = this.P;
+    this.healSpots(v, g, dt, 'prop_ofrenda', 110, 0x9dffb8, 0x5eed);
     // tumbas que se abren y sacan calaquitas
     this.tombT -= dt;
     if (this.tombT <= 0 && !this.over) {
@@ -1911,7 +1979,7 @@ Play.prototype.flowerReward = function (win) {
     if (win) save.victorias++;
     if (this.regionWon) save.mexico = true;
     if (win) { save.mapWins = save.mapWins || {}; save.mapWins[this.mapId] = (save.mapWins[this.mapId] || 0) + 1; }
-    if (win) r.medallas = ganarMedallas({ caz: this.hunterId, mapa: this.mapId, obj: this.obj && this.obj.done ? this.obj.id : '', malds: this.curses ? this.curses.size : 0 });
+    if (win && this.region === 'mexico') r.medallas = ganarMedallas({ caz: this.hunterId, mapa: this.mapId, obj: this.obj && this.obj.done ? this.obj.id : '', malds: this.curses ? this.curses.size : 0 });
     if (first) save.dia = today();
     persist();
   }
@@ -2019,7 +2087,7 @@ class Hud {
     const jefes = sc.bossKills.length, loopMax = sc.bossKills.reduce((m, b) => Math.max(m, b.loop), 0);
     const brag = win ? `<div class="won txt">🏆 Venciste a La Llorona${loopMax > 1 ? ` · llegaste a la vuelta ${loopMax}` : ''}</div>` : '';
     const best = sc.reward && sc.reward.counts && Math.floor(sc.t) >= save.mejor ? ' · <b class="rec">¡Récord!</b>' : '';
-    const O = OBJECTIVES[sc.obj.id], objLine = `<div class="objend ${sc.obj.done ? 'ok' : 'no'}">${sc.obj.done ? '✅' : '❌'} ${O.name}${sc.curses.size ? ` · ${[...sc.curses].map(c => CURSES[c].icon).join(' ')}` : ''}</div>`;
+    const O = sc.objO(sc.obj.id), objLine = `<div class="objend ${sc.obj.done ? 'ok' : 'no'}">${sc.obj.done ? '✅' : '❌'} ${O.name}${sc.curses.size ? ` · ${[...sc.curses].map(c => CURSES[c].icon).join(' ')}` : ''}</div>`;
     $('endStats').innerHTML = `${brag}${objLine}${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b>${best} · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b>${jefes ? ` · Jefes <b>${jefes}</b>` : ''}<br>` +
       sc.W.map(w => `<span class="endw${w.evo ? ' evo' : ''}">${wIcon(w)} ${wName(w)}${w.evo ? '' : ' ' + w.lv}</span>`).join(' ');
     const r = sc.reward;
@@ -2041,7 +2109,7 @@ let game = null;
 let toastT = 0;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), 4500); }
 const owned = (id) => import.meta.env.VITE_PROTO === '1' || save.cazadores.includes(id); // VITE_PROTO=1: solo en el prototipo privado, todos los cazadores abiertos para probar
-const HUNTER_TAG = { machetero: 'Cazador de nahuales', curandera: 'Guardiana del copal', luchadora: 'Campeona de la arena', cohetero: 'Maestro de la pólvora' };
+const HUNTER_TAG = { machetero: 'Cazador de nahuales', curandera: 'Guardiana del copal', luchadora: 'Campeona de la arena', cohetero: 'Maestro de la pólvora', onmyoji: 'Hechicera de los sellos' };
 const portraitOf = (k) => IMG['retrato_' + k] || IMG[k + '_quieto'] || IMG[k + '_ataque'];
 const portrait = (id) => portraitOf(aspectoDe(id) || id);
 let aspView = ''; // aspecto que se está mirando en la ficha del cazador (aunque no sea tuyo)
@@ -2296,17 +2364,32 @@ let treeFrom = 'menu';
 // ---------- Antes de jugar: objetivo (2 al azar) y maldiciones opcionales ----------
 const prep = { opts: [], obj: 'llorona' };
 function openPrep() {
-  const ids = Object.keys(OBJECTIVES);
-  prep.opts = []; while (prep.opts.length < 2) { const k = pick(ids); if (!prep.opts.includes(k)) prep.opts.push(k); }
-  prep.obj = prep.opts[0];
+  prepObjs();
   save.malds = (save.malds || []).filter(c => CURSES[c]);
   ['menu', 'end'].forEach(id => $(id).classList.add('hidden')); hideHub();
   buildPrep(); $('prep').classList.remove('hidden');
 }
-const mapOpen = (k) => (save.victorias || 0) >= MAPS[k].win || DEV;
+const regOf = (k) => MAPS[k].region || 'mexico';
+const regionOpen = (r) => !REGIONS[r].need || !!save[REGIONS[r].need] || DEV;
+const jpWins = () => Object.keys(MAPS).filter(k => regOf(k) === 'japon').reduce((n, k) => n + ((save.mapWins || {})[k] || 0), 0);
+const winsDe = (r) => r === 'japon' ? jpWins() : (save.victorias || 0);
+const mapOpen = (k) => DEV || (regionOpen(regOf(k)) && winsDe(regOf(k)) >= MAPS[k].win);
+function prepObjs() { // 2 objetivos al azar de la región del mapa (en Japón, por ahora, solo vencer a Orochi)
+  const ids = objsDe(regOf(MAPS[save.mapa] ? save.mapa : 'pueblo'));
+  prep.opts = []; while (prep.opts.length < Math.min(2, ids.length)) { const k = pick(ids); if (!prep.opts.includes(k)) prep.opts.push(k); }
+  prep.obj = prep.opts[0];
+}
 function buildPrep() {
   if (!MAPS[save.mapa] || !mapOpen(save.mapa)) save.mapa = 'pueblo';
-  $('prepMaps').innerHTML = Object.entries(MAPS).map(([k, M]) => {
+  const reg = regOf(save.mapa), fin = { mexico: 'La Llorona', japon: 'Orochi' };
+  $('prepRegs').innerHTML = Object.entries(REGIONS).map(([r, R]) => `<button class="preg${r === reg ? ' on' : ''}${regionOpen(r) ? '' : ' locked'}" data-r="${r}">${regionOpen(r) ? R.icon : '🔒'} ${R.name}</button>`).join('');
+  $('prepRegs').querySelectorAll('.preg').forEach(el => { el.onclick = () => {
+    const r = el.dataset.r; Sfx.play('pick');
+    if (!regionOpen(r)) { shake(el); $('prepMapDesc').innerHTML = `<b>🔒 ${REGIONS[r].lock}.</b>`; return; }
+    if (r === reg) return;
+    save.mapa = Object.keys(MAPS).find(k => regOf(k) === r && mapOpen(k)) || 'pueblo'; persist(); prepObjs(); buildPrep();
+  }; });
+  $('prepMaps').innerHTML = Object.entries(MAPS).filter(([k]) => regOf(k) === reg).map(([k, M]) => {
     const op = mapOpen(k), img = IMG[M.card];
     return `<div class="frame pmap${k === save.mapa ? ' on' : ''}${op ? '' : ' locked'}" data-k="${k}"><div class="in" ${img ? `style="background-image:url(${img})"` : ''}>
       <div class="mt">${M.icon} ${M.name}</div><div class="mb">${op ? (M.bonus ? `+${Math.round(M.bonus * 100)}% 🌼` : 'Normal') : `🔒 Gana ${M.win} ${M.win === 1 ? 'noche' : 'noches'}`}</div></div></div>`;
@@ -2314,9 +2397,9 @@ function buildPrep() {
   $('prepMaps').querySelectorAll('.pmap').forEach(el => { el.onclick = () => {
     const k = el.dataset.k; if (!mapOpen(k)) { shake(el); Sfx.play('pick'); return; } save.mapa = k; persist(); Sfx.play('pick'); buildPrep();
   }; });
-  const M = MAPS[save.mapa], vic = save.victorias || 0, next = Object.values(MAPS).find(m => m.win > vic);
-  $('prepMapDesc').innerHTML = `${M.desc}${save.mapa === 'canales' && !save.mexico ? ' <b>Vence aquí a La Llorona para liberar México.</b>' : ''}${next ? `<br><small>Llevas ${vic} ${vic === 1 ? 'victoria' : 'victorias'} contra La Llorona · ${next.name} se abre con ${next.win}</small>` : (save.mexico ? '<br><small>🏆 México liberada</small>' : '')}`;
-  $('prepObjs').innerHTML = prep.opts.map(k => { const O = OBJECTIVES[k]; return `<div class="pobj${k === prep.obj ? ' on' : ''}" data-k="${k}"><div class="pi">${O.icon}</div><div class="pn">${O.name}</div><div class="pd">${O.desc}</div><div class="pf">+${O.flores} 🌼</div></div>`; }).join('');
+  const M = MAPS[save.mapa], vic = winsDe(reg), next = Object.values(MAPS).find(m => (m.region || 'mexico') === reg && m.win > vic);
+  $('prepMapDesc').innerHTML = `${M.desc}${save.mapa === 'canales' && !save.mexico ? ' <b>Vence aquí a La Llorona para liberar México.</b>' : ''}${next ? `<br><small>Llevas ${vic} ${vic === 1 ? 'victoria' : 'victorias'} contra ${fin[reg]} · ${next.name} se abre con ${next.win}</small>` : (reg === 'mexico' && save.mexico ? '<br><small>🏆 México liberada</small>' : '')}`;
+  $('prepObjs').innerHTML = prep.opts.map(k => { const O = objOf(k, reg); return `<div class="pobj${k === prep.obj ? ' on' : ''}" data-k="${k}"><div class="pi">${O.icon}</div><div class="pn">${O.name}</div><div class="pd">${O.desc}</div><div class="pf">+${O.flores} 🌼</div></div>`; }).join('');
   $('prepObjs').querySelectorAll('.pobj').forEach(el => { el.onclick = () => { prep.obj = el.dataset.k; Sfx.play('pick'); buildPrep(); }; });
   $('prepCurses').innerHTML = Object.entries(CURSES).map(([k, C]) => `<button class="pcur${save.malds.includes(k) ? ' on' : ''}" data-k="${k}"><b>${C.icon} ${C.name}</b><span>${C.desc}</span></button>`).join('');
   $('prepCurses').querySelectorAll('.pcur').forEach(el => { el.onclick = () => {

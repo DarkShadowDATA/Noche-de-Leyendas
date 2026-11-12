@@ -509,6 +509,11 @@
     clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%); text-shadow:0 2px 0 #3a1a00; }
   .tnode .buy:disabled { filter:grayscale(.8) brightness(.6); }
 
+  /* Selector de región (Fase 5) */
+  #prepRegs { display:flex; gap:6px; justify-content:center; margin:0 0 6px; }
+  .preg { font-family:var(--serif); font-weight:900; font-size:13px; color:#e9dcff; background:#1a0f2c; border:2px solid #4a3470; padding:5px 14px; cursor:pointer; clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%); }
+  .preg.on { color:#2a1200; background:linear-gradient(180deg,#ffe08a,#e9a93a); border-color:#ffe08a; }
+  .preg.locked { filter:grayscale(1) brightness(.6); }
   /* Selector de mapa (Fase 3) */
   #prepMaps { display:flex; gap:8px; width:100%; max-width:640px; justify-content:center; }
   .pmap { flex:1; max-width:200px; --c:10px; cursor:pointer; }
@@ -550,6 +555,7 @@
 <div id="prep" class="screen scenic hidden">
   <h1 class="txt">Prepara la noche</h1>
   <div class="psub txt">Elige el lugar</div>
+  <div id="prepRegs"></div>
   <div id="prepMaps"></div>
   <div id="prepMapDesc"></div>
   <div class="psub txt">Elige tu objetivo</div>
