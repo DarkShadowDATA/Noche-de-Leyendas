@@ -2267,9 +2267,12 @@ function showScene(on) {
     p.style.transform = `scale(${0.6 + Math.random() * 0.8})`; box.appendChild(p);
   }
 })();
+let titleSeen = false;
 function openTitle() {
   showScene(true); $('tLogo').src = IMG.logo; $('tVer').textContent = 'v' + VERSION;
   $('title').classList.remove('hidden');
+  // analítica: ya se ve el título; ms = lo que tardó desde que se pidió la página (si se van antes, es la carga)
+  if (!titleSeen) { titleSeen = true; dsTrack('title_shown', 'leyendas', undefined, { ms: Math.min(300000, Math.round(performance.now())) }); }
   // Primera vez: tocar el título ya empieza la primera noche (Machetero, Pueblo, vencer a La Llorona).
   // El menú, los mapas y los objetivos aparecen después de esa partida.
   const first = !(save.partidas > 0) && !readRun();

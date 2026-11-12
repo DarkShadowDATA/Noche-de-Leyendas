@@ -1,5 +1,6 @@
 // Analítica anónima de DarkShadow Studios (igual en los 3 juegos): sin cookies, sin correo, sin IP guardada.
-// Cuenta cuándo se abre el juego (game_opened) y cuándo empieza de verdad una partida (game_started).
+// Cuenta cuándo se abre el juego (game_opened), cuándo ya se ve el título (title_shown, con lo que tardó en cargar)
+// y cuándo empieza de verdad una partida (game_started). ?c=<código del video> dice qué video trajo la visita.
 // vid = número al azar de este navegador (no se crea si el navegador pide no ser rastreado); sid = la visita.
 // Pruebas: en localhost no manda nada; con ?test=1 (o los modos de prueba del juego) manda marcado como prueba.
 // El dueño: abrir el juego una vez con ?yo=1 marca ese navegador para siempre (sus visitas ya no cuentan).
@@ -16,6 +17,12 @@ function fromReferrer() {
 }
 /** De dónde llegó: ?src= / ?utm_source= / ?ref= o, si no trae nada, la página anterior. */
 export const dsSrc = NET[(Q.get('src') || Q.get('utm_source') || Q.get('ref') || '').toLowerCase()] || fromReferrer() || 'directo';
+/** Código del video o campaña (?c=nl-0112-a) que trajo la visita; se recuerda durante la visita. */
+export const dsCamp = (() => {
+  const c = (Q.get('c') || '').toLowerCase();
+  try { if (/^[a-z0-9-]{1,24}$/.test(c)) { sessionStorage.setItem('ds_c', c); return c; } return sessionStorage.getItem('ds_c') || undefined; }
+  catch (e) { return /^[a-z0-9-]{1,24}$/.test(c) ? c : undefined; }
+})();
 /** Si el juego se abrió desde la página del estudio (sus botones agregan ?via=estudio). */
 export const dsVia = Q.get('via') === 'estudio' || /^https:\/\/darkshadow-studios\.com\/?(\?|#|$)/.test(document.referrer) ? 'estudio' : undefined;
 
@@ -43,12 +50,12 @@ function sid() {
 }
 const device = () => (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (matchMedia('(pointer: coarse)').matches && innerWidth < 1024)) ? 'mobile' : 'desktop';
 
-/** Manda un evento. Nunca lanza error ni frena el juego. */
-export function dsTrack(ev, game, url = EV_URL) {
+/** Manda un evento. Nunca lanza error ni frena el juego. `extra` = datos del evento (title_shown manda { ms }). */
+export function dsTrack(ev, game, url = EV_URL, extra = {}) {
   if (LOCAL) return;
   try {
     const via = VIA && !viaUsed[ev] ? (viaUsed[ev] = true, VIA) : undefined;
-    const body = JSON.stringify({ ev, game, src: dsSrc, via, dev: device(), path: location.pathname.slice(0, 80), vid: vid(), sid: sid(), test: TEST || undefined });
+    const body = JSON.stringify({ ev, game, src: dsSrc, via, dev: device(), path: location.pathname.slice(0, 80), vid: vid(), sid: sid(), test: TEST || undefined, camp: dsCamp, ...extra });
     if (!(navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))))
       fetch(url, { method: 'POST', body, keepalive: true, mode: 'no-cors', headers: { 'content-type': 'text/plain' } }).catch(() => {});
   } catch (e) { /* sin red: no pasa nada */ }
