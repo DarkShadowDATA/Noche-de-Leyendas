@@ -1,0 +1,89 @@
+Te adjunto imágenes de mi videojuego para que copies el estilo exacto: dos hojas de animación (un enemigo y un jefe), un cazador quieto, dos iconos (un arma y su evolución), una tarjeta de mapa y un objeto del mapa. Necesito 59 imágenes nuevas para terminar el juego, todas con ese mismo estilo: caricatura chibi pintada, contorno oscuro grueso, colores vivos y sombreado pintado. Diseños propios: no copies personajes de ningún anime ni videojuego.
+
+Reglas para TODAS, salvo que la imagen diga otra cosa:
+- Personajes y objetos: fondo transparente, sin sombra en el piso, sin texto. Personajes de cuerpo completo mirando a la derecha.
+- "Hoja de animación" = 6 poses de un ciclo en una sola fila horizontal, todas del mismo tamaño y a la misma altura, con los pies sobre la misma línea, 1536x512.
+- "Suelo" = cuadro que se repite sin que se note la unión (seamless tile), visto totalmente desde arriba, sin objetos grandes, 1024x1024.
+- "Objeto del mapa" = visto de lado y un poco desde arriba, fondo transparente, 1024x1024.
+- "Tarjeta de mapa" = ilustración vertical con fondo, 768x1024, sin personajes y sin texto.
+- "Icono" = un objeto solo, centrado, 512x512.
+
+Genéralas una tras otra en este mismo chat, sin hacerme preguntas entre una y otra, y escribe el número y el nombre de cada una antes de la imagen. Si te detienes, cuando te escriba "sigue" continúa con la que seguía.
+
+=== JAPÓN · MINIJEFES Y JEFE ===
+1. gashadokuro_hoja — Gashadokuro: esqueleto gigante hecho de cientos de huesos, ojos de fuego azul, restos de una armadura samurái rota y jirones de tela morada. Hoja de animación caminando pesado.
+2. gashadokuro_ataque — El mismo Gashadokuro aplastando con la mano huesuda hacia el frente. 1024x1024.
+3. jorogumo_hoja — Jorōgumo: de la cintura para arriba una mujer pálida con kimono negro y rojo y pelo recogido con palillos; de la cintura para abajo una araña negra de ocho patas largas con marcas rojas. Hoja de animación caminando en sus ocho patas.
+4. jorogumo_ataque — La misma Jorōgumo lanzando telaraña desde las manos. 1024x1024.
+5. obj_telarana — Telaraña en el piso vista desde arriba, redonda, blanca y brillante. 512x512.
+6. orochi_hoja — Yamata no Orochi: serpiente dragón enorme de ocho cabezas y ocho colas, escamas verde oscuro y rojo, ojos rojos brillantes, cuernos pequeños y humo saliendo de las bocas. Hoja de animación avanzando arrastrándose, con las cabezas moviéndose distinto en cada pose.
+7. orochi_ataque — El mismo Orochi con las ocho cabezas lanzándose al frente con las bocas abiertas. 1024x1024.
+
+=== JAPÓN · CAZADORA ONMYŌJI ===
+La Onmyōji: joven hechicera japonesa, kimono blanco con hakama rojo, sombrero negro alto de sacerdote (eboshi), pelo negro largo atado, talismanes de papel flotando a su alrededor, mirada valiente.
+8. onmyoji_quieto — Quieta. 1024x1024.
+9. onmyoji_ataque — Lanzando talismanes con una mano al frente. 1024x1024.
+10. retrato_onmyoji — Retrato de la cintura para arriba, con fondo nocturno de templo japonés, como el retrato de un personaje de juego. 1024x1536.
+11. onmyoji_hoja — Hoja de animación caminando.
+
+=== JAPÓN · ARMAS Y OBJETOS ===
+12. icono_ofuda — Icono: talismán de papel con letras rojas, brillando.
+13. icono_abanico — Icono: abanico de guerra de hierro negro y rojo, abierto.
+14. icono_farol — Icono: farolito japonés de papel rojo, encendido.
+15. icono_juzu — Icono: rosario budista de cuentas de madera con una borla.
+16. icono_pluma — Icono: pluma negra grande con brillo dorado.
+17. icono_vela — Icono: vela blanca de templo encendida, con cera escurrida.
+18. icono_evo_ofuda — Icono de evolución "Cien sellos": muchos talismanes en círculo formando un sello rojo brillante.
+19. icono_evo_abanico — Icono de evolución "Viento divino": abanico dorado soltando un remolino de viento turquesa.
+20. icono_evo_farol — Icono de evolución "Desfile de linternas": varios faroles encendidos en fila, con fuego dorado.
+21. obj_ofuda — Un talismán de papel suelto, de pie, visto de frente, con letras rojas (vuela por la pantalla). 256x256.
+22. obj_farol — Un farolito rojo encendido visto de frente (gira alrededor del cazador). 256x256.
+
+=== JAPÓN · MAPA 1: TEMPLO EN RUINAS ===
+23. suelo_templo — Suelo: losas de piedra de un templo japonés en ruinas de noche, rotas y con musgo, hojas de arce rojas y pétalos de cerezo. Tonos morados con luz turquesa.
+24. prop_torii — Objeto del mapa: torii rojo viejo y despintado con una cuerda sagrada (shimenawa) y papelitos colgando. 1024x1536 (vertical).
+25. prop_linterna_piedra — Objeto del mapa: linterna japonesa de piedra (tōrō) con musgo y una llamita adentro.
+26. prop_estatua_zorro — Objeto del mapa: estatua de piedra de un zorro guardián con un babero rojo, sobre su pedestal.
+27. mapa_templo — Tarjeta de mapa: templo japonés en ruinas de noche, torii rojos en fila, linternas de piedra, luna morada y niebla turquesa.
+
+=== JAPÓN · MAPA 2: BOSQUE DE BAMBÚ ===
+28. suelo_bambu — Suelo: tierra húmeda de bosque de bambú de noche, hojas de bambú caídas, piedritas y musgo. Tonos verde oscuro y morado.
+29. prop_bambu — Objeto del mapa: grupo de cañas de bambú altas y verdes. 1024x1536 (vertical).
+30. prop_santuario — Objeto del mapa: santuario de madera pequeño (hokora) con techito, una campanita y ofrendas de arroz.
+31. prop_roca_sagrada — Objeto del mapa: roca grande con musgo atada con una cuerda sagrada gruesa y papelitos blancos.
+32. mapa_bambu — Tarjeta de mapa: bosque de bambú altísimo de noche, un caminito de piedra, luciérnagas turquesa y luna morada entre las cañas.
+
+=== JAPÓN · MAPA 3: CASTILLO EN LLAMAS ===
+33. suelo_castillo — Suelo: patio de piedra de un castillo japonés de noche, con brasas, ceniza y pedazos de teja rota. Tonos morados con brillo naranja.
+34. prop_muro_castillo — Objeto del mapa: tramo de muro de castillo japonés de piedra con techito de tejas, ardiendo con llamas naranjas. 1536x768 (horizontal).
+35. prop_pagoda_llamas — Objeto del mapa: torre de castillo japonés (varios pisos) en llamas. 1024x1536 (vertical).
+36. prop_barriles — Objeto del mapa: barriles de sake y lanzas rotas en el suelo.
+37. mapa_castillo — Tarjeta de mapa: castillo japonés ardiendo de noche, humo y chispas, y en el cielo la silueta de una serpiente de ocho cabezas.
+
+=== JAPÓN · OBJETIVOS Y REGIONES ===
+38. prop_sello_maldito — Objeto del mapa: pilar de piedra cubierto de talismanes de papel con un brillo morado maldito (se rompe en el objetivo).
+39. prop_palanquin — Objeto del mapa: palanquín japonés de madera laqueada roja y negra con cortinas doradas, sin personas (se escolta en el objetivo). 1536x768 (horizontal).
+40. prop_campana_templo — Objeto del mapa: gran campana de bronce de templo colgada en su estructura de madera con techito (se protege en el objetivo).
+41. kitsune_dorada_hoja — Kitsune dorada: zorra de pelaje dorado brillante con tres colas de fuego dorado, que huye. Hoja de animación corriendo en cuatro patas.
+42. region_mexico — Tarjeta de región: paisaje nocturno mexicano con cempasúchil, papel picado, una iglesia de pueblo y luna morada. 768x1024 (vertical, con fondo).
+43. region_japon — Tarjeta de región: paisaje nocturno japonés con torii rojo, cerezos, monte Fuji a lo lejos y luna morada. 768x1024 (vertical, con fondo).
+
+=== LA GRIETA (FINAL DEL JUEGO) ===
+44. suelo_grieta — Suelo: tierra agrietada donde se mezclan losas de piedra japonesas y baldosas mexicanas, con grietas que brillan en morado y turquesa.
+45. prop_cristal_grieta — Objeto del mapa: cristales morados y turquesa saliendo del suelo, con energía brillando.
+46. prop_portal_roto — Objeto del mapa: arco de piedra roto (mitad arco mexicano con cempasúchil, mitad torii japonés) con una grieta de energía morada en medio. 1024x1536 (vertical).
+47. mapa_grieta — Tarjeta de mapa: una grieta enorme de energía morada partiendo el cielo nocturno; de un lado un pueblo mexicano y del otro un templo japonés.
+48. guardian_hoja — El Guardián de la Grieta, jefe final: gigante hecho de energía morada y piedra agrietada, con una máscara mitad calavera mexicana y mitad máscara de oni, una capa rasgada y cadenas rotas. Hoja de animación caminando pesado.
+49. guardian_ataque — El mismo Guardián golpeando el suelo con los dos puños y soltando una onda de energía. 1024x1024.
+50. guardian_grito — El mismo Guardián gritando hacia el cielo con energía morada saliendo de la máscara. 1024x1024.
+51. final_1 — Escena del final, horizontal con fondo, 1536x1024: cuatro cazadores (un machetero con sombrero, una curandera con rebozo y copal, una luchadora con máscara y capa, un viejito cohetero con cohetes en la espalda) y la Onmyōji, de espaldas, cerrando la grieta morada con una luz dorada.
+52. final_2 — Escena final, horizontal con fondo, 1536x1024: la grieta cerrada y en calma al amanecer, pero muy a lo lejos se abre otra grieta pequeña en el horizonte.
+53. fondo_creditos — Fondo vertical para los créditos, 1024x1536: cielo nocturno morado con estrellas, cempasúchil y pétalos de cerezo flotando, con mucho espacio libre en el centro para el texto.
+54. medalla_grieta — Icono: medalla dorada con una grieta morada brillando en el centro, cempasúchil y flor de cerezo a los lados.
+
+=== EXTRAS PARA LAS REGIONES ===
+55. icono_region_mexico — Icono: calaverita de azúcar con cempasúchil.
+56. icono_region_japon — Icono: farolito japonés con una flor de cerezo.
+57. obj_rayo_tifon — Ráfaga de viento turquesa con hojas de arce, horizontal, fondo transparente. 512x256.
+58. obj_linterna_cielo — Linterna de papel encendida flotando hacia el cielo, fondo transparente. 256x256.
+59. obj_grieta_suelo — Grieta morada brillante en el suelo vista desde arriba (marca dónde va a golpear el Guardián), fondo transparente. 512x512.
