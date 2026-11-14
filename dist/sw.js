@@ -1,6 +1,6 @@
 // Noche de Leyendas: guarda el juego en el celular para jugar sin internet.
 // Con internet siempre baja la versión nueva; sin internet usa la guardada.
-const CACHE = 'ndl-v18';   // v18: Japón completo (castillo, sellos, medallas de Japón)
+const CACHE = 'ndl-v19';   // v19: 1.0 — La Grieta, el Guardián y el final
 const FILES = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
