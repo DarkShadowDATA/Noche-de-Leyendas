@@ -1,6 +1,6 @@
 // Noche de Leyendas: guarda el juego en el celular para jugar sin internet.
 // Con internet siempre baja la versión nueva; sin internet usa la guardada.
-const CACHE = 'ndl-v19';   // v19: 1.0 — La Grieta, el Guardián y el final
+const CACHE = 'ndl-v20';   // v20: moneda Shadow igual a la de la página del estudio
 const FILES = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
