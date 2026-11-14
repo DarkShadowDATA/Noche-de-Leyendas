@@ -4,7 +4,7 @@ import '@fontsource/lilita-one/400.css';
 import { dsTrack } from './dsev.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
-import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES, REGION_BOSSES, BOSS_AT, REGIONS, objOf, objsDe } from './data.js';
+import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES, CASTILLO, REGION_BOSSES, BOSS_AT, REGIONS, objOf, objsDe } from './data.js';
 import { SH } from './moneda.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
 import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
@@ -582,6 +582,7 @@ class Play extends Phaser.Scene {
       e.hp = e.max = ENEMIES[this.finalBoss].hp * Math.pow(ENDLESS.hpGrow, e.n - 2);
       e.dmg = e.d.dmg * (1 + ENDLESS.dmgPerLoop * (e.loop - 1)); e.spd *= 1 + ENDLESS.spdPerLoop * (e.loop - 1);
     }
+    if (this.mapId === 'castillo' && k === 'orochi') { e.hp = e.max = e.max * CASTILLO.orochiHp; e.dmg *= CASTILLO.orochiDmg; }
     if (this.mapId === 'canales' && k === 'llorona') { e.hp = e.max = e.max * CANALES.lloronaHp; e.dmg *= CANALES.lloronaDmg; }
     this.bossAlive = e;
     Sfx.play('boss');
@@ -945,7 +946,8 @@ class Play extends Phaser.Scene {
         this.won = true; this.nextBossT = this.t + ENDLESS.first;
         if (this.obj.id === 'llorona') this.objDone();
         Sfx.play('win');
-        if (this.mapId === 'canales' && !save.mexico) { this.regionWon = true; this.banner('¡Liberaste México!', `Venciste a La Llorona en su canal · +${CANALES.regionFlores} 🌼`, 3800); }
+        if (this.mapId === 'castillo' && !save.japon) { this.regionWon = true; this.banner('¡Liberaste Japón!', `Venciste a Orochi en su castillo · +${CASTILLO.regionFlores} 🌼`, 3800); }
+        else if (this.mapId === 'canales' && !save.mexico) { this.regionWon = true; this.banner('¡Liberaste México!', `Venciste a La Llorona en su canal · +${CANALES.regionFlores} 🌼`, 3800); }
         else this.banner(`¡Venciste a ${e.d.boss}!`, 'La noche sigue… los jefes volverán más fuertes', 3200);
       } else {
         if (this.won) this.nextBossT = this.t + ENDLESS.gap;
@@ -953,7 +955,7 @@ class Play extends Phaser.Scene {
       }
       return;
     }
-    if (e.k === 'altar' || e.d.flee || e.k === 'loboalfa') { this.specialKill(e); return; }
+    if (e.k === 'altar' || e.k === 'sello' || e.d.flee || e.k === 'loboalfa') { this.specialKill(e); return; }
     const v = e.d.xp + (e.stolen || 0);
     if (v > 0) this.dropSoul(e.x, e.y, v);
   }
@@ -1091,7 +1093,7 @@ class Play extends Phaser.Scene {
       const a0 = rnd(0, 6.28);
       for (let i = 0; i < 5; i++) {
         const a = a0 + i / 5 * 6.28 + rnd(-0.3, 0.3), d = rnd(650, 1150);
-        const e = this.spawn('altar', Math.cos(a) * d, Math.sin(a) * d * 0.85); e.hp = e.max = 300;
+        const e = this.spawn(this.region === 'japon' ? 'sello' : 'altar', Math.cos(a) * d, Math.sin(a) * d * 0.85); e.hp = e.max = 300;
       }
     } else if (o.id === 'carreta') {
       const a = rnd(0, 6.28);
@@ -1125,7 +1127,7 @@ class Play extends Phaser.Scene {
     const dl = Math.min(OBJ_DEADLINE, this.bossTime(this.finalBoss));
     const bar = (x, y, f, col) => { o.bar.fillStyle(0x0c0614, 1).fillRoundedRect(x - 42, y, 84, 10, 4); o.bar.fillStyle(col, 1).fillRoundedRect(x - 40, y + 2, 80 * clamp(f, 0, 1), 6, 3); };
     if (o.bar) o.bar.clear();
-    if (o.id === 'altares') { if (t >= dl) this.objFail('La Llorona llegó antes de romper los 5 altares'); }
+    if (o.id === 'altares') { if (t >= dl) this.objFail(this.region === 'japon' ? 'Orochi llegó antes de romper los 5 sellos' : 'La Llorona llegó antes de romper los 5 altares'); }
     else if (o.id === 'carreta') {
       const c = o.cart, near = Math.hypot(P.x - c.x, P.y - c.y) < 210;
       if (near) { const a = Math.atan2(c.ty - c.y, c.tx - c.x); c.x += Math.cos(a) * 48 * dt; c.y += Math.sin(a) * 48 * dt; }
@@ -1158,11 +1160,11 @@ class Play extends Phaser.Scene {
     if (o.esc >= 3) this.objFail(this.region === 'japon' ? 'La kitsune dorada se escapó 3 veces' : 'El Chupacabras dorado se escapó 3 veces');
   }
   specialKill(e) {
-    if (e.k === 'altar') {
+    if (e.k === 'altar' || e.k === 'sello') {
       const o = this.obj; o.n++;
       for (let i = 0; i < 18; i++) this.dropSoul(e.x + rnd(-50, 50), e.y + rnd(-40, 40), 2);
       this.fxDeath.setParticleTint(0xb050ff); this.fxDeath.explode(40, e.x, e.y - 40); this.cameras.main.shake(200, 0.005); Sfx.play('boom');
-      if (o.n >= 5) this.objDone(); else this.banner('¡Altar roto!', `${o.n}/5`, 1200);
+      if (o.n >= 5) this.objDone(); else this.banner(e.k === 'sello' ? '¡Sello roto!' : '¡Altar roto!', `${o.n}/5`, 1200);
     } else if (e.d.flee) {
       for (let i = 0; i < 40; i++) this.dropSoul(e.x + rnd(-80, 80), e.y + rnd(-60, 60), 3);
       this.spawnChest(e.x, e.y); this.objDone();
@@ -1175,7 +1177,7 @@ class Play extends Phaser.Scene {
     const o = this.obj, O = this.objO(o.id);
     if (o.done) return `✅ ${O.name}`;
     if (o.failed) return `❌ ${O.name}`;
-    if (o.id === 'altares') return `${O.icon} Altares ${o.n}/5`;
+    if (o.id === 'altares') return `${O.icon} ${this.region === 'japon' ? 'Sellos' : 'Altares'} ${o.n}/5`;
     if (o.id === 'carreta') { const c = o.cart; const d0 = Math.hypot(c.tx, c.ty - 160), d = Math.hypot(c.tx - c.x, c.ty - c.y); return `${O.icon} ${this.region === 'japon' ? 'Palanquín' : 'Carreta'} ${Math.round(100 * (1 - d / d0))}%`; }
     if (o.id === 'ofrenda') return `${O.icon} ${this.region === 'japon' ? 'Campana' : 'Ofrenda'} ${Math.max(0, Math.round(o.ofr.hp / o.ofr.max * 100))}% · hasta ${fmt(Math.min(OBJ_DEADLINE, this.bossTime(this.finalBoss)))}`;
     if (o.id === 'dorado') return `${O.icon} ${this.region === 'japon' ? 'Kitsune' : 'Dorado'} · escapes ${o.esc}/3`;
@@ -1184,7 +1186,7 @@ class Play extends Phaser.Scene {
   objTargets() { // para las flechas del borde
     const o = this.obj, out = [];
     if (o.done || o.failed) return out;
-    if (o.id === 'altares') for (const e of this.E) if (e.alive && e.k === 'altar') out.push({ x: e.x, y: e.y, col: 0xb050ff });
+    if (o.id === 'altares') for (const e of this.E) if (e.alive && (e.k === 'altar' || e.k === 'sello')) out.push({ x: e.x, y: e.y, col: 0xb050ff });
     if (o.id === 'carreta') { out.push({ x: o.cart.x, y: o.cart.y, col: 0xffcf5a }); out.push({ x: o.cart.tx, y: o.cart.ty, col: 0x7dff8a }); }
     if (o.id === 'ofrenda') out.push({ x: o.ofr.x, y: o.ofr.y, col: 0x7dff8a });
     if (o.id === 'dorado') for (const e of this.E) if (e.alive && e.d.flee) out.push({ x: e.x, y: e.y, col: 0xffd84a });
@@ -1675,6 +1677,7 @@ class Play extends Phaser.Scene {
     if (this._props) return this._props;
     const extra = { panteon: [{ k: 'prop_cripta', h: 170, w: 2, glow: [-50, 1.6] }, { k: 'prop_angel', h: 150, w: 1 }, { k: 'prop_tumba1', h: 92, w: 5 }, { k: 'prop_tumba2', h: 92, w: 4, glow: [-20, 1.2] }, { k: 'prop_cruz', h: 88, w: 4 }, { k: 'prop_velas', h: 58, w: 3, glow: [-40, 1.8] }],
       templo: [{ k: 'prop_torii', h: 210, w: 2, flip: false }, { k: 'prop_torii2', h: 200, w: 1, flip: false }, { k: 'prop_linterna_piedra', h: 110, w: 4, glow: [-75, 1.4] }, { k: 'prop_estatua_zorro', h: 105, w: 2 }, { k: 'prop_roca_sagrada', h: 70, w: 2 }],
+      castillo: [{ k: 'prop_muro_castillo', h: 130, w: 3, glow: [-70, 1.8] }, { k: 'prop_pagoda_llamas', h: 300, w: 1, glow: [-170, 2.6], flip: false }, { k: 'prop_barriles', h: 80, w: 3 }, { k: 'prop_linterna_piedra', h: 105, w: 2, glow: [-72, 1.4] }, { k: 'prop_torii', h: 200, w: 1, flip: false }, { k: 'prop_roca_sagrada', h: 70, w: 1 }],
       bambu: [{ k: 'prop_bambu', h: 260, w: 6 }, { k: 'prop_roca_sagrada', h: 72, w: 2 }, { k: 'prop_linterna_piedra', h: 105, w: 2, glow: [-72, 1.4] }, { k: 'prop_estatua_zorro', h: 95, w: 1 }],
       canales: [{ k: 'prop_ahuejote', h: 260, w: 2 }, { k: 'prop_muelle', h: 90, w: 1, glow: [-60, 1.6] }, { k: 'prop_rocas', h: 52, w: 3 }, { k: 'prop_cempasuchil', h: 50, w: 3 }, { k: 'prop_farol', h: 180, w: 1, glow: [-150, 2.2], flip: false }] }[this.mapId];
     if (extra) { const L = extra.filter(q => this.textures.exists(q.k)); if (L.length >= 3) return (this._props = L); }
@@ -1784,9 +1787,19 @@ class Play extends Phaser.Scene {
   }
   updateMap(dt) {
     if (this.mapId === 'pueblo' || this.mapId === 'templo') return;
+    if (this.mapId === 'castillo') { this.drawCastillo(dt); return; }
     for (const im of this.mapUsed) { im.setVisible(false); this.mapPool.img.push(im); } this.mapUsed = [];
     const v = this.cameras.main.worldView, g = this.mapG; g.clear();
-    if (this.mapId === 'canales') this.drawCanales(v, g, dt); else if (this.mapId === 'bambu') this.healSpots(v, g, dt, 'prop_santuario', 120, 0x9dffb8, 0xb0a); else this.drawPanteon(v, g, dt);
+    if (this.mapId === 'canales') this.drawCanales(v, g, dt); else if (this.mapId === 'castillo') this.drawCastillo(dt); else if (this.mapId === 'bambu') this.healSpots(v, g, dt, 'prop_santuario', 120, 0x9dffb8, 0xb0a); else this.drawPanteon(v, g, dt);
+  }
+  /** Castillo en llamas: cada tanto caen brasas en círculos rojos cerca de ti. */
+  drawCastillo(dt) {
+    if (this.over || this.t < 40) return;
+    this.emberT = (this.emberT ?? 12) - dt;
+    if (this.emberT > 0) return;
+    this.emberT = rnd(8, 12);
+    const P = this.P, n = this.t > 300 ? 4 : 3;
+    for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, r = i === 0 ? rnd(0, 40) : rnd(110, 220); this.slamAt({}, P.x + Math.cos(a) * r, P.y + Math.sin(a) * r * 0.7, 72, 1.15, 10); }
   }
   drawCanales(v, g, dt) {
     const C = CANALES, P = this.P;
@@ -1959,7 +1972,7 @@ function flowerLines(sc, win) {
   const F = FLOWERS, tA = Math.min(sc.t, F.afterT), tB = Math.max(0, sc.t - F.afterT);
   const kA = sc.killsAt10 != null ? sc.killsAt10 : sc.kills, kB = sc.kills - kA;
   const r = { tiempo: Math.floor((tA + tB * F.afterMul) / F.perSeconds), enemigos: Math.floor((kA + kB * F.afterMul) / F.perKills), jefes: 0, cofres: sc.chestFlores || 0,
-    objetivo: sc.obj && sc.obj.done ? OBJECTIVES[sc.obj.id].flores : 0, maldiciones: sc.curses ? sc.curses.size : 0, mapa: sc.M ? sc.M.bonus : 0, region: sc.regionWon ? CANALES.regionFlores : 0 };
+    objetivo: sc.obj && sc.obj.done ? OBJECTIVES[sc.obj.id].flores : 0, maldiciones: sc.curses ? sc.curses.size : 0, mapa: sc.M ? sc.M.bonus : 0, region: sc.regionWon ? (sc.region === 'japon' ? CASTILLO.regionFlores : CANALES.regionFlores) : 0 };
   for (const b of sc.bossKills) r.jefes += F.boss[b.k] || 0;
   return r;
 }
@@ -1976,9 +1989,9 @@ Play.prototype.flowerReward = function (win) {
   if (counts) {
     save.flores += total; save.ganadas += total; save.partidas++; save.mejor = Math.max(save.mejor, Math.floor(this.t));
     if (win) save.victorias++;
-    if (this.regionWon) save.mexico = true;
+    if (this.regionWon) save[this.region === 'japon' ? 'japon' : 'mexico'] = true;
     if (win) { save.mapWins = save.mapWins || {}; save.mapWins[this.mapId] = (save.mapWins[this.mapId] || 0) + 1; }
-    if (win && this.region === 'mexico') r.medallas = ganarMedallas({ caz: this.hunterId, mapa: this.mapId, obj: this.obj && this.obj.done ? this.obj.id : '', malds: this.curses ? this.curses.size : 0 });
+    if (win && (this.region === 'mexico' || this.region === 'japon')) r.medallas = ganarMedallas({ region: this.region, caz: this.hunterId, mapa: this.mapId, obj: this.obj && this.obj.done ? this.obj.id : '', malds: this.curses ? this.curses.size : 0 });
     if (first) save.dia = today();
     persist();
   }
@@ -2084,7 +2097,7 @@ class Hud {
     $('hud').classList.add('hidden');
     $('endTitle').textContent = 'La noche te alcanzó';
     const jefes = sc.bossKills.length, loopMax = sc.bossKills.reduce((m, b) => Math.max(m, b.loop), 0);
-    const brag = win ? `<div class="won txt">🏆 Venciste a La Llorona${loopMax > 1 ? ` · llegaste a la vuelta ${loopMax}` : ''}</div>` : '';
+    const brag = win ? `<div class="won txt">🏆 Venciste a ${ENEMIES[sc.finalBoss || 'llorona'].boss}${loopMax > 1 ? ` · llegaste a la vuelta ${loopMax}` : ''}</div>` : '';
     const best = sc.reward && sc.reward.counts && Math.floor(sc.t) >= save.mejor ? ' · <b class="rec">¡Récord!</b>' : '';
     const O = sc.objO(sc.obj.id), objLine = `<div class="objend ${sc.obj.done ? 'ok' : 'no'}">${sc.obj.done ? '✅' : '❌'} ${O.name}${sc.curses.size ? ` · ${[...sc.curses].map(c => CURSES[c].icon).join(' ')}` : ''}</div>`;
     $('endStats').innerHTML = `${brag}${objLine}${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b>${best} · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b>${jefes ? ` · Jefes <b>${jefes}</b>` : ''}<br>` +
@@ -2095,7 +2108,7 @@ class Hud {
       // Solo en un buen momento (venció a La Llorona o hizo récord) y sin botón: la tienda está en el perfil.
       const medLine = (r.medallas || []).map(m => `<div class="fl-med">🏅 ¡Medalla nueva! ${medallaNombre(m)} <b>+${MEDALLA_FLORES} 🌼</b></div>`).join('');
       const bendLine = !r.bend && r.counts && (nube.on || nube.can) && (win || best) ? `<div class="fl-bend">🕯️ Con la Bendición de la Ofrenda habrían sido ${r.total * 2} 🌼 <small>(Tienda, en tu perfil)</small></div>` : '';
-      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡México liberada! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div>${medLine}${bendLine}<div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
+      $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡${sc.region === 'japon' ? 'Japón' : 'México'} liberado! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div>${medLine}${bendLine}<div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
     }
     $('end').classList.remove('hidden');
   }
@@ -2401,7 +2414,7 @@ function prepObjs() { // 2 objetivos al azar de la región del mapa (en Japón, 
 function buildPrep() {
   if (!MAPS[save.mapa] || !mapOpen(save.mapa)) save.mapa = 'pueblo';
   const reg = regOf(save.mapa), fin = { mexico: 'La Llorona', japon: 'Orochi' };
-  $('prepRegs').innerHTML = Object.entries(REGIONS).map(([r, R]) => `<button class="preg${r === reg ? ' on' : ''}${regionOpen(r) ? '' : ' locked'}" data-r="${r}">${regionOpen(r) ? R.icon : '🔒'} ${R.name}</button>`).join('');
+  $('prepRegs').innerHTML = Object.entries(REGIONS).map(([r, R]) => `<button class="preg${r === reg ? ' on' : ''}${regionOpen(r) ? '' : ' locked'}" data-r="${r}">${IMG['region_' + r] ? `<img src="${IMG['region_' + r]}" alt="">` : ''}<span>${regionOpen(r) ? R.icon : '🔒'} ${R.name}</span></button>`).join('');
   $('prepRegs').querySelectorAll('.preg').forEach(el => { el.onclick = () => {
     const r = el.dataset.r; Sfx.play('pick');
     if (!regionOpen(r)) { shake(el); $('prepMapDesc').innerHTML = `<b>🔒 ${REGIONS[r].lock}.</b>`; return; }
@@ -2417,7 +2430,7 @@ function buildPrep() {
     const k = el.dataset.k; if (!mapOpen(k)) { shake(el); Sfx.play('pick'); return; } save.mapa = k; persist(); Sfx.play('pick'); buildPrep();
   }; });
   const M = MAPS[save.mapa], vic = winsDe(reg), next = Object.values(MAPS).find(m => (m.region || 'mexico') === reg && m.win > vic);
-  $('prepMapDesc').innerHTML = `${M.desc}${save.mapa === 'canales' && !save.mexico ? ' <b>Vence aquí a La Llorona para liberar México.</b>' : ''}${next ? `<br><small>Llevas ${vic} ${vic === 1 ? 'victoria' : 'victorias'} contra ${fin[reg]} · ${next.name} se abre con ${next.win}</small>` : (reg === 'mexico' && save.mexico ? '<br><small>🏆 México liberada</small>' : '')}`;
+  $('prepMapDesc').innerHTML = `${M.desc}${save.mapa === 'canales' && !save.mexico ? ' <b>Vence aquí a La Llorona para liberar México.</b>' : ''}${save.mapa === 'castillo' && !save.japon ? ' <b>Vence aquí a Orochi para liberar Japón.</b>' : ''}${next ? `<br><small>Llevas ${vic} ${vic === 1 ? 'victoria' : 'victorias'} contra ${fin[reg]} · ${next.name} se abre con ${next.win}</small>` : (reg === 'mexico' && save.mexico ? '<br><small>🏆 México liberada</small>' : '')}`;
   $('prepObjs').innerHTML = prep.opts.map(k => { const O = objOf(k, reg); return `<div class="pobj${k === prep.obj ? ' on' : ''}" data-k="${k}"><div class="pi">${O.icon}</div><div class="pn">${O.name}</div><div class="pd">${O.desc}</div><div class="pf">+${O.flores} 🌼</div></div>`; }).join('');
   $('prepObjs').querySelectorAll('.pobj').forEach(el => { el.onclick = () => { prep.obj = el.dataset.k; Sfx.play('pick'); buildPrep(); }; });
   $('prepCurses').innerHTML = Object.entries(CURSES).map(([k, C]) => `<button class="pcur${save.malds.includes(k) ? ' on' : ''}" data-k="${k}"><b>${C.icon} ${C.name}</b><span>${C.desc}</span></button>`).join('');

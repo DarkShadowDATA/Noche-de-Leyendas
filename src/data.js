@@ -91,7 +91,8 @@ export const EVOS = {
 // Objetivos: antes de jugar el juego ofrece 2 al azar y eliges uno. Cumplirlo da flores extra (después del tope).
 export const OBJECTIVES = {
   llorona: { icon: '👻', name: 'Vence a La Llorona', desc: 'Sobrevive y vence a La Llorona.', flores: 40, jp: { icon: '🐉', name: 'Vence a Orochi', desc: 'Sobrevive y vence a Yamata no Orochi.' } },
-  altares: { icon: '🪦', name: 'Altares malditos', desc: 'Rompe los 5 altares antes de que llegue La Llorona. Sigue las flechas moradas.', flores: 80 },
+  altares: { icon: '🪦', name: 'Altares malditos', desc: 'Rompe los 5 altares antes de que llegue La Llorona. Sigue las flechas moradas.', flores: 80,
+    jp: { icon: '📜', name: 'Sellos malditos', desc: 'Rompe los 5 sellos antes de que llegue Orochi. Sigue las flechas moradas.' } },
   carreta: { icon: '🛒', name: 'Escolta la carreta', desc: 'La carreta solo avanza si estás junto a ella. Llévala hasta la cruz antes de las 9:00 sin que la destruyan.', flores: 80,
     jp: { icon: '🏮', name: 'Escolta el palanquín', desc: 'El palanquín solo avanza si estás junto a él. Llévalo hasta el torii antes de las 9:00 sin que lo destruyan.' } },
   dorado: { icon: '✨', name: 'Chupacabras dorado', desc: 'Aparece 3 veces y huye de ti. Cázalo antes de que se escape las 3.', flores: 70,
@@ -149,6 +150,7 @@ export const ENEMIES = {
   chupacabras: { tex: ['chupacabras_camina', 'chupacabras_ataque'], hp: 64, spd: 70, dmg: 15, size: 70, flap: 3.5, r: 24, xp: 4 },
   // Fase 2 (objetivos y eventos)
   altar: { tex: ['obj_altar', 'obj_altar'], hp: 300, spd: 0, dmg: 0, size: 92, r: 34, xp: 0, static: true },
+  sello: { tex: ['prop_sello_maldito', 'obj_altar'], hp: 300, spd: 0, dmg: 0, size: 112, r: 34, xp: 0, static: true },
   chupadorado: { tex: ['chupacabras_dorado', 'chupacabras_dorado'], hp: 380, spd: 138, dmg: 0, size: 82, flap: 3.5, r: 26, xp: 0, flee: true, tint: 0xffd84a },
   kitsunedorada: { tex: ['kitsune_dorada_camina', 'kitsune_dorada_camina'], hp: 380, spd: 145, dmg: 0, size: 78, r: 24, xp: 0, flee: true },
   loboalfa: { tex: ['lobo_alfa', 'lobo_alfa'], hp: 1500, spd: 102, dmg: 24, size: 150, r: 42, xp: 0, mini: true, tint: 0xb07aff },
@@ -244,12 +246,14 @@ export const MAPS = {
   // Japón (se abre al liberar México; win = victorias contra Orochi en Japón)
   templo: { region: 'japon', name: 'Templo en ruinas', icon: '⛩️', win: 0, bonus: 0.35, desc: 'Torii rojos y linternas de piedra. Aquí empieza Japón: kappa, kitsune, oni, tengu y yurei.', suelo: 'suelo_templo', card: 'mapa_templo', tint: 0xb8a8d8 },
   bambu: { region: 'japon', name: 'Bosque de bambú', icon: '🎋', win: 1, bonus: 0.45, desc: 'Cañas altísimas que tapan la vista. Los santuarios encendidos te curan.', suelo: 'suelo_bambu', card: 'mapa_bambu', tint: 0x9cc8a0 },
+  castillo: { region: 'japon', name: 'Castillo en llamas', icon: '🏯', win: 3, bonus: 0.55, desc: 'El castillo arde y caen brasas: sal de los círculos rojos. Aquí vive Orochi, y es más fuerte.', suelo: 'suelo_castillo', card: 'mapa_castillo', tint: 0xffc0a0 },
 };
 export const REGIONS = {
   mexico: { name: 'México', icon: '🌼' },
   japon: { name: 'Japón', icon: '⛩️', need: 'mexico', lock: 'Libera México: vence a La Llorona en Los Canales' },
 };
 export const PANTEON = { tombEvery: [7, 11], tombN: 3, healR: 110, healPerSec: 3, ofrendaChance: 0.22 };
+export const CASTILLO = { orochiHp: 1.35, orochiDmg: 1.15, regionFlores: 150 };
 export const CANALES = { period: 1100, y0: 380, h: 250, slow: 0.6, bridgeEvery: 1500, bridgeW: 170, boatW: 300, boatH: 92, lloronaHp: 1.35, lloronaDmg: 1.15, regionFlores: 150 };
 
 // ---------- Fase 4: Bestiario y Medallas ----------
@@ -307,8 +311,13 @@ export const BESTIA_DE = { lobo: 'nahual' };
 // Medallas de México: se ganan al vencer a La Llorona. Cada una da MEDALLA_FLORES flores, una sola vez.
 export const MEDALLA_FLORES = 100;
 export const MEDALLAS = [
-  ...['machetero', 'curandera', 'luchadora', 'cohetero'].map(h => ({ id: 'caz_' + h, grupo: 'Cazadores', icon: '🎭', caz: h })),
-  ...['pueblo', 'panteon', 'canales'].map(m => ({ id: 'mapa_' + m, grupo: 'Mapas', icon: '🗺️', mapa: m })),
-  ...['llorona', 'altares', 'carreta', 'dorado', 'ofrenda'].map(o => ({ id: 'obj_' + o, grupo: 'Objetivos', icon: '🎯', obj: o })),
-  { id: 'mald_3', grupo: 'Maldiciones', icon: '☠️', mald: 3 },
+  ...['machetero', 'curandera', 'luchadora', 'cohetero', 'onmyoji'].map(h => ({ id: 'caz_' + h, grupo: 'México · Cazadores', icon: '🎭', caz: h })),
+  ...['pueblo', 'panteon', 'canales'].map(m => ({ id: 'mapa_' + m, grupo: 'México · Mapas', icon: '🗺️', mapa: m })),
+  ...['llorona', 'altares', 'carreta', 'dorado', 'ofrenda'].map(o => ({ id: 'obj_' + o, grupo: 'México · Objetivos', icon: '🎯', obj: o })),
+  { id: 'mald_3', grupo: 'México · Maldiciones', icon: '☠️', mald: 3 },
+  // Japón (r: 'japon'): lo mismo, venciendo a Orochi
+  ...['machetero', 'curandera', 'luchadora', 'cohetero', 'onmyoji'].map(h => ({ id: 'jp_caz_' + h, r: 'japon', grupo: 'Japón · Cazadores', icon: '🎭', caz: h })),
+  ...['templo', 'bambu', 'castillo'].map(m => ({ id: 'mapa_' + m, r: 'japon', grupo: 'Japón · Mapas', icon: '🗺️', mapa: m })),
+  ...['llorona', 'altares', 'carreta', 'dorado', 'ofrenda'].map(o => ({ id: 'jp_obj_' + o, r: 'japon', grupo: 'Japón · Objetivos', icon: '🎯', obj: o })),
+  { id: 'jp_mald_3', r: 'japon', grupo: 'Japón · Maldiciones', icon: '☠️', mald: 3 },
 ];

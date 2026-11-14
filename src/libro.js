@@ -1,6 +1,6 @@
 // Fase 4: Bestiario (fichas de las leyendas que ya encontraste) y Medallas de México. Se abre desde «Jugar».
 import { save, persist } from './save.js';
-import { BESTIARIO, BESTIA_DE, MEDALLAS, MEDALLA_FLORES, HUNTERS, MAPS, OBJECTIVES } from './data.js';
+import { BESTIARIO, BESTIA_DE, MEDALLAS, MEDALLA_FLORES, HUNTERS, MAPS, OBJECTIVES, objOf } from './data.js';
 
 const $ = (id) => document.getElementById(id);
 let IMG = {}, seg = 'bestias', sel = '';
@@ -17,14 +17,17 @@ export const bestiasLista = () => Object.keys(BESTIARIO).filter(k => !BESTIARIO[
 export const bestiasVistas = () => bestiasLista().filter(vista).length;
 export const medallasN = () => MEDALLAS.filter(m => save.medallas && save.medallas[m.id]).length;
 
-export const medallaNombre = (m) => m.caz ? `Vence a La Llorona con ${HUNTERS[m.caz].name}` : m.mapa ? `Vence a La Llorona en ${MAPS[m.mapa].name}`
-  : m.obj ? (m.obj === 'llorona' ? 'Cumple el objetivo «Vence a La Llorona»' : `Vence a La Llorona y cumple «${OBJECTIVES[m.obj].name}»`) : `Vence a La Llorona con ${m.mald} maldiciones o más`;
+export const medallaNombre = (m) => { const J = m.r === 'japon' ? 'Orochi' : 'La Llorona', O = m.obj && objOf(m.obj, m.r || 'mexico');
+  return m.caz ? `Vence a ${J} con ${HUNTERS[m.caz].name}` : m.mapa ? `Vence a ${J} en ${MAPS[m.mapa].name}`
+    : m.obj ? (m.obj === 'llorona' ? `Cumple el objetivo «${O.name}»` : `Vence a ${J} y cumple «${O.name}»`) : `Vence a ${J} con ${m.mald} maldiciones o más`; };
+/** Medallas que se muestran: las de México siempre; las de Japón cuando ya se abrió Japón o ganaste alguna. */
+const medallasLista = () => MEDALLAS.filter(m => !m.r || save.mexico || MEDALLAS.some(x => x.r === m.r && (save.medallas || {})[x.id]));
 
 /** Medallas que se ganan con esta victoria. Las marca, suma sus flores y las devuelve para la pantalla final. */
-export function ganarMedallas(v) { // v = { caz, mapa, obj (id si se cumplió), malds (cuántas) }
+export function ganarMedallas(v) { // v = { region, caz, mapa, obj (id si se cumplió), malds (cuántas) }
   const out = []; save.medallas = save.medallas || {};
   for (const m of MEDALLAS) {
-    if (save.medallas[m.id]) continue;
+    if (save.medallas[m.id] || (m.r || 'mexico') !== (v.region || 'mexico')) continue;
     if ((m.caz && m.caz === v.caz) || (m.mapa && m.mapa === v.mapa) || (m.obj && m.obj === v.obj) || (m.mald && v.malds >= m.mald)) { save.medallas[m.id] = 1; save.flores += MEDALLA_FLORES; save.ganadas += MEDALLA_FLORES; out.push(m); }
   }
   return out;
@@ -56,9 +59,10 @@ function build() {
       L.appendChild(d);
     }
   } else {
-    top.innerHTML = `Tienes <b>${medallasN()}/${MEDALLAS.length}</b> medallas de México. Cada una da <b>${MEDALLA_FLORES} 🌼</b> la primera vez.`;
+    const ML = medallasLista();
+    top.innerHTML = `Tienes <b>${ML.filter(m => (save.medallas || {})[m.id]).length}/${ML.length}</b> medallas. Cada una da <b>${MEDALLA_FLORES} 🌼</b> la primera vez.`;
     let g = '';
-    for (const m of MEDALLAS) {
+    for (const m of ML) {
       if (m.grupo !== g) { g = m.grupo; const h = document.createElement('div'); h.className = 'lb-g'; h.textContent = g; L.appendChild(h); }
       const ok = !!(save.medallas && save.medallas[m.id]), d = document.createElement('div');
       d.className = 'lb-med' + (ok ? ' ok' : '');
