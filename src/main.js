@@ -2380,7 +2380,9 @@ function showScene(on) {
 /** Quita la pantalla de arranque cuando lo de atrás ya está listo (imágenes y letras), para que nada brinque. */
 function splashOff() { const sp = $('splash'); if (!sp || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 500); }
 const listo = (src) => new Promise(r => { if (!src) return r(); const im = new Image(); im.onload = im.onerror = () => (im.decode ? im.decode().catch(() => {}).then(r) : r()); im.src = src; });
-const SPLASH_IMGS = [IMG.logo, IMG.menu_fondo_v, IMG.menu_fondo_h].map(listo); // empiezan a bajar desde ya
+/** Lo que se ve en el menú de Jugar: retratos y los íconos de sus armas. Baja antes que todo lo demás. */
+const hubImgs = () => { try { return [...Object.keys(HUNTERS).map(k => IMG['retrato_' + k]), ...Object.values(HUNTERS).map(h => IMG['icono_' + h.weapon]), save.equipo && IMG['icono_' + save.equipo]].filter(Boolean); } catch (e) { return []; } };
+const SPLASH_IMGS = [IMG.logo, IMG.menu_fondo_v, IMG.menu_fondo_h, ...hubImgs()].map(listo); // empiezan a bajar desde ya
 function openTitle() {
   Promise.race([Promise.all([...SPLASH_IMGS, document.fonts.load('700 20px Cinzel').catch(() => {}), document.fonts.ready]), new Promise(r => setTimeout(r, 4000))]).then(() => { openTitle2(); requestAnimationFrame(splashOff); });
 }
@@ -2407,8 +2409,11 @@ function runImages(hunter) {
 let warmed = false;
 function warmImages() {
   if (warmed) return; warmed = true;
-  const go = () => { for (const k of runImages(owned(selected) ? selected : 'machetero')) { const im = new Image(); im.decoding = 'async'; im.src = IMG[k]; } };
-  if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 300);
+  // Las imágenes de la partida bajan después de las del menú y de 4 en 4, para no ganarle el internet al menú.
+  const ks = runImages(owned(selected) ? selected : 'machetero').filter(k => IMG[k]); let i = 0;
+  const uno = () => { if (i >= ks.length) return; const im = new Image(); im.decoding = 'async'; im.onload = im.onerror = uno; im.src = IMG[ks[i++]]; };
+  const go = () => Promise.all(hubImgs().map(listo)).then(() => { for (let n = 0; n < 4; n++) uno(); });
+  setTimeout(go, 800);
 }
 function setupHub() {
   document.querySelectorAll('.hubnav button').forEach(b => { b.onclick = () => { Sfx.init(); Sfx.play('pick'); if (b.dataset.t === 'jugar' && tab === 'jugar' && !$('menu').classList.contains('hidden')) { openPrep(); return; } showTab(b.dataset.t); }; });
