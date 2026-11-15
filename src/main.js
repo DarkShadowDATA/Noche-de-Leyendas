@@ -2379,12 +2379,16 @@ function showScene(on) {
 })();
 /** Quita la pantalla de arranque cuando lo de atrás ya está listo (imágenes y letras), para que nada brinque. */
 function splashOff() { const sp = $('splash'); if (!sp || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 500); }
+document.addEventListener('load', (e) => { if (e.target && e.target.tagName === 'IMG') e.target.classList.add('cargada'); }, true);
 const listo = (src) => new Promise(r => { if (!src) return r(); const im = new Image(); im.onload = im.onerror = () => (im.decode ? im.decode().catch(() => {}).then(r) : r()); im.src = src; });
 /** Lo que se ve en el menú de Jugar: retratos y los íconos de sus armas. Baja antes que todo lo demás. */
 const hubImgs = () => { try { return [...Object.keys(HUNTERS).map(k => IMG['retrato_' + k]), ...Object.values(HUNTERS).map(h => IMG['icono_' + h.weapon]), save.equipo && IMG['icono_' + save.equipo]].filter(Boolean); } catch (e) { return []; } };
-const SPLASH_IMGS = [IMG.logo, IMG.menu_fondo_v, IMG.menu_fondo_h, ...hubImgs()].map(listo); // empiezan a bajar desde ya
+/** Lo mínimo para que el menú se vea completo: logo, el fondo de esta orientación, el retrato del cazador y sus íconos. */
+const menuImgs = () => { try { return [IMG.logo, innerWidth > innerHeight ? IMG.menu_fondo_h : IMG.menu_fondo_v, portrait(selected), IMG['icono_' + HUNTERS[selected].weapon], save.equipo && IMG['icono_' + save.equipo]].filter(Boolean); } catch (e) { return [IMG.logo, IMG.menu_fondo_v]; } };
+let splashN = 0;
+const SPLASH_IMGS = menuImgs().map(src => listo(src).then(() => { splashN++; const t = document.querySelector('#splash .sp-pct'); if (t) t.textContent = `Encendiendo las velas… ${Math.round(100 * splashN / SPLASH_IMGS.length)} %`; })); // empiezan a bajar desde ya
 function openTitle() {
-  Promise.race([Promise.all([...SPLASH_IMGS, document.fonts.load('700 20px Cinzel').catch(() => {}), document.fonts.ready]), new Promise(r => setTimeout(r, 4000))]).then(() => { openTitle2(); requestAnimationFrame(splashOff); });
+  Promise.race([Promise.all([...SPLASH_IMGS, document.fonts.load('700 20px Cinzel').catch(() => {}), document.fonts.ready]), new Promise(r => setTimeout(r, 8000))]).then(() => { openTitle2(); requestAnimationFrame(splashOff); });
 }
 function openTitle2() {
   showScene(true); $('tLogo').src = IMG.logo; $('tVer').textContent = 'v' + VERSION;
@@ -2410,9 +2414,9 @@ let warmed = false;
 function warmImages() {
   if (warmed) return; warmed = true;
   // Las imágenes de la partida bajan después de las del menú y de 4 en 4, para no ganarle el internet al menú.
-  const ks = runImages(owned(selected) ? selected : 'machetero').filter(k => IMG[k]); let i = 0;
-  const uno = () => { if (i >= ks.length) return; const im = new Image(); im.decoding = 'async'; im.onload = im.onerror = uno; im.src = IMG[ks[i++]]; };
-  const go = () => Promise.all(hubImgs().map(listo)).then(() => { for (let n = 0; n < 4; n++) uno(); });
+  const ks = [...hubImgs(), ...runImages(owned(selected) ? selected : 'machetero').map(k => IMG[k])].filter(Boolean); let i = 0;
+  const uno = () => { if (i >= ks.length) return; const im = new Image(); im.decoding = 'async'; im.onload = im.onerror = uno; im.src = ks[i++]; };
+  const go = () => Promise.all(menuImgs().map(listo)).then(() => { for (let n = 0; n < 4; n++) uno(); });
   setTimeout(go, 800);
 }
 function setupHub() {

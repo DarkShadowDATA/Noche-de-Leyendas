@@ -1,6 +1,6 @@
 // Noche de Leyendas: guarda el juego en el celular para jugar sin internet.
 // Con internet siempre baja la versión nueva; sin internet usa la guardada.
-const CACHE = 'ndl-v21';   // v21: el menú baja sus imágenes primero
+const CACHE = 'ndl-v22';   // v22: el menú nunca se ve vacío
 const FILES = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
