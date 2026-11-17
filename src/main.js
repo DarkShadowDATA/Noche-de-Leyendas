@@ -245,6 +245,8 @@ class Play extends Phaser.Scene {
     // Solo lo que usa la partida: los retratos, íconos, fondos del menú y tarjetas de mapa son del menú (HTML),
     // y de los cazadores solo hace falta el que se juega (los demás se bajan si se eligen después).
     for (const k of runImages(this.hunterId)) if (!this.textures.exists(k)) { this.load.image(k, IMG[k]); n++; }
+    // Íconos de armas y objetos (barra de arriba y cartas de nivel): se bajan aquí mismo para que no salgan rotos a media partida.
+    for (const k of Object.keys(IMG)) if (k.startsWith('icono_') && !this.textures.exists(k)) { this.load.image(k, IMG[k]); n++; }
     if (!n) return;
     // pantalla de carga (solo se ve si las imágenes aún no estaban en el celular)
     loadShow(this.hunterId, this.region);
@@ -2380,6 +2382,14 @@ function showScene(on) {
 /** Quita la pantalla de arranque cuando lo de atrás ya está listo (imágenes y letras), para que nada brinque. */
 function splashOff() { const sp = $('splash'); if (!sp || sp.classList.contains('out')) return; sp.classList.add('out'); setTimeout(() => sp.remove(), 500); }
 document.addEventListener('load', (e) => { if (e.target && e.target.tagName === 'IMG') e.target.classList.add('cargada'); }, true);
+// Si una imagen falla (internet que se corta), se vuelve a pedir hasta 4 veces en lugar de quedarse rota.
+document.addEventListener('error', (e) => {
+  const im = e.target; if (!im || im.tagName !== 'IMG' || !im.src) return;
+  const n = +(im.dataset.re || 0); if (n >= 4) return;
+  im.dataset.re = n + 1;
+  const base = im.src.replace(/[?&]re=\d+$/, '');
+  setTimeout(() => { im.src = base + (base.includes('?') ? '&' : '?') + 're=' + (n + 1); }, 800 * (n + 1));
+}, true);
 const listo = (src) => new Promise(r => { if (!src) return r(); const im = new Image(); im.onload = im.onerror = () => (im.decode ? im.decode().catch(() => {}).then(r) : r()); im.src = src; });
 /** Lo que se ve en el menú de Jugar: retratos y los íconos de sus armas. Baja antes que todo lo demás. */
 const hubImgs = () => { try { return [...Object.keys(HUNTERS).map(k => IMG['retrato_' + k]), ...Object.values(HUNTERS).map(h => IMG['icono_' + h.weapon]), save.equipo && IMG['icono_' + save.equipo]].filter(Boolean); } catch (e) { return []; } };
