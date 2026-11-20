@@ -18,6 +18,8 @@ import { bendActiva, aplicarCompras, renderTienda, abrirTienda, ofrecerInicio, a
 
 // Hojas de caminar: dónde queda la cabeza en la pose quieta (q) y de ataque (a), y la altura de los pies (oy), para que no brinque al cambiar de pose
 const WALK = { machetero: { q: 0.566, a: 0.54, oy: 0.906 }, curandera: { q: 0.575, a: 0.442, oy: 0.906 }, luchadora: { q: 0.391, a: 0.548, oy: 0.907 }, cohetero: { q: 0.405, a: 0.477, oy: 0.907 }, onmyoji: { q: 0.556, a: 0.523, oy: 0.91 } };
+const CALAQUITA_NOVATO = 46 / 54; // velocidad de las calaquitas para un jugador nuevo (54 → 46)
+const PRIMER_CADEJO = 40;          // flores la primera vez que llegas al Cadejo
 const IMGS = import.meta.glob('./img/*.webp', { eager: true, query: '?url', import: 'default' });
 import PKG from '../package.json';
 const VERSION = PKG.version.replace(/\.0$/, '');
@@ -583,7 +585,9 @@ class Play extends Phaser.Scene {
     const hpMul = d.boss ? 1 : 1 + this.t / 110 + Math.pow(this.t / 330, 2);
     const key = this.tex(d.tex[0], d.tex[1], ...(d.fb || []));
     const s = this.getSprite(key);
-    const e = { k, d, x, y, hp: d.hp * hpMul, max: d.hp * hpMul, spd: d.spd * rnd(0.9, 1.1) * (this.cursed('prisa') ? 1.25 : 1), dmg: d.dmg, r: d.r, s, kx: 0, ky: 0, flash: 0, slowT: 0, stun: 0, ph: Math.random() * 6, state: 'walk', st: 0, cd: rnd(0.5, 2), alive: true, vx: 0, vy: 0 };
+    // Jugador nuevo (sus 3 primeras noches): las calaquitas van 15 % más lentas los primeros 90 s.
+    const novato = k === 'calaquita' && this.t < 90 && (save.partidas || 0) < 3 ? CALAQUITA_NOVATO : 1;
+    const e = { k, d, x, y, hp: d.hp * hpMul, max: d.hp * hpMul, spd: d.spd * novato * rnd(0.9, 1.1) * (this.cursed('prisa') ? 1.25 : 1), dmg: d.dmg, r: d.r, s, kx: 0, ky: 0, flash: 0, slowT: 0, stun: 0, ph: Math.random() * 6, state: 'walk', st: 0, cd: rnd(0.5, 2), alive: true, vx: 0, vy: 0 };
     e.bs = d.size / (d.boss ? 336 : 205); s.setScale(e.bs);
     this.E.push(e);
     return e;
@@ -606,6 +610,11 @@ class Play extends Phaser.Scene {
       gashadokuro: 'Sal del círculo rojo antes de que aplaste', guardian: 'Grita, muerde en líneas y parte el piso', jorogumo: 'Sus telarañas te frenan: no te quedes en ellas', orochi: 'Ocho cabezas: esquiva las líneas rojas' }[k];
     if (e.loop > 1) this.banner(`¡Volvió ${e.d.boss}!`, `Vuelta ${e.loop} · más fuerte que nunca`, 2600);
     else this.banner(`¡Llegó ${e.d.boss}!`, sub, 2600);
+    // Premio único: la primera vez que llegas al Cadejo.
+    if (k === 'cadejo' && this.counts && !POZO && !save.cadejoVisto) {
+      save.cadejoVisto = true; save.flores += PRIMER_CADEJO; persist();
+      this.time.delayedCall(2800, () => this.banner(`+${PRIMER_CADEJO} flores`, 'Primera vez que llegas al Cadejo', 2200));
+    }
   }
   bossLabel(e) { return e.loop > 1 ? `${e.d.boss} · Vuelta ${e.loop}` : e.d.boss; }
 
@@ -1296,8 +1305,16 @@ class Play extends Phaser.Scene {
         const ev = w.evo;
         const dmg = 20 * gm * (1 + 0.25 * (L >= 2) + 0.25 * (L >= 5) + 0.3 * (L >= 8)) * (ev ? 1.3 : 1);
         const R = 118 * (1 + 0.15 * (L >= 4) + 0.15 * (L >= 7)) * A * (ev ? 1.2 : 1);
-        this.slash(P.face, R, dmg, ev);
-        if (L >= 3) this.time.delayedCall(130, () => this.slash(P.face + Math.PI, R, dmg, ev));
+        // Si estás parado o vas huyendo, el tajo va al enemigo más cercano (antes pegaba al lado contrario).
+        let aim = P.face;
+        const [cerca] = this.nearestN(P.x, P.y, R * 1.6, 1);
+        if (cerca) {
+          const a = Math.atan2(cerca.y - P.y, cerca.x - P.x);
+          const dif = Math.abs(Math.atan2(Math.sin(a - P.face), Math.cos(a - P.face)));
+          if (!P.moving || dif > Math.PI / 2) aim = a;
+        }
+        this.slash(aim, R, dmg, ev);
+        if (L >= 3) this.time.delayedCall(130, () => this.slash(aim + Math.PI, R, dmg, ev));
         this.attackPose(); Sfx.play('swing');
         return 1.0 * (L >= 6 ? 0.85 : 1);
       }

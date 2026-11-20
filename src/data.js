@@ -29,17 +29,17 @@ export const HUNTERS = {
     blurb: 'Humo que daña alrededor. Aguanta mucho.',
   },
   luchadora: {
-    name: 'La Luchadora', weapon: 'punos', hp: 140, speed: 146,
+    name: 'La Luchadora', weapon: 'punos', hp: 120, speed: 146,
     ability: 'Plancha', abilityDesc: 'Salta y cae aplastando todo alrededor; los deja aturdidos.',
     blurb: 'Golpes rapidísimos al más cercano.',
   },
   cohetero: {
-    name: 'El Cohetero', weapon: 'cohetes', hp: 92, speed: 146,
+    name: 'El Cohetero', weapon: 'cohetes', hp: 102, speed: 146,
     ability: 'Castillo', abilityDesc: 'Lluvia de 16 cohetes que explotan alrededor.',
     blurb: 'Explosiones en área. Frágil pero potente.',
   },
   onmyoji: {
-    name: 'La Onmyoji', weapon: 'ofuda', hp: 98, speed: 150,
+    name: 'La Onmyoji', weapon: 'ofuda', hp: 108, speed: 150,
     ability: 'Círculo de sellos', abilityDesc: 'Sellos rojos a tu alrededor: dañan y dejan quietos a los enemigos cercanos.',
     blurb: 'Talismanes que persiguen solos. Viene de Japón.',
   },
@@ -47,7 +47,7 @@ export const HUNTERS = {
 
 // Armas: nivel 1 a 8
 export const WEAPONS = {
-  machete: { name: 'Machete', icon: '🗡️', desc: 'Tajo en arco hacia donde caminas.',
+  machete: { name: 'Machete', icon: '🗡️', desc: 'Tajo en arco hacia donde caminas; si estás quieto o huyendo, al enemigo más cercano.',
     lv: ['Tajo al frente', '+25% de daño', 'También tajo hacia atrás', '+15% de tamaño', '+25% de daño', '−15% de espera', '+15% de tamaño', '+30% de daño'] },
   copal: { name: 'Copal', icon: '💨', desc: 'Humo que daña y frena a los que están cerca.',
     lv: ['Aura de humo', '+15% de radio', '+30% de daño', '+15% de radio', 'Frena más', '+30% de daño', '+15% de radio', '+40% de daño'] },
