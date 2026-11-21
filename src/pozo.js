@@ -46,3 +46,43 @@ export async function openPozo(onPlay) {
     catch (e) { document.getElementById('pzMsg').textContent = e.message; go.disabled = false; }
   };
 }
+
+// ---------- Cazador de la semana (ranking sin premios; servidor: server/src/routes/ndl-cazador.ts, migración 059) ----------
+// Cada lunes le toca un cazador por turno y todos juegan con él con las reglas del Pozo (sin talentos, sin arma de la Piñata,
+// sin maldiciones, El Pueblo, hasta 15 min). Intentos ilimitados: cuenta tu mejor partida. Da las flores normales de la noche.
+export const finishCazador = (attemptId, log) => api('/ndl/cazador/finish', { method: 'POST', body: JSON.stringify({ attemptId, log }) });
+export async function openCazador(onPlay, H) {
+  let box = document.getElementById('pozoBox');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'pozoBox'; box.className = 'modal';
+    box.innerHTML = '<div class="frame pozo"><div class="in mbody"><button class="btn alt small pzx" type="button">✕</button><div class="pzin"></div></div></div>';
+    document.body.appendChild(box);
+    box.querySelector('.pzx').onclick = () => box.classList.add('hidden');
+  }
+  const inn = box.querySelector('.pzin');
+  box.classList.remove('hidden');
+  const head = '<h2>🏆 Cazador de la semana</h2><p class="pzsub">Todos con el mismo cazador · ranking semanal</p>';
+  const rules = '<p class="pzr">Sin talentos, sin arma de la Piñata y sin maldiciones · El Pueblo · hasta 15 min · intentos ilimitados: cuenta tu mejor partida · cada lunes cambia el cazador<br>Puntos: 1 por enemigo, 5 por segundo vivo, 300 por jefe · da las flores normales de la noche</p>';
+  if (!nube.on) {
+    inn.innerHTML = head + (nube.can ? '<p>Para entrar al ranking inicia sesión con tu cuenta DarkShadow.</p><button class="obtn main" id="czLogin"><span>Iniciar sesión</span></button>' : '<p>El ranking se juega en leyendas.darkshadow-studios.com</p>') + rules;
+    const l = document.getElementById('czLogin'); if (l) l.onclick = () => { location.href = loginUrl(); };
+    return;
+  }
+  inn.innerHTML = head + '<p>Cargando…</p>';
+  let d;
+  try { d = await api('/ndl/cazador'); } catch (e) { inn.innerHTML = head + `<p>${esc(e.message)}</p>`; return; }
+  const hrs = Math.max(0, Math.round((new Date(d.endsAt).getTime() - Date.now()) / 3600e3));
+  const img = H.img(d.hunter);
+  inn.innerHTML = head +
+    `<div class="czhero">${img ? `<img src="${img}" alt="">` : ''}<div><b>${esc(H.name(d.hunter))}</b><small>Termina en ${hrs >= 24 ? `${Math.floor(hrs / 24)} d ${hrs % 24} h` : `${hrs} h`} · el lunes: ${esc(H.name(d.next))}</small></div></div>` +
+    `<p>Tu mejor: <b>${d.best}</b>${d.rank ? ` (#${d.rank} de ${d.total})` : ''}</p>` +
+    (d.top.length ? `<ol class="pztop">${d.top.map((t) => `<li class="${t.me ? 'me' : ''}"><span>${t.rank}. ${esc(t.name)}${t.me ? ' (tú)' : ''}</span><b>${t.score}</b></li>`).join('')}</ol>` : '<p>¡Nadie ha jugado esta semana! Sé el primero.</p>') +
+    `<button class="obtn main" id="czGo"><span>¡A cazar!</span></button><p class="pzmsg" id="czMsg"></p>` + rules;
+  const go = document.getElementById('czGo');
+  go.onclick = async () => {
+    if (go.disabled) return;
+    go.disabled = true;
+    try { const a = await api('/ndl/cazador/start', { method: 'POST', body: '{}' }); box.classList.add('hidden'); onPlay({ ...a, kind: 'cazador' }); }
+    catch (e) { document.getElementById('czMsg').textContent = e.message; go.disabled = false; }
+  };
+}

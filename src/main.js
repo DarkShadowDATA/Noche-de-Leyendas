@@ -8,8 +8,8 @@ import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPO
 import { SH } from './moneda.js';
 import { GRIETA, MODOS } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
-import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
-let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
+import { openPozo, finishPozo, pozoScore, POZO_NDL, openCazador, finishCazador } from './pozo.js';
+let POZO = null;   // Noche del Pozo o Cazador de la semana en curso: { attemptId, cp: [], kind: 'pozo'|'cazador', hunter }
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
 import { setupLibro, bestiasLista, bestia, ganarMedallas, medallasViejas, abrirLibro, bestiasVistas, medallasN, medallaNombre } from './libro.js';
@@ -2037,17 +2037,26 @@ class Play extends Phaser.Scene {
     Sfx.play(win ? 'win' : 'lose');
     let pozo = null;
     if (POZO) {
+      this.pozoKind = POZO.kind;
       const log = { t: Math.floor(this.t), kills: this.kills, level: this.level, bosses: this.bossKills.map(b => [b.k, b.t || 0]), cp: POZO.cp };
       const score = pozoScore(this.t, this.kills, this.bossKills.length);
-      pozo = finishPozo(POZO.attemptId, log).then(r => ({ ...r, mine: score })).catch(e => ({ ok: false, error: e.message, mine: score }));
+      const caz = POZO.kind === 'cazador';
+      pozo = (caz ? finishCazador : finishPozo)(POZO.attemptId, log).then(r => ({ ...r, mine: score, caz })).catch(e => ({ ok: false, error: e.message, mine: score, caz }));
       POZO = null; pozoFlag.on = false;
     }
     this.time.delayedCall(win ? 200 : 700, () => {
       if (this.grietaWon) { finalGrieta(this.hunterId, () => this.hud.end(win)); return; }
       this.hud.end(win);
       if (!pozo) return;
-      $('endFlowers').innerHTML = '<div class="fl-big">💰 Noche del Pozo</div><div class="fl-rows">Revisando tu partida…</div>';
+      const czN = this.reward && this.reward.counts && this.reward.total > 0 ? `<div class="fl-rows">+${this.reward.total} 🌼</div>` : '';
+      $('endFlowers').innerHTML = `<div class="fl-big">${pozo && this.pozoKind === 'cazador' ? '🏆 Cazador de la semana' : '💰 Noche del Pozo'}</div><div class="fl-rows">Revisando tu partida…</div>`;
       pozo.then(r => {
+        if (r.caz) {
+          $('endFlowers').innerHTML = (r.ok
+            ? `<div class="fl-big">${r.score} pts</div><div class="fl-rows">🏆 Cazador de la semana · ${r.record ? '¡Tu mejor partida!' : `tu mejor: ${r.best}`}${r.rank ? ` · vas #${r.rank} de ${r.total}` : ''}</div>`
+            : `<div class="fl-big">🏆 Cazador de la semana</div><div class="fl-rows">${r.error || 'No se pudo registrar la partida'}</div>`) + czN;
+          return;
+        }
         $('endFlowers').innerHTML = r.ok
           ? `<div class="fl-big">${r.score} pts</div><div class="fl-rows">${r.record ? '¡Nuevo récord del Pozo!' : 'Partida registrada'}${r.rank ? ` · vas #${r.rank} esta semana` : ''}</div>`
           : `<div class="fl-big">💰 Pozo</div><div class="fl-rows">${r.error || 'No se pudo registrar la partida'}</div>`;
@@ -2107,6 +2116,12 @@ Play.prototype.flowerReward = function (win) {
   const bend = !POZO && bendActiva(); // Bendición de la Ofrenda (tienda con Shadow): flores ×2
   const total = Math.round(base * cosecha * (first ? FLOWERS.firstOfDay : 1) * (bend ? 2 : 1));
   const counts = !POZO && ((!GOD && START_T === 0 && !AUTO) || DEV);
+  if (POZO && POZO.kind === 'cazador' && ((!GOD && START_T === 0 && !AUTO) || DEV)) { // Cazador de la semana: solo las flores de la noche
+    save.flores += total; save.ganadas += total; save.partidas++;
+    if (first) save.dia = today();
+    persist();
+    return { ...r, cosecha, first, total, counts: true, bend };
+  }
   if (counts) {
     save.flores += total; save.ganadas += total; save.partidas++; save.mejor = Math.max(save.mejor, Math.floor(this.t));
     if (modo !== 'normal') { // récords de cada modo (no cuentan como victorias, mapas, regiones ni medallas)
@@ -2228,7 +2243,7 @@ class Hud {
     const jefes = sc.bossKills.length, loopMax = sc.bossKills.reduce((m, b) => Math.max(m, b.loop), 0);
     const modo = sc.modo || 'normal', MR = save.modos && save.modos[modo];
     const brag = modo !== 'normal' ? `<div class="won txt">${MODOS[modo].icon} ${MODOS[modo].name}${win ? ` · 🏆 ${modo === 'caceria' ? 'los 3 jefes' : ENEMIES[sc.finalBoss].boss} en ${fmt(sc.t)}${sc.reward && sc.reward.recModo ? ' · <b class="rec">¡Récord!</b>' : MR && MR.mejor ? ` · récord ${fmt(MR.mejor)}` : ''}` : ` · jefes ${jefes}/${modo === 'caceria' ? 3 : 1}`}</div>` : win ? `<div class="won txt">🏆 Venciste a ${ENEMIES[sc.finalBoss || 'llorona'].boss}${loopMax > 1 ? ` · llegaste a la vuelta ${loopMax}` : ''}</div>` : '';
-    const best = modo === 'normal' && sc.reward && sc.reward.counts && Math.floor(sc.t) >= save.mejor ? ' · <b class="rec">¡Récord!</b>' : '';
+    const best = modo === 'normal' && !sc.pozoKind && sc.reward && sc.reward.counts && Math.floor(sc.t) >= save.mejor ? ' · <b class="rec">¡Récord!</b>' : '';
     const O = sc.objO(sc.obj.id), objLine = modo !== 'normal' ? '' : `<div class="objend ${sc.obj.done ? 'ok' : 'no'}">${sc.obj.done ? '✅' : '❌'} ${O.name}${sc.curses.size ? ` · ${[...sc.curses].map(c => CURSES[c].icon).join(' ')}` : ''}</div>`;
     $('endStats').innerHTML = `${brag}${objLine}${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b>${best} · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b>${jefes ? ` · Jefes <b>${jefes}</b>` : ''}<br>` +
       sc.W.map(w => `<span class="endw${w.evo ? ' evo' : ''}">${wIcon(w)} ${wName(w)}${w.evo ? '' : ' ' + w.lv}</span>`).join(' ');
@@ -2597,7 +2612,7 @@ function buildPrep() {
 }
 
 function startRun(resume, pozo) {
-  POZO = pozo ? { attemptId: pozo.attemptId, cp: [], next: POZO_NDL.cpEvery } : null;
+  POZO = pozo ? { attemptId: pozo.attemptId, cp: [], next: POZO_NDL.cpEvery, kind: pozo.kind || 'pozo', hunter: HUNTERS[pozo.hunter] ? pozo.hunter : 'machetero' } : null;
   pozoFlag.on = !!POZO;
   if (POZO) resume = null;
   dsTrack('game_started', 'leyendas');   // analítica anónima del estudio: empezó una partida
@@ -2607,7 +2622,7 @@ function startRun(resume, pozo) {
   ['menu', 'end', 'pause', 'levelup', 'tree', 'resumeBox', 'pinata', 'prep', 'title', 'howBox', 'setBox', 'profBox'].forEach(id => $(id).classList.add('hidden')); hideHub(); showScene(false);
   const sm = game.scene;
   if (sm.getScene('play')) sm.stop('play');
-  sm.start('play', POZO ? { hunter: 'machetero', resume: null, map: 'pueblo', obj: 'llorona', curses: [] } : { hunter: resume ? resume.hunter : selected, resume: resume || null,
+  sm.start('play', POZO ? { hunter: POZO.hunter, resume: null, map: 'pueblo', obj: 'llorona', curses: [] } : { hunter: resume ? resume.hunter : selected, resume: resume || null,
     map: Q.get('map') || save.mapa || 'pueblo', obj: Q.get('obj') || prep.obj, modo: Q.get('modo') || (prep.go ? prep.modo : 'normal'), curses: Q.has('mald') ? Q.get('mald').split(',') : (save.malds || []) });
 }
 
@@ -2649,9 +2664,10 @@ async function boot() {
   setupHub();
   $('startBtn').onclick = () => { Sfx.init(); openPrep(); };
   $('pozoBtn').onclick = () => { Sfx.init(); openPozo(a => startRun(null, a)); };
+  $('cazBtn').onclick = () => { Sfx.init(); openCazador(a => startRun(null, a), { name: (k) => (HUNTERS[k] || HUNTERS.machetero).name, img: (k) => portraitOf(k) }); };
   $('prepGo').onclick = () => { prep.go = true; startRun(); };
   $('prepBack').onclick = () => { $('prep').classList.add('hidden'); showTab('jugar'); };
-  $('againBtn').onclick = () => startRun();
+  $('againBtn').onclick = () => { const s = game.scene.getScene('play'); if (s && s.pozoKind === 'cazador') { toMenu(); $('cazBtn').click(); } else startRun(); };
   $('menuBtn').onclick = toMenu;
   setupPinata(IMG, (k) => { Sfx.init(); Sfx.play(k); }, usarArma);
   $('endPinataBtn').onclick = () => { Sfx.init(); toMenu(); showTab('pinata'); };

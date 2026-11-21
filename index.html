@@ -302,6 +302,9 @@
   #pozoBox .pzprizes { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin:10px 0; }
   #pozoBox .pzprizes div { display:flex; flex-direction:column; background:rgba(0,0,0,.35); border-radius:10px; padding:6px 2px; }
   #pozoBox .pzprizes span { color:var(--oro); font-weight:800; } #pozoBox .pzprizes small { font-size:11px; opacity:.75; }
+  #pozoBox .czhero { display:flex; align-items:center; gap:12px; justify-content:center; margin:10px 0 4px; text-align:left; }
+  #pozoBox .czhero img { width:86px; height:86px; object-fit:cover; object-position:top; border-radius:12px; border:2px solid var(--oro); }
+  #pozoBox .czhero b { display:block; font-family:var(--serif); color:var(--oro); font-size:20px; } #pozoBox .czhero small { opacity:.8; }
   #pozoBox .pztop { list-style:none; padding:0; margin:8px 0; text-align:left; }
   #pozoBox .pztop li { display:flex; justify-content:space-between; padding:5px 10px; border-radius:8px; background:rgba(0,0,0,.25); margin:3px 0; }
   #pozoBox .pztop li.me { background:rgba(150,90,220,.55); }
@@ -655,6 +658,7 @@
   </div>
   <button class="obtn main" id="startBtn"><span>¡A cazar!</span></button>
   <button class="obtn" id="pozoBtn"><span>💰 Noche del Pozo</span></button>
+  <button class="obtn" id="cazBtn"><span>🏆 Cazador de la semana</span></button>
   <button class="obtn" id="libroBtn"></button>
   <div id="inicioCard" class="hidden">🎁 <span><b>Paquete de inicio</b> · la Luchadora, 5 boletos y 500 🌼 por 10 <span class="shtx">Shadow</span></span><span data-x>✕</span></div>
   <div id="resumeBox" class="hidden">
