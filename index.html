@@ -91,7 +91,9 @@
   .pobj .pd { font-family:system-ui,sans-serif; font-size:13px; margin:4px 0; } .pobj .pf { color:#ffcf5a; font-size:14px; }
   #prepCurses { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:640px; }
   .pcur { background:#24143a; border:2px solid #4a2f6a; border-radius:10px; color:var(--tinta); padding:5px 9px; font-family:system-ui,sans-serif; font-size:12.5px; display:flex; flex-direction:column; align-items:flex-start; cursor:pointer; max-width:200px; text-align:left; }
-  .pcur b { font-size:14px; } .pcur.on { border-color:#ff6a8a; background:#4a1a3a; box-shadow:0 0 10px #ff6a8a66; }
+  .pcur b { font-size:14px; }
+  #prepModos { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; } #prepModoDesc { font-size:13px; text-align:center; margin:4px 10px 2px; opacity:.92; } #prepModoDesc:empty { display:none; }
+  .pmodo.on { border-color:#ffc94a !important; }  .pcur.on { border-color:#ff6a8a; background:#4a1a3a; box-shadow:0 0 10px #ff6a8a66; }
   #prepBonus { font-size:16px; color:#ffcf5a; margin:8px 0 4px; }
   .objend { font-size:17px; margin-bottom:4px; } .objend.ok { color:#7dff8a; } .objend.no { color:#ff8a8a; }
   #acct { position:absolute; top:calc(12px + env(safe-area-inset-top)); left:12px; background:#2a1840; border:2px solid #6a4a9a; border-radius:20px; padding:5px 12px; font-size:15px; color:var(--tinta); text-decoration:none; }
@@ -609,13 +611,16 @@
 <div id="count" class="txt hidden"></div>
 <div id="prep" class="screen scenic hidden">
   <h1 class="txt">Prepara la noche</h1>
+  <div class="psub txt">Modo</div>
+  <div id="prepModos"></div>
+  <div id="prepModoDesc" class="txt"></div>
   <div class="psub txt">Elige el lugar</div>
   <div id="prepRegs"></div>
   <div id="prepMaps"></div>
   <div id="prepMapDesc"></div>
-  <div class="psub txt">Elige tu objetivo</div>
+  <div class="psub txt" id="prepObjsT">Elige tu objetivo</div>
   <div id="prepObjs"></div>
-  <div class="psub txt">Maldiciones <small>(opcional)</small></div>
+  <div class="psub txt" id="prepCursesT">Maldiciones <small>(opcional)</small></div>
   <div id="prepCurses"></div>
   <div id="prepBonus" class="txt"></div>
   <button class="obtn main" id="prepGo"><span>¡Empezar!</span></button><button class="obtn" id="prepBack"><b>↩</b>Volver</button>

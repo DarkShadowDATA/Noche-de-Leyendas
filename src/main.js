@@ -6,7 +6,7 @@ import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
 import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES, CASTILLO, REGION_BOSSES, BOSS_AT, REGIONS, objOf, objsDe } from './data.js';
 import { SH } from './moneda.js';
-import { GRIETA } from './data.js';
+import { GRIETA, MODOS } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
 import { openPozo, finishPozo, pozoScore, POZO_NDL } from './pozo.js';
 let POZO = null;   // Noche del Pozo en curso: { attemptId, cp: [] }
@@ -236,10 +236,15 @@ class Play extends Phaser.Scene {
     this.region = this.M.region || (DEV && new URLSearchParams(location.search).has('jp') ? 'japon' : 'mexico');
     if (!objsDe(this.region).includes(this.objId)) this.objId = 'llorona';
     this.bossList = REGION_BOSSES[this.region]; this.finalBoss = this.bossList[2];
+    // Modos: Noche corta (solo el primer jefe, al final) y Cacería de jefes (los 3 seguidos, desde nivel 10)
+    this.modo = !POZO && MODOS[r.modo] ? r.modo : 'normal';
+    if (this.modo === 'corta') { this.bossList = [this.bossList[0]]; this.finalBoss = this.bossList[0]; }
+    if (this.modo !== 'normal') { this.objId = 'llorona'; this.curses = new Set(); }
+    this.cazaI = 0; this.cazaT = 3;
   }
   objO(id) { return objOf(id || this.obj.id, this.region); }
   cursed(c) { return this.curses.has(c); }
-  bossTime(k) { return k === this.finalBoss && this.cursed('impaciente') ? 420 : BOSS_AT[this.bossList.indexOf(k)] ?? BOSS_TIMES[k]; }
+  bossTime(k) { if (this.modo === 'corta') return MODOS.corta.bossAt; if (this.modo === 'caceria') return Infinity; return k === this.finalBoss && this.cursed('impaciente') ? 420 : BOSS_AT[this.bossList.indexOf(k)] ?? BOSS_TIMES[k]; }
   heal(v) { if (this.cursed('sincura')) return; this.P.hp = Math.min(this.maxHp, this.P.hp + v); }
 
   preload() {
@@ -322,9 +327,12 @@ class Play extends Phaser.Scene {
     this.hud = new Hud(this);
     this.hud.show();
     if (START_T > 0) { for (let i = 0; i < Math.min(14, Math.floor(START_T / 40)); i++) this.levelUpAuto(); }
+    if (this.modo === 'caceria' && !this.resume) { while (this.level < MODOS.caceria.nivel) this.levelUpAuto(); this.xpNeed = this.needFor(this.level); }
     if (!this.resume) this.setupObjective();
     $('fog').classList.toggle('hidden', !this.cursed('niebla'));
     if (this.resume) this.restore(this.resume);
+    else if (this.modo === 'corta') this.banner('⏱️ Noche corta', `Aguanta: a las ${fmt(MODOS.corta.bossAt)} llega ${ENEMIES[this.finalBoss].boss}`, 2400);
+    else if (this.modo === 'caceria') this.banner('👹 Cacería de jefes', 'Nivel 10 · vienen los 3 jefes, uno tras otro', 2400);
     else this.banner('¡Que empiece la noche!', 'Sobrevive y caza a La Llorona', 2200);
     window.__ndl = this;
   }
@@ -503,7 +511,9 @@ class Play extends Phaser.Scene {
   // ---------- Director: qué sale y cuándo ----------
   updateDirector(dt) {
     const t = this.t;
-    if (!this.won) { for (const k of this.bossList) if (t >= this.bossTime(k) && !this.bossDone[k]) { this.bossDone[k] = true; this.spawnBoss(k); } }
+    if (this.modo === 'caceria') { // Cacería: un jefe tras otro, con una pausa corta entre ellos
+      if (!this.won && !this.bossAlive && this.cazaI < 3) { this.cazaT -= dt; if (this.cazaT <= 0) { const k = this.bossList[this.cazaI++]; this.bossDone[k] = true; this.spawnBoss(k); } }
+    } else if (!this.won) { for (const k of this.bossList) if (t >= this.bossTime(k) && !this.bossDone[k]) { this.bossDone[k] = true; this.spawnBoss(k); } }
     else if (!this.bossAlive && t >= this.nextBossT) { this.nextBossT = Infinity; this.spawnBoss(this.bossList[this.bossN % 3]); }
     this.updateHelpers(dt);
     this.updateObjective(dt);
@@ -520,7 +530,7 @@ class Play extends Phaser.Scene {
 
     const alive = this.E.length;
     const cap = this.bossAlive ? 240 : 330;
-    let rate = Math.min(1.6 + t / 36, 11);
+    let rate = this.modo === 'caceria' ? 0 : Math.min(1.6 + t / 36, 11); // en la Cacería solo salen los jefes
     if (this.bossAlive) rate *= 0.55;
     this.spawnAcc += rate * dt;
     while (this.spawnAcc >= 1) {
@@ -982,15 +992,19 @@ class Play extends Phaser.Scene {
       this.spawnHelper('iman', e.x + 70, e.y + 10);
       if (e.k === this.finalBoss && !this.won) {
         this.won = true; this.nextBossT = this.t + ENDLESS.first;
-        if (this.obj.id === 'llorona') this.objDone();
+        if (this.obj.id === 'llorona' && this.modo === 'normal') this.objDone();
         Sfx.play('win');
-        if (this.region === 'grieta' && !save.grieta && !POZO) { this.grietaWon = true; this.banner('¡Cerraste La Grieta!', 'El Guardián cayó…', 3000); this.time.delayedCall(2600, () => this.endRun(true)); }
+        if (this.modo !== 'normal') { // Noche corta o Cacería: ganaste y se acaba la noche
+          this.banner(this.modo === 'corta' ? '¡Ganaste la Noche corta!' : '¡Cacería completa!', `Venciste a ${e.d.boss} · ${fmt(this.t)}`, 2800);
+          this.time.delayedCall(2600, () => this.endRun(true));
+        } else if (this.region === 'grieta' && !save.grieta && !POZO) { this.grietaWon = true; this.banner('¡Cerraste La Grieta!', 'El Guardián cayó…', 3000); this.time.delayedCall(2600, () => this.endRun(true)); }
         else if (this.mapId === 'castillo' && !save.japon) { this.regionWon = true; this.banner('¡Liberaste Japón!', `Venciste a Orochi en su castillo · +${CASTILLO.regionFlores} 🌼`, 3800); }
         else if (this.mapId === 'canales' && !save.mexico) { this.regionWon = true; this.banner('¡Liberaste México!', `Venciste a La Llorona en su canal · +${CANALES.regionFlores} 🌼`, 3800); }
         else this.banner(`¡Venciste a ${e.d.boss}!`, 'La noche sigue… los jefes volverán más fuertes', 3200);
       } else {
         if (this.won) this.nextBossT = this.t + ENDLESS.gap;
-        this.banner(`¡Venciste a ${this.bossLabel(e)}!`, 'Soltó un cofre y un imán', 2000);
+        if (this.modo === 'caceria') { this.cazaT = MODOS.caceria.pausa; this.banner(`¡Venciste a ${this.bossLabel(e)}!`, `Jefe ${this.cazaI}/3 · el siguiente viene en ${MODOS.caceria.pausa} s`, 2200); }
+        else this.banner(`¡Venciste a ${this.bossLabel(e)}!`, 'Soltó un cofre y un imán', 2000);
       }
       return;
     }
@@ -1213,6 +1227,8 @@ class Play extends Phaser.Scene {
     }
   }
   objText() {
+    if (this.modo === 'corta') return `⏱️ Noche corta · ${this.won ? '✅' : this.t < MODOS.corta.bossAt ? `${ENEMIES[this.finalBoss].boss} llega a las ${fmt(MODOS.corta.bossAt)}` : `vence a ${ENEMIES[this.finalBoss].boss}`}`;
+    if (this.modo === 'caceria') return `👹 Cacería · ${this.won ? '✅ 3/3' : `jefe ${Math.max(1, this.cazaI)}/3`}`;
     const o = this.obj, O = this.objO(o.id);
     if (o.done) return `✅ ${O.name}`;
     if (o.failed) return `❌ ${O.name}`;
@@ -1975,7 +1991,7 @@ class Play extends Phaser.Scene {
     const run = {
       v: 1, at: Date.now(), hunter: this.hunterId, t: r1(this.t), kills: this.kills, level: this.level, xp: r1(this.xp), xpNeed: this.xpNeed, pendingLv: this.pendingLv,
       energy: this.energy, W: this.W.map(w => [w.id, w.lv, w.evo ? 1 : 0]), Pass: this.Pass, mapChests: this.mapChests, chestFlores: this.chestFlores, punHits: this.punHits, killsAt10: this.killsAt10,
-      obj: this.obj.id, curses: [...this.curses], map: this.mapId, regionWon: this.regionWon ? 1 : 0, evT: r1(this.evT), lastEv: this.lastEv, moonT: r1(this.moonT || 0),
+      obj: this.obj.id, curses: [...this.curses], map: this.mapId, modo: this.modo, cazaI: this.cazaI, cazaT: r1(this.cazaT), regionWon: this.regionWon ? 1 : 0, evT: r1(this.evT), lastEv: this.lastEv, moonT: r1(this.moonT || 0),
       objSt: { done: this.obj.done, failed: this.obj.failed, n: this.obj.n, esc: this.obj.esc, di: this.obj.di, cart: this.obj.cart ? { ...this.obj.cart, x: this.obj.cart.x - P.x, y: this.obj.cart.y - P.y, tx: this.obj.cart.tx - P.x, ty: this.obj.cart.ty - P.y } : null, ofr: this.obj.ofr ? { ...this.obj.ofr, x: this.obj.ofr.x - P.x, y: this.obj.ofr.y - P.y } : null }, hp: r1(P.hp), rerolls: this.rerolls, revived: this.revived, gear: this.gear,
       bossDone: this.bossDone, bossKills: this.bossKills, won: this.won, bossN: this.bossN, nextBossT: this.nextBossT === Infinity ? -1 : r1(this.nextBossT),
       helpT: r1(this.helpT), flockT: r1(this.flockT), dmgTaken: Math.round(this.dmgTaken || 0),
@@ -1990,7 +2006,7 @@ class Play extends Phaser.Scene {
     const P = this.P;
     Object.assign(this, { t: r.t, kills: r.kills, level: r.level, xp: r.xp, xpNeed: r.xpNeed, pendingLv: r.pendingLv, energy: r.energy, rerolls: r.rerolls, revived: r.revived,
       bossDone: r.bossDone || {}, bossKills: r.bossKills || [], won: !!r.won, bossN: r.bossN || 0, nextBossT: r.nextBossT < 0 ? Infinity : r.nextBossT, helpT: r.helpT, flockT: r.flockT, dmgTaken: r.dmgTaken || 0 });
-    this.gear = r.gear || {}; this.regionWon = !!r.regionWon;
+    this.gear = r.gear || {}; this.regionWon = !!r.regionWon; this.cazaI = r.cazaI || 0; this.cazaT = r.cazaT != null ? r.cazaT : 3;
     this.W = []; this.aura.setVisible(false);
     for (const [id, lv, evo] of r.W) { if (!WEAPONS[id]) continue; this.addWeapon(id); const w = this.W[this.W.length - 1]; w.lv = lv; w.evo = !!evo; if (w.evo && id === 'copal') this.aura.setTint(0x7dffb0); }
     this.mapChests = r.mapChests || {}; this.chestFlores = r.chestFlores || 0; this.punHits = r.punHits || 0; this.killsAt10 = r.killsAt10 != null ? r.killsAt10 : null;
@@ -2081,6 +2097,8 @@ function flowerLines(sc, win) {
 }
 Play.prototype.flowerReward = function (win) {
   const r = flowerLines(this, win);
+  const modo = this.modo || 'normal';
+  if (modo !== 'normal') r.objetivo = 0;
   let base = r.tiempo + r.enemigos + r.jefes + r.cofres;
   r.tope = base > FLOWERS.cap; base = Math.min(base, FLOWERS.cap) + r.objetivo;
   base *= (1 + CURSE_BONUS * r.maldiciones) * (1 + r.mapa); base += r.region;
@@ -2091,6 +2109,13 @@ Play.prototype.flowerReward = function (win) {
   const counts = !POZO && ((!GOD && START_T === 0 && !AUTO) || DEV);
   if (counts) {
     save.flores += total; save.ganadas += total; save.partidas++; save.mejor = Math.max(save.mejor, Math.floor(this.t));
+    if (modo !== 'normal') { // récords de cada modo (no cuentan como victorias, mapas, regiones ni medallas)
+      save.modos = save.modos || {}; const R = save.modos[modo] = save.modos[modo] || { jugadas: 0, ganadas: 0 };
+      R.jugadas++; if (win) { R.ganadas++; r.recModo = !R.mejor || this.t < R.mejor; if (r.recModo) R.mejor = Math.floor(this.t); }
+      if (first) save.dia = today();
+      persist();
+      return { ...r, cosecha, first, total, counts, bend };
+    }
     if (win) save.victorias++;
     if (this.regionWon) save[this.region === 'japon' ? 'japon' : 'mexico'] = true;
     if (win) { save.mapWins = save.mapWins || {}; save.mapWins[this.mapId] = (save.mapWins[this.mapId] || 0) + 1; }
@@ -2199,11 +2224,12 @@ class Hud {
   end(win) {
     const sc = this.sc;
     $('hud').classList.add('hidden');
-    $('endTitle').textContent = 'La noche te alcanzó';
+    $('endTitle').textContent = sc.modo && sc.modo !== 'normal' && win ? (sc.modo === 'corta' ? '¡Sobreviviste!' : '¡Cacería completa!') : 'La noche te alcanzó';
     const jefes = sc.bossKills.length, loopMax = sc.bossKills.reduce((m, b) => Math.max(m, b.loop), 0);
-    const brag = win ? `<div class="won txt">🏆 Venciste a ${ENEMIES[sc.finalBoss || 'llorona'].boss}${loopMax > 1 ? ` · llegaste a la vuelta ${loopMax}` : ''}</div>` : '';
-    const best = sc.reward && sc.reward.counts && Math.floor(sc.t) >= save.mejor ? ' · <b class="rec">¡Récord!</b>' : '';
-    const O = sc.objO(sc.obj.id), objLine = `<div class="objend ${sc.obj.done ? 'ok' : 'no'}">${sc.obj.done ? '✅' : '❌'} ${O.name}${sc.curses.size ? ` · ${[...sc.curses].map(c => CURSES[c].icon).join(' ')}` : ''}</div>`;
+    const modo = sc.modo || 'normal', MR = save.modos && save.modos[modo];
+    const brag = modo !== 'normal' ? `<div class="won txt">${MODOS[modo].icon} ${MODOS[modo].name}${win ? ` · 🏆 ${modo === 'caceria' ? 'los 3 jefes' : ENEMIES[sc.finalBoss].boss} en ${fmt(sc.t)}${sc.reward && sc.reward.recModo ? ' · <b class="rec">¡Récord!</b>' : MR && MR.mejor ? ` · récord ${fmt(MR.mejor)}` : ''}` : ` · jefes ${jefes}/${modo === 'caceria' ? 3 : 1}`}</div>` : win ? `<div class="won txt">🏆 Venciste a ${ENEMIES[sc.finalBoss || 'llorona'].boss}${loopMax > 1 ? ` · llegaste a la vuelta ${loopMax}` : ''}</div>` : '';
+    const best = modo === 'normal' && sc.reward && sc.reward.counts && Math.floor(sc.t) >= save.mejor ? ' · <b class="rec">¡Récord!</b>' : '';
+    const O = sc.objO(sc.obj.id), objLine = modo !== 'normal' ? '' : `<div class="objend ${sc.obj.done ? 'ok' : 'no'}">${sc.obj.done ? '✅' : '❌'} ${O.name}${sc.curses.size ? ` · ${[...sc.curses].map(c => CURSES[c].icon).join(' ')}` : ''}</div>`;
     $('endStats').innerHTML = `${brag}${objLine}${HUNTERS[sc.hunterId].name}<br>Tiempo <b>${fmt(sc.t)}</b>${best} · Nivel <b>${sc.level}</b> · Enemigos <b>${sc.kills}</b>${jefes ? ` · Jefes <b>${jefes}</b>` : ''}<br>` +
       sc.W.map(w => `<span class="endw${w.evo ? ' evo' : ''}">${wIcon(w)} ${wName(w)}${w.evo ? '' : ' ' + w.lv}</span>`).join(' ');
     const r = sc.reward;
@@ -2515,7 +2541,7 @@ function openTree(from) { treeFrom = from; ['menu', 'end', 'pinata'].forEach(id 
 let treeFrom = 'menu';
 
 // ---------- Antes de jugar: objetivo (2 al azar) y maldiciones opcionales ----------
-const prep = { opts: [], obj: 'llorona' };
+const prep = { opts: [], obj: 'llorona', modo: 'normal' };
 function openPrep() {
   prepObjs();
   save.malds = (save.malds || []).filter(c => CURSES[c]);
@@ -2534,6 +2560,13 @@ function prepObjs() { // 2 objetivos al azar de la región del mapa (en Japón, 
 }
 function buildPrep() {
   if (!MAPS[save.mapa] || !mapOpen(save.mapa)) save.mapa = 'pueblo';
+  if (!MODOS[prep.modo]) prep.modo = 'normal';
+  const MR = save.modos || {};
+  $('prepModos').innerHTML = Object.entries(MODOS).map(([k, D]) => `<button class="pcur pmodo${k === prep.modo ? ' on' : ''}" data-k="${k}"><b>${D.icon} ${D.name}</b><span>${k !== 'normal' && MR[k] && MR[k].mejor ? `Récord ${fmt(MR[k].mejor)}` : k === 'normal' ? 'Objetivos y maldiciones' : k === 'corta' ? '5 minutos' : 'Desde nivel 10'}</span></button>`).join('');
+  $('prepModos').querySelectorAll('.pmodo').forEach(el => { el.onclick = () => { prep.modo = el.dataset.k; Sfx.play('pick'); buildPrep(); }; });
+  const normal = prep.modo === 'normal';
+  ['prepObjs', 'prepCurses', 'prepObjsT', 'prepCursesT'].forEach(id => $(id).classList.toggle('hidden', !normal));
+  $('prepModoDesc').innerHTML = normal ? '' : `${MODOS[prep.modo].desc}<br><small>No cuenta como victoria ni da medallas; sí da flores${prep.modo === 'corta' ? '' : ' por cada jefe'}.</small>`;
   const reg = regOf(save.mapa), fin = { mexico: 'La Llorona', japon: 'Orochi', grieta: 'el Guardián' };
   $('prepRegs').innerHTML = Object.entries(REGIONS).map(([r, R]) => `<button class="preg${r === reg ? ' on' : ''}${regionOpen(r) ? '' : ' locked'}" data-r="${r}">${IMG['region_' + r] ? `<img src="${IMG['region_' + r]}" alt="">` : ''}<span>${regionOpen(r) ? R.icon : '🔒'} ${R.name}</span></button>`).join('');
   $('prepRegs').querySelectorAll('.preg').forEach(el => { el.onclick = () => {
@@ -2558,9 +2591,9 @@ function buildPrep() {
   $('prepCurses').querySelectorAll('.pcur').forEach(el => { el.onclick = () => {
     const k = el.dataset.k; save.malds = save.malds.includes(k) ? save.malds.filter(x => x !== k) : [...save.malds, k]; persist(); Sfx.play('pick'); buildPrep();
   }; });
-  const n = save.malds.length;
+  const n = normal ? save.malds.length : 0;
   const mult = (1 + CURSE_BONUS * n) * (1 + MAPS[save.mapa].bonus);
-  $('prepBonus').innerHTML = mult > 1 ? `Flores ×${mult.toFixed(2).replace(/0$/, '')}${n ? ` · ${n} ${n === 1 ? 'maldición' : 'maldiciones'}` : ''}${MAPS[save.mapa].bonus ? ` · ${MAPS[save.mapa].name}` : ''}` : 'Cada maldición da +20 % de flores';
+  $('prepBonus').innerHTML = mult > 1 ? `Flores ×${mult.toFixed(2).replace(/0$/, '')}${n ? ` · ${n} ${n === 1 ? 'maldición' : 'maldiciones'}` : ''}${MAPS[save.mapa].bonus ? ` · ${MAPS[save.mapa].name}` : ''}` : normal ? 'Cada maldición da +20 % de flores' : '';
 }
 
 function startRun(resume, pozo) {
@@ -2575,7 +2608,7 @@ function startRun(resume, pozo) {
   const sm = game.scene;
   if (sm.getScene('play')) sm.stop('play');
   sm.start('play', POZO ? { hunter: 'machetero', resume: null, map: 'pueblo', obj: 'llorona', curses: [] } : { hunter: resume ? resume.hunter : selected, resume: resume || null,
-    map: Q.get('map') || save.mapa || 'pueblo', obj: Q.get('obj') || prep.obj, curses: Q.has('mald') ? Q.get('mald').split(',') : (save.malds || []) });
+    map: Q.get('map') || save.mapa || 'pueblo', obj: Q.get('obj') || prep.obj, modo: Q.get('modo') || (prep.go ? prep.modo : 'normal'), curses: Q.has('mald') ? Q.get('mald').split(',') : (save.malds || []) });
 }
 
 function toMenu() {

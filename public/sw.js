@@ -1,6 +1,6 @@
 // Noche de Leyendas: guarda el juego en el celular para jugar sin internet.
 // Con internet siempre baja la versión nueva; sin internet usa la guardada.
-const CACHE = 'ndl-v24';   // v24: ajustes del probador (Machetero apunta, vidas, calaquitas para novatos, premio del primer Cadejo)
+const CACHE = 'ndl-v25';   // v25: modos Noche corta y Cacería de jefes
 const FILES = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {

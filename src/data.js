@@ -115,6 +115,12 @@ export const CURSES = {
   impaciente: { icon: '⏰', name: 'Jefe impaciente', desc: 'El jefe final llega en el minuto 7.' },
 };
 export const CURSE_BONUS = 0.2;
+// Modos de juego (20 nov 2026). La noche completa es la de siempre.
+export const MODOS = {
+  normal: { icon: '🌙', name: 'Noche completa', desc: 'La noche de siempre: 3 jefes, objetivos y maldiciones.' },
+  corta: { icon: '⏱️', name: 'Noche corta', desc: '5 minutos. Al final llega el primer jefe de la región: véncelo y ganas.', bossAt: 255 },
+  caceria: { icon: '👹', name: 'Cacería de jefes', desc: 'Empiezas en nivel 10 y solo salen los 3 jefes de la región, uno tras otro.', nivel: 10, pausa: 4 },
+};
 // Eventos al azar durante la partida (el primero en el minuto 2, luego cada 70–95 s)
 export const EVENTS = { first: 120, every: [70, 95], list: ['luna', 'parvada', 'cofre', 'almas'], japon: ['tifon', 'linternas', 'cofre', 'almas'], grieta: ['luna', 'parvada', 'tifon', 'linternas', 'cofre', 'almas'] };
 /** ¿Se puede ofrecer en esta partida? Lo de Japón sale en Japón, y en México después de ganar Japón. */
