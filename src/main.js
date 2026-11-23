@@ -2,6 +2,7 @@
 import Phaser from 'phaser';
 import '@fontsource/lilita-one/400.css';
 import { dsTrack } from './dsev.js';
+import { abrirMasJuegos, masJuegosVisible, masJuegosTexto, marcarFinPartida } from './masjuegos.js';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
 import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPONS, PASSIVES, ENEMIES, BOSS_TIMES, ENDLESS, HELPERS, HELPER_EVERY, BRANCHES, TALENTS, FINAL_NEEDS, talentCost, HUNTER_COST, FLOWERS, RARITIES, PINATA, gearBonus, MAX_STARS, EVOS, MAP_CHESTS, CHEST_FLORES, OBJECTIVES, OBJ_DEADLINE, DORADO_TIMES, DORADO_LIFE, CURSES, CURSE_BONUS, EVENTS , MAPS, PANTEON, CANALES, CASTILLO, REGION_BOSSES, BOSS_AT, REGIONS, objOf, objsDe } from './data.js';
@@ -2255,6 +2256,9 @@ class Hud {
       const bendLine = !r.bend && r.counts && (nube.on || nube.can) && (win || best) ? `<div class="fl-bend">🕯️ Con la Bendición de la Ofrenda habrían sido ${r.total * 2} 🌼 <small>(Tienda, en tu perfil)</small></div>` : '';
       $('endFlowers').innerHTML = `<div class="fl-big">+${r.total} 🌼</div><div class="fl-rows">Tiempo ${r.tiempo} · Enemigos ${r.enemigos}${r.jefes ? ` · Jefes ${r.jefes}` : ''}${r.cofres ? ` · Cofres ${r.cofres}` : ''}${r.tope ? ` · Tope ${FLOWERS.cap}` : ''}${r.objetivo ? `<br>Objetivo +${r.objetivo}` : ''}${r.maldiciones ? `${r.objetivo ? ' · ' : '<br>'}Maldiciones ×${(1 + CURSE_BONUS * r.maldiciones).toFixed(1)}` : ''}${r.mapa ? `<br>${MAPS[sc.mapId].name} +${Math.round(r.mapa * 100)}%` : ''}${r.region ? ` · ¡${sc.region === 'japon' ? 'Japón' : 'México'} liberado! +${r.region}` : ''}${extra ? `<br>${extra}` : ''}${r.counts ? '' : '<br><i>Partida de prueba: no cuenta</i>'}</div>${medLine}${bendLine}<div class="fl-tot">Tienes ${save.flores} 🌼</div>`;
     }
+    // «Más juegos de DarkShadow»: abajo de todo, sin tapar «Otra vez» (quien llegó por anuncio lo ve desde su primer final)
+    marcarFinPartida(); $('endMasBtn').textContent = masJuegosTexto; $('endMasBtn').classList.toggle('hidden', !masJuegosVisible(save.partidas));
+    $('endMasBtn').onclick = () => abrirMasJuegos();
     $('end').classList.remove('hidden');
   }
 }
@@ -2338,6 +2342,8 @@ function buildMenu() {
   $('abIn').innerHTML = `<span class="ico" style="--rc:#3ff0d8">${wIco(h.weapon)}</span><span class="tx">${WEAPONS[h.weapon].name} · ${h.hp} ❤️<b style="color:#9ff7ea">${h.ability}</b>Habilidad</span>`;
   $('libroBtn').innerHTML = `<span>📖 Bestiario ${bestiasVistas()}/${bestiasLista().length} · 🏅 Medallas ${medallasN()}/${MEDALLAS.length}</span>`;
   $('libroBtn').onclick = () => { Sfx.init(); Sfx.play('pick'); abrirLibro(); };
+  $('masBtn').firstChild.textContent = masJuegosTexto; $('masBtn').classList.toggle('hidden', !masJuegosVisible(save.partidas));
+  $('masBtn').onclick = () => { Sfx.init(); Sfx.play('pick'); abrirMasJuegos(); };
   const oi = $('inicioCard'); oi.classList.toggle('hidden', !ofrecerInicio());
   oi.onclick = (e) => { if (e.target.closest('[data-x]')) { save.inicioVisto = true; persist(); oi.classList.add('hidden'); return; } $('profBtn').click(); };
   hubTop();

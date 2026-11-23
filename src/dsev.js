@@ -6,7 +6,9 @@
 const EV_URL = 'https://darkshadow-studios.com/api/ev';
 const Q = (() => { try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(); } })();
 const NET = { tiktok: 'tt', tt: 'tt', youtube: 'yt', yt: 'yt', instagram: 'ig', ig: 'ig', facebook: 'fb', fb: 'fb', reddit: 'rd', rd: 'rd',
-  itch: 'itch', discord: 'dc', dc: 'dc', telegram: 'canal', canal: 'canal', grupo: 'grupo', estudio: 'estudio', fm: 'fm', ac: 'ac', otro: 'otro' };
+  itch: 'itch', discord: 'dc', dc: 'dc', telegram: 'canal', canal: 'canal', grupo: 'grupo', estudio: 'estudio', fm: 'fm', ac: 'ac', otro: 'otro',
+  // anuncios pagados y llegadas desde otro juego del estudio («Más juegos», ?campana=cruce)
+  fb_ads: 'fb_ads', ig_ads: 'ig_ads', bloquevilla: 'bloquevilla', mutantes: 'mutantes', pinatazo: 'pinatazo', ahino: 'ahino', mecabestias: 'mecabestias', leyendas: 'leyendas' };
 const REF = [[/tiktok\./, 'tt'], [/youtube\.|youtu\.be/, 'yt'], [/instagram\./, 'ig'], [/facebook\.|fb\.com|fb\.me/, 'fb'], [/reddit\./, 'rd'],
   [/itch\.(io|zone)/, 'itch'], [/discord\./, 'dc'], [/t\.me|telegram\./, 'canal'], [/darkshadow-studios\.com/, 'estudio']];
 
@@ -17,6 +19,8 @@ function fromReferrer() {
 /** De dónde llegó: ?src= / ?utm_source= / ?ref= o, si no trae nada, la página anterior. */
 export const dsSrc = NET[(Q.get('src') || Q.get('utm_source') || Q.get('ref') || '').toLowerCase()] || fromReferrer() || 'directo';
 /** Si el juego se abrió desde la página del estudio (sus botones agregan ?via=estudio). */
+/** Campaña o video que trajo la visita (?campana=cruce, ?c=mb-07): va a la columna campana. */
+export const dsCamp = (() => { const c = (Q.get('campana') || Q.get('c') || '').toLowerCase(); return /^[a-z0-9-]{1,16}$/.test(c) ? c : undefined; })();
 export const dsVia = Q.get('via') === 'estudio' || /^https:\/\/darkshadow-studios\.com\/?(\?|#|$)/.test(document.referrer) ? 'estudio' : undefined;
 
 const LOCAL = /^(localhost|127\.|0\.0\.0\.0|192\.168\.|10\.)/.test(location.hostname) || !location.hostname;
@@ -48,7 +52,7 @@ export function dsTrack(ev, game, url = EV_URL) {
   if (LOCAL) return;
   try {
     const via = VIA && !viaUsed[ev] ? (viaUsed[ev] = true, VIA) : undefined;
-    const body = JSON.stringify({ ev, game, src: dsSrc, via, dev: device(), path: location.pathname.slice(0, 80), vid: vid(), sid: sid(), test: TEST || undefined });
+    const body = JSON.stringify({ ev, game, src: dsSrc, via, dev: device(), path: location.pathname.slice(0, 80), vid: vid(), sid: sid(), c: dsCamp, test: TEST || undefined });
     if (!(navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))))
       fetch(url, { method: 'POST', body, keepalive: true, mode: 'no-cors', headers: { 'content-type': 'text/plain' } }).catch(() => {});
   } catch (e) { /* sin red: no pasa nada */ }

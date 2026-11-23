@@ -506,6 +506,18 @@
   .shop-it { display:flex; align-items:center; gap:8px; background:rgba(40,24,64,.8); box-shadow:inset 0 0 0 1px #5a3f7a; border-radius:10px; padding:8px; margin:6px 0; text-align:left; }
   .shop-it .ic { font-size:26px; } .shop-it .tx { flex:1; font-size:12px; color:#cdbde6; line-height:1.35; } .shop-it .tx b { display:block; font-family:var(--serif); font-size:14px; color:#fff1cf; }
   .shop-it .tx i { color:#9ff7ea; font-style:normal; } .shop-it .obtn { margin:0; white-space:nowrap; } .shop-it .ok { color:#9ff7ea; font-size:13px; white-space:nowrap; }
+  /* Más juegos de DarkShadow (ventanita con 3 tarjetas) */
+  .mjbtn span, button.mjbtn { font-size: 14px; }
+  .mjov { position: fixed; inset: 0; z-index: 90; background: rgba(8,4,18,.78); display: flex; align-items: center; justify-content: center; padding: 14px; }
+  .mjbox { position: relative; width: min(380px, 100%); max-height: 92vh; overflow: auto; background: linear-gradient(#2a1640, #170b26); border: 2px solid #f3b33d; border-radius: 16px; padding: 14px 12px 12px; box-shadow: 0 10px 40px #000a; color: #f6ead7; font-family: inherit; }
+  .mjx { position: absolute; top: 6px; right: 8px; background: none; border: 0; color: #f6ead7; font-size: 20px; cursor: pointer; }
+  .mjh { text-align: center; margin: 0 22px 10px; } .mjh b { display: block; font-size: 19px; color: #ffcf5a; } .mjh small { opacity: .75; font-size: 12px; }
+  .mjc { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; background: #ffffff10; border: 1px solid #ffffff22; border-radius: 12px; padding: 6px; margin-bottom: 8px; }
+  .mjc img { width: 104px; height: 58px; object-fit: cover; border-radius: 8px; flex: none; background: #0006; }
+  .mjc span { flex: 1; min-width: 0; line-height: 1.2; } .mjc b { display: block; font-size: 14px; } .mjc i { display: block; font-style: normal; font-size: 11.5px; opacity: .8; } .mjc em { font-style: normal; font-size: 10.5px; color: #9ff7ea; }
+  .mjc u { text-decoration: none; flex: none; background: #f3b33d; color: #2a1640; font-weight: 700; font-size: 12px; border-radius: 8px; padding: 6px 8px; }
+  .mjall { display: block; text-align: center; color: #ffcf5a; font-size: 13px; margin-top: 2px; }
+  .mjov.hidden { display: none; }
   .shop-sh { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:6px 0 2px; } .shop-sh .obtn { margin:0; font-size:13px; } .shop-sh .obtn .shc { height:1.2em; vertical-align:-.25em; }
   .shop-bal, .shop-note { font-size:12px; color:#cdbde6; text-align:center; margin:8px 4px 2px; } .shop-bal a { color:#ffcf5a; } .shop-msg { font-size:13px; color:#ffcf5a; text-align:center; margin:6px; }
   .fl-bend { font-family:system-ui,sans-serif; font-size:12px; color:#cdbde6; margin-top:6px; opacity:.9; } .fl-bend small { opacity:.7; }
@@ -662,6 +674,7 @@
   <button class="obtn" id="pozoBtn"><span>🏅 Reto semanal</span></button>
   <button class="obtn" id="cazBtn"><span>🏆 Cazador de la semana</span></button>
   <button class="obtn" id="libroBtn"></button>
+  <button class="obtn mjbtn hidden" id="masBtn"><span></span></button>
   <div id="inicioCard" class="hidden">🎁 <span><b>Paquete de inicio</b> · la Luchadora, 5 boletos y 500 🌼 por 10 <span class="shtx">Shadow</span></span><span data-x>✕</span></div>
   <div id="resumeBox" class="hidden">
     <div class="rb txt">
@@ -781,6 +794,7 @@
   <div id="endFlowers"></div>
   <button class="btn" id="againBtn" style="font-size:26px;padding:13px 40px">Otra vez</button><div class="srow"><button class="btn alt small" id="endTreeBtn">🌼 Talentos</button><button class="btn alt small" id="endPinataBtn">🪅 Piñata</button></div>
   <button class="btn alt small" id="menuBtn">↩ Menú principal</button>
+  <button class="btn alt small mjbtn hidden" id="endMasBtn"></button>
 </div>
 
 <script src="https://darkshadow-studios.com/ds-tienda.js" defer></script>

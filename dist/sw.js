@@ -1,6 +1,6 @@
 // Noche de Leyendas: guarda el juego en el celular para jugar sin internet.
 // Con internet siempre baja la versión nueva; sin internet usa la guardada.
-const CACHE = 'ndl-v28';   // v28: ventana «Comprar Shadow» del estudio (DSTienda)
+const CACHE = 'ndl-v29';   // v29: «Más juegos de DarkShadow»
 const FILES = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
