@@ -45,6 +45,8 @@ export function mergeSaves(a, b) {
   out.medallas = { ...(o.medallas || {}), ...(out.medallas || {}) };
   out.bestiario = { ...(out.bestiario || {}) }; for (const [k, v] of Object.entries(o.bestiario || {})) out.bestiario[k] = Math.max(out.bestiario[k] || 0, v || 0);
   out.aspectos = [...new Set([...(out.aspectos || []), ...(o.aspectos || [])])]; out.aspecto = { ...(o.aspecto || {}), ...(out.aspecto || {}) };
+  if ((o.retoCobrado || '') > (out.retoCobrado || '')) out.retoCobrado = o.retoCobrado; // premio del Reto semanal ya cobrado
+  out.cadejoVisto = !!(out.cadejoVisto || o.cadejoVisto);
   out.bendHasta = Math.max(out.bendHasta || 0, o.bendHasta || 0); out.inicioVisto = !!(out.inicioVisto || o.inicioVisto);
   if (out.equipo && !out.armas[out.equipo]) out.equipo = '';
   return out;

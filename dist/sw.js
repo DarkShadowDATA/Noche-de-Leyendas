@@ -1,6 +1,6 @@
 // Noche de Leyendas: guarda el juego en el celular para jugar sin internet.
 // Con internet siempre baja la versión nueva; sin internet usa la guardada.
-const CACHE = 'ndl-v26';   // v26: Cazador de la semana
+const CACHE = 'ndl-v27';   // v27: Reto semanal (sin premios en Shadow)
 const FILES = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {

@@ -8,8 +8,8 @@ import { enRegion, ASPECTOS, MEDALLA_FLORES, MEDALLAS, BESTIARIO, HUNTERS, WEAPO
 import { SH } from './moneda.js';
 import { GRIETA, MODOS } from './data.js';
 import { save, persist, tl, today, RUN_KEY, readRun, clearRun, pozoFlag } from './save.js';
-import { openPozo, finishPozo, pozoScore, POZO_NDL, openCazador, finishCazador } from './pozo.js';
-let POZO = null;   // Noche del Pozo o Cazador de la semana en curso: { attemptId, cp: [], kind: 'pozo'|'cazador', hunter }
+import { openPozo, finishPozo, pozoScore, POZO_NDL, openCazador, finishCazador, revisarReto } from './pozo.js';
+let POZO = null;   // Reto semanal (antes Noche del Pozo) o Cazador de la semana en curso: { attemptId, cp: [], kind: 'pozo'|'cazador', hunter }
 import { setupPinata, openPinata, closePinata, boletos as pinBoletos } from './pinata.js';
 import { nube, onNube, startNube, loginUrl } from './nube.js';
 import { setupLibro, bestiasLista, bestia, ganarMedallas, medallasViejas, abrirLibro, bestiasVistas, medallasN, medallaNombre } from './libro.js';
@@ -2049,7 +2049,7 @@ class Play extends Phaser.Scene {
       this.hud.end(win);
       if (!pozo) return;
       const czN = this.reward && this.reward.counts && this.reward.total > 0 ? `<div class="fl-rows">+${this.reward.total} 🌼</div>` : '';
-      $('endFlowers').innerHTML = `<div class="fl-big">${pozo && this.pozoKind === 'cazador' ? '🏆 Cazador de la semana' : '💰 Noche del Pozo'}</div><div class="fl-rows">Revisando tu partida…</div>`;
+      $('endFlowers').innerHTML = `<div class="fl-big">${pozo && this.pozoKind === 'cazador' ? '🏆 Cazador de la semana' : '🏅 Reto semanal'}</div><div class="fl-rows">Revisando tu partida…</div>`;
       pozo.then(r => {
         if (r.caz) {
           $('endFlowers').innerHTML = (r.ok
@@ -2058,8 +2058,8 @@ class Play extends Phaser.Scene {
           return;
         }
         $('endFlowers').innerHTML = r.ok
-          ? `<div class="fl-big">${r.score} pts</div><div class="fl-rows">${r.record ? '¡Nuevo récord del Pozo!' : 'Partida registrada'}${r.rank ? ` · vas #${r.rank} esta semana` : ''}</div>`
-          : `<div class="fl-big">💰 Pozo</div><div class="fl-rows">${r.error || 'No se pudo registrar la partida'}</div>`;
+          ? `<div class="fl-big">${r.score} pts</div><div class="fl-rows">${r.record ? '¡Tu mejor partida del Reto!' : 'Partida registrada'}${r.rank ? ` · vas #${r.rank} esta semana` : ''}</div>`
+          : `<div class="fl-big">🏅 Reto semanal</div><div class="fl-rows">${r.error || 'No se pudo registrar la partida'}</div>`;
       });
     });
   }
@@ -2678,7 +2678,7 @@ async function boot() {
   { const mv = medallasViejas(); if (mv.length) setTimeout(() => toast(`🏅 ${mv.length} medalla${mv.length > 1 ? 's' : ''} por tus victorias anteriores: +${mv.length * MEDALLA_FLORES} 🌼`), 1200); }
   setupMercado(IMG, (k) => { Sfx.init(); Sfx.play(k); }, () => { const m = aplicarCompras(); if (m) toast(m); if (tab === 'arsenal') buildArs(); hubTop(); });
   onNube(() => { const m = aplicarCompras(); if (m) toast(m); if (!$('hub').classList.contains('hidden')) showTab(tab); });
-  startNube();
+  startNube().then(() => revisarReto((p) => { toast(`🏅 Reto semanal: quedaste #${p.rank} la semana pasada · +${p.flores} 🌼`); hubTop(); }));
   $('quitBtn').onclick = toMenu;
   $('resumeBtn').onclick = () => game.scene.getScene('play').hud.resume();
   $('pauseBtn').onclick = () => game.scene.getScene('play').hud.pause();
