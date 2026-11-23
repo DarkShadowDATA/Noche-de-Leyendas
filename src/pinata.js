@@ -2,7 +2,7 @@
 import { WEAPONS, RARITIES, PINATA, MAX_STARS, gearBonus } from './data.js';
 import { SH, SH_QUE } from './moneda.js';
 import { save, persist, today } from './save.js';
-import { nube, buyBoletos, loginUrl, shadowUrl, pinataSrv } from './nube.js';
+import { nube, buyBoletos, loginUrl, comprarShadow, pinataSrv } from './nube.js';
 
 const $ = id => document.getElementById(id);
 // Las armas de Japón entran a la Piñata después de ganar Japón
@@ -57,6 +57,9 @@ function pull(pay) {
 
 let from = 'menu', busy = false, msg = '';
 export function openPinata(back) { from = back || from; msg = ''; ['menu', 'end'].forEach(id => $(id).classList.add('hidden')); build(); $('pinata').classList.remove('hidden'); }
+document.addEventListener('ndl:compra', (e) => { // boletos que esperaban Shadow (ventana del estudio)
+  if (e.detail && e.detail.tipo === 'boletos') { msg = '¡Listo! Ya tienes tus boletos 🎟️'; if (!$('pinata').classList.contains('hidden')) build(); }
+});
 export function closePinata() { $('pinata').classList.add('hidden'); return from; }
 
 function build() {
@@ -79,14 +82,19 @@ function build() {
     : `<div class="pn-note">Los boletos con Shadow se compran en <b>leyendas.darkshadow-studios.com</b> con tu cuenta DarkShadow.</div>`;
   else shop = `<div class="pn-note">Boletos con Shadow (opcional) · tienes <b>${nube.shadow}${SH}</b></div>` + SH_QUE +
     (nube.packs || []).map(p => `<button class="btn alt small" data-b="${p.id}">🎟️ ${p.boletos} ${p.boletos === 1 ? 'boleto' : 'boletos'} · ${p.shadow}${SH}</button>`).join('') +
-    `<a class="btn alt small" href="${shadowUrl()}" target="_top">Comprar Shadow</a>`;
+    `<button class="btn alt small" data-sh="1">${SH} Comprar Shadow</button>`;
   $('pnShop').innerHTML = shop + (msg ? `<div class="pn-msg">${msg}</div>` : '');
   $('pnShop').querySelectorAll('button[data-b]').forEach(bt => { bt.onclick = async () => {
     if (busy) return; busy = true; bt.disabled = true;
+    const pk = (nube.packs || []).find(x => x.id === bt.dataset.b);
     try { await buyBoletos(bt.dataset.b); msg = '¡Listo! Ya tienes tus boletos 🎟️'; sfx('chest'); }
-    catch (e) { msg = e.message; }
+    catch (e) {
+      if (e.status === 402 && pk) { msg = ''; comprarShadow({ falta: pk.shadow - nube.shadow, pendiente: { tipo: 'boletos', id: pk.id, precio: pk.shadow } }); }
+      else msg = e.message;
+    }
     busy = false; build();
   }; });
+  const shb = $('pnShop').querySelector('[data-sh]'); if (shb) shb.onclick = () => comprarShadow();
 
   // Colección: toca un arma para equiparla
   const col = $('pnCol'); col.innerHTML = '';

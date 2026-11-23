@@ -1,5 +1,5 @@
 // Guardado en la nube y boletos con Shadow (cuenta DarkShadow). Todo es opcional: sin cuenta o sin internet no pasa nada.
-import { initCuenta, api, onStudio, user, loginUrl, shadowUrl } from './cuenta.js';
+import { initCuenta, api, onStudio, user, loginUrl, shadowUrl, DEVAPI } from './cuenta.js';
 import { save, mergeSaves, replaceSave, onPersist } from './save.js';
 export { loginUrl, shadowUrl, api };
 /** Sube el guardado pronto (después de usar un arma de la bodega, por ejemplo). */
@@ -67,3 +67,33 @@ export async function pinataSrv(n) {
   nube.boletos = r.boletos; nube.usados = r.usados;
   return r.items;
 }
+
+// ---- Ventana «Comprar Shadow» del estudio (https://darkshadow-studios.com/ds-tienda.js, 23 nov 2026) ----
+// Solo se abre desde la tienda (perfil o Piñata), nunca en medio de la partida ni al perder.
+const PEND = 'ndl_compra_pendiente';
+const dsOpts = () => DEVAPI ? { api: DEVAPI, headers: { 'x-dev-user': '4242' } } : {};
+const setShadow = (s) => { if (typeof s === 'number' && s !== nube.shadow) { nube.shadow = s; changed(); } };
+let finisher = null; // (pendiente, saldo) => termina la compra que faltaba
+/** El juego registra cómo terminar una compra que se quedó esperando Shadow. */
+export function alTerminarCompra(fn) { finisher = fn; }
+function terminar(saldo) {
+  let p = null; try { p = JSON.parse(localStorage.getItem(PEND) || 'null'); } catch (e) { /* nada */ }
+  if (!p || Date.now() - p.t > 3 * 3600e3) { try { localStorage.removeItem(PEND); } catch (e) { /* nada */ } return; }
+  if (typeof saldo === 'number' && saldo >= p.precio && finisher) { try { localStorage.removeItem(PEND); } catch (e) { /* nada */ } finisher(p, saldo); }
+}
+/** Abre la ventana del estudio. falta = Shadow que faltan; pendiente = { tipo, id, precio } para comprarlo solo al llegar la Shadow. */
+export function comprarShadow({ falta = 0, modo, pendiente, alTerminar } = {}) {
+  const D = window.DSTienda;
+  if (!D) { window.top.location.href = shadowUrl(); return; } // el script no cargó: la tienda de la cuenta
+  if (pendiente) { try { localStorage.setItem(PEND, JSON.stringify({ ...pendiente, t: Date.now() })); } catch (e) { /* nada */ } }
+  else if (modo !== 'apoyar') { try { localStorage.removeItem(PEND); } catch (e) { /* nada */ } }
+  D.abrir({ juego: 'leyendas', lang: 'es', falta: Math.max(0, Math.ceil(falta)), modo, ...dsOpts(),
+    alTerminar: (s) => { setShadow(s); if (alTerminar) alTerminar(s); terminar(s); } });
+}
+// Regreso de una pestaña de pago o de OXXO (…?pago=<orden>): pedir el saldo otra vez y terminar la compra pendiente.
+window.addEventListener('dstienda:pago', async () => {
+  const D = window.DSTienda; if (!D) return;
+  const s = await D.saldo({ juego: 'leyendas', ...dsOpts() });
+  setShadow(s); terminar(s);
+  try { const u = new URL(location.href); u.searchParams.delete('pago'); history.replaceState(null, '', u); } catch (e) { /* nada */ }
+});

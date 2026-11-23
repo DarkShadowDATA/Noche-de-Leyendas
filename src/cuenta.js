@@ -28,7 +28,7 @@ const cookies = {
 
 let cfg = null, key = '', session = null;
 // Solo para probar en la compu (localhost): ?devapi=http://127.0.0.1:3077 usa el servidor local con DEV_AUTH
-const DEVAPI = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? new URLSearchParams(location.search).get('devapi') : null;
+export const DEVAPI = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? new URLSearchParams(location.search).get('devapi') : null;
 export let user = null; // { name }
 
 const timeout = (ms) => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);

@@ -2,7 +2,7 @@
 // Reglas (claude/pagos-y-mercado.md): nunca en medio de la partida, nada de poder exclusivo y no cuenta en la Noche del Pozo.
 import { SH, SH_QUE } from './moneda.js';
 import { save, persist } from './save.js';
-import { nube, buyItem, loginUrl, shadowUrl } from './nube.js';
+import { nube, buyItem, buyBoletos, loginUrl, comprarShadow, alTerminarCompra, onNube } from './nube.js';
 import { HUNTER_COST, ASPECTOS, HUNTERS } from './data.js';
 
 const $ = (id) => document.getElementById(id);
@@ -48,7 +48,9 @@ let note = '', imgs = {};
 export function setTiendaImgs(m) { imgs = m; }
 /** El aspecto que trae puesto un cazador (o '' si usa el normal). */
 export const aspectoDe = (id) => { const k = save.aspecto && save.aspecto[id]; return k && ASPECTOS[k] && ASPECTOS[k].cazador === id && (save.aspectos || []).includes(k) ? k : ''; };
+let lastOnChange = null;
 export function renderTienda(onChange) {
+  if (onChange) lastOnChange = onChange; else onChange = lastOnChange;
   const el = $('shopBox'); if (!el) return;
   if (!nube.on) {
     el.innerHTML = nube.can
@@ -56,6 +58,7 @@ export function renderTienda(onChange) {
       : `<div class="shop-note">La tienda con Shadow está en <b>leyendas.darkshadow-studios.com</b>, con tu cuenta DarkShadow.</div>`;
     return;
   }
+  lastSh = nube.shadow;
   const T = nube.tienda || [], card = (id, ico, desc, state) => {
     const it = T.find(t => t.id === id); if (!it) return '';
     return `<div class="shop-it"><span class="ic">${ico}</span><span class="tx"><b>${it.nombre}</b>${desc}</span>` +
@@ -65,15 +68,43 @@ export function renderTienda(onChange) {
     card('inicio', '🎁', 'La Luchadora, 5 boletos de la Piñata y 500 🌼. Una sola vez.', inicioComprado() ? '<span class="ok">✔ Tuyo</span>' : '') +
     card('bendicion', '🕯️', bendActiva() ? `Flores ×2 al terminar cada noche. <i>Activa: te quedan ${bendDias()} días.</i>` : 'Flores ×2 al terminar cada noche, por 30 días. No cuenta en la Noche del Pozo.', '') +
     Object.entries(ASPECTOS).map(([k, A]) => card(A.item, `<img src="${imgs['retrato_' + k] || ''}" alt="">`, `Aspecto para ${HUNTERS[A.cazador].name}. Solo cambia cómo se ve.`, (save.aspectos || []).includes(k) ? '<span class="ok">✔ Tuyo</span>' : '')).join('') +
-    `<div class="shop-bal">Tienes <b>${nube.shadow} ${SH} Shadow</b> · <a href="${shadowUrl()}" target="_top">Comprar Shadow</a></div>` + SH_QUE +
+    `<div class="shop-bal">Tienes <b>${nube.shadow} ${SH} Shadow</b></div>` +
+    `<div class="shop-sh"><button class="obtn" data-sh="comprar">${SH} Comprar Shadow</button><button class="obtn alt" data-sh="apoyar">💜 Apoyar al creador</button></div>` + SH_QUE +
     (note ? `<div class="shop-msg">${note}</div>` : '');
   el.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => {
     const it = T.find(t => t.id === b.dataset.buy);
     if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.innerHTML = `¿Pagar ${it.shadow}${SH}?`; setTimeout(() => { if (b.isConnected) { b.dataset.sure = ''; b.innerHTML = `${it.shadow}${SH}`; } }, 3500); return; }
     b.disabled = true;
     try { await buyItem(it.id); note = aplicarCompras() || (it.id === 'bendicion' ? `¡Bendición activa! Flores ×2 por ${bendDias()} días 🕯️` : '¡Listo!'); }
-    catch (e) { note = e.status === 402 ? 'No te alcanza la Shadow. Toca «Comprar Shadow».' : (e.data && e.data.error) || 'No se pudo comprar. Revisa tu internet.'; }
+    catch (e) {
+      if (e.status === 402) { // no le alcanza: la ventana del estudio con lo que falta, y al llegar la Shadow se compra solo
+        note = '';
+        comprarShadow({ falta: it.shadow - nube.shadow, pendiente: { tipo: 'item', id: it.id, precio: it.shadow } });
+      } else note = (e.data && e.data.error) || 'No se pudo comprar. Revisa tu internet.';
+    }
     renderTienda(onChange); if (onChange) onChange();
   });
+  el.querySelectorAll('[data-sh]').forEach(b => b.onclick = () => comprarShadow({ modo: b.dataset.sh === 'apoyar' ? 'apoyar' : undefined }));
 }
+
+// Si cambia el saldo (llegó la Shadow) con la tienda abierta, se vuelve a pintar.
+let lastSh = null;
+onNube(() => { const el = $('shopBox'); if (el && el.offsetParent && nube.on && nube.shadow !== lastSh) renderTienda(); });
+
+// Compra que se quedó esperando Shadow (en la ventana, en otra pestaña o con OXXO): se termina sola al llegar.
+const listo = async () => { for (let i = 0; i < 40 && !nube.on; i++) await new Promise(r => setTimeout(r, 250)); return nube.on; };
+alTerminarCompra(async (p) => {
+  if (!await listo()) return;
+  try {
+    if (p.tipo === 'item') {
+      const it = (nube.tienda || []).find(t => t.id === p.id);
+      await buyItem(p.id);
+      note = aplicarCompras() || (p.id === 'bendicion' ? `¡Bendición activa! Flores ×2 por ${bendDias()} días 🕯️` : `¡Listo! Ya es tuyo: ${it ? it.nombre : 'tu compra'}`);
+    } else if (p.tipo === 'boletos') {
+      await buyBoletos(p.id);
+    }
+    document.dispatchEvent(new CustomEvent('ndl:compra', { detail: p }));
+  } catch (e) { note = (e.data && e.data.error) || e.message || 'No se pudo terminar la compra.'; }
+  const el = $('shopBox'); if (el && el.isConnected && el.innerHTML) renderTienda();
+});
 export function abrirTienda() { note = ''; }
